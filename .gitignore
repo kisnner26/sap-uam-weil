@@ -1,0 +1,10 @@
+# Carpeta de test descartada
+weil-front-real/
+
+# macOS
+.DS_Store
+.AppleDouble
+
+# Logs temporales
+/tmp/
+*.log

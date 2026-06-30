@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CampusFood UAM · Ingresar</title>
+    <style>
+        :root { --teal: #4498A6; --ink: #1f2a2e; --bg: #f6f4ef; --err: #b3261e; }
+        * { box-sizing: border-box; }
+        body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--ink);
+               display: grid; place-items: center; min-height: 100vh; margin: 0; }
+        .card { background: #fff; width: min(380px, 92vw); padding: 28px 26px;
+                border-radius: 14px; box-shadow: 0 10px 40px rgba(0,0,0,.08); }
+        h1 { font-size: 1.25rem; margin: 0 0 4px; }
+        p.sub { margin: 0 0 20px; color: #5b6b6f; font-size: .9rem; }
+        label { display: block; font-size: .8rem; font-weight: 600; margin: 14px 0 6px; }
+        input { width: 100%; padding: 11px 12px; border: 1px solid #d6d3cc; border-radius: 9px;
+                font-size: 1rem; }
+        input:focus { outline: 2px solid var(--teal); border-color: var(--teal); }
+        button { width: 100%; margin-top: 20px; padding: 12px; border: 0; border-radius: 9px;
+                 background: var(--teal); color: #fff; font-size: 1rem; font-weight: 600;
+                 cursor: pointer; }
+        button:disabled { opacity: .6; cursor: progress; }
+        .msg { margin-top: 14px; font-size: .85rem; min-height: 1.2em; }
+        .msg.error { color: var(--err); }
+        .msg.ok { color: var(--teal); }
+        .hint { margin-top: 18px; font-size: .78rem; color: #7a8589; text-align: center; }
+    </style>
+</head>
+<body>
+    <main class="card">
+        <h1>Ingresar con cuenta UAM</h1>
+        <p class="sub">Usá tu CIF y contraseña de Moodle (uamvirtual).</p>
+
+        <form id="moodle-form" novalidate>
+            <label for="cif">CIF</label>
+            <input id="cif" name="cif" inputmode="numeric" autocomplete="username"
+                   pattern="\d*" placeholder="123456" required>
+
+            <label for="password">Contraseña</label>
+            <input id="password" name="password" type="password"
+                   autocomplete="current-password" required>
+
+            <button id="submit" type="submit">Ingresar con cuenta UAM</button>
+            <div id="msg" class="msg" role="status" aria-live="polite"></div>
+        </form>
+
+        <p class="hint">¿No sos estudiante de la UAM? <a href="./register.html">Creá una cuenta</a></p>
+    </main>
+
+    <script>
+        // Base del backend Spring Boot. Ajustar segun despliegue.
+        const API_BASE = "http://localhost:8080";
+
+        const form = document.getElementById("moodle-form");
+        const submitBtn = document.getElementById("submit");
+        const msg = document.getElementById("msg");
+
+        form.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            msg.className = "msg";
+            msg.textContent = "";
+
+            const cif = document.getElementById("cif").value.trim();
+            const password = document.getElementById("password").value;
+
+            if (!/^\d{4,12}$/.test(cif)) {
+                showError("El CIF debe ser numérico.");
+                return;
+            }
+            if (!password) {
+                showError("Ingresá tu contraseña.");
+                return;
+            }
+
+            setLoading(true);
+            try {
+                const res = await fetch(`${API_BASE}/api/auth/moodle-login`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ cif, password }),
+                });
+
+                const data = await res.json().catch(() => ({}));
+
+                if (res.ok) {
+                    // Guardamos la sesión propia (JWT). Para mayor seguridad, el
+                    // backend podría emitirla como cookie httpOnly; aquí usamos
+                    // almacenamiento del navegador para el ejemplo.
+                    sessionStorage.setItem("cf_token", data.token);
+                    sessionStorage.setItem("cf_user", JSON.stringify(data.user));
+                    msg.className = "msg ok";
+                    msg.textContent = `Bienvenido/a, ${data.user.fullName}. Redirigiendo…`;
+                    window.location.href = "./home.html";
+                    return;
+                }
+
+                if (res.status === 401) {
+                    showError("CIF o contraseña incorrectos.");
+                } else if (res.status === 503) {
+                    showError(data.message || "Plataforma UAM en mantenimiento, intentá más tarde.");
+                } else {
+                    showError(data.message || "No se pudo iniciar sesión. Intentá de nuevo.");
+                }
+            } catch (err) {
+                showError("Error de conexión con el servidor.");
+            } finally {
+                setLoading(false);
+            }
+        });
+
+        function setLoading(loading) {
+            submitBtn.disabled = loading;
+            submitBtn.textContent = loading ? "Verificando…" : "Ingresar con cuenta UAM";
+        }
+        function showError(text) {
+            msg.className = "msg error";
+            msg.textContent = text;
+        }
+    </script>
+</body>
+</html>
