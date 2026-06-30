@@ -1,0 +1,74 @@
+spring:
+  application:
+    name: sap-uam-weill-backend
+  # Perfil por defecto: desarrollo con H2 en memoria.
+  profiles:
+    active: dev
+
+server:
+  port: 8080
+
+# ----------------------------------------------------------------------------
+# Configuracion propia de la app
+# ----------------------------------------------------------------------------
+app:
+  jwt:
+    # Secreto para firmar el JWT propio (NO el token de Moodle).
+    # En produccion definir APP_JWT_SECRET como variable de entorno (>= 32 bytes).
+    secret: ${APP_JWT_SECRET:cambia-este-secreto-de-desarrollo-por-uno-largo-y-aleatorio-1234567890}
+    # Vigencia del token en milisegundos (24h por defecto).
+    expiration-ms: ${APP_JWT_EXPIRATION_MS:86400000}
+    issuer: sap-uam-weill
+  cors:
+    # Origenes permitidos para el frontend (separar por coma).
+    allowed-origins: ${APP_CORS_ORIGINS:http://localhost:5173,http://localhost:3000,http://localhost:8080,http://localhost:8765,http://127.0.0.1:8765,http://localhost:8766,http://127.0.0.1:8766}
+  moodle:
+    # Base del Moodle de la UAM. Las 2 llamadas se hacen server-to-server.
+    base-url: ${MOODLE_BASE_URL:https://uamvirtual.uam.edu.ni/grado}
+    service: moodle_mobile_app
+    # Timeouts de las llamadas a Moodle (ms).
+    connect-timeout-ms: 5000
+    read-timeout-ms: 10000
+
+---
+# ============================ PERFIL DEV (H2) ===============================
+spring:
+  config:
+    activate:
+      on-profile: dev
+  datasource:
+    url: jdbc:h2:mem:sapweill;DB_CLOSE_DELAY=-1;MODE=PostgreSQL
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+---
+# ========================= PERFIL PROD (Postgres) ===========================
+spring:
+  config:
+    activate:
+      on-profile: prod
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/sapweill}
+    username: ${DB_USER:sapweill}
+    password: ${DB_PASSWORD:sapweill}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: America/Managua

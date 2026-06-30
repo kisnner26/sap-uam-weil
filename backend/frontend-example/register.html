@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CampusFood UAM · Crear cuenta</title>
+    <style>
+        :root { --teal: #4498A6; --ink: #1f2a2e; --bg: #f6f4ef; --err: #b3261e; }
+        * { box-sizing: border-box; }
+        body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--ink);
+               display: grid; place-items: center; min-height: 100vh; margin: 0; }
+        .card { background: #fff; width: min(380px, 92vw); padding: 28px 26px;
+                border-radius: 14px; box-shadow: 0 10px 40px rgba(0,0,0,.08); }
+        h1 { font-size: 1.25rem; margin: 0 0 4px; }
+        p.sub { margin: 0 0 16px; color: #5b6b6f; font-size: .9rem; }
+        label { display: block; font-size: .8rem; font-weight: 600; margin: 12px 0 6px; }
+        input { width: 100%; padding: 11px 12px; border: 1px solid #d6d3cc; border-radius: 9px;
+                font-size: 1rem; }
+        input:focus { outline: 2px solid var(--teal); border-color: var(--teal); }
+        button { width: 100%; margin-top: 20px; padding: 12px; border: 0; border-radius: 9px;
+                 background: var(--teal); color: #fff; font-size: 1rem; font-weight: 600; cursor: pointer; }
+        button:disabled { opacity: .6; cursor: progress; }
+        .msg { margin-top: 14px; font-size: .85rem; min-height: 1.2em; }
+        .msg.error { color: var(--err); }
+        .hint { margin-top: 18px; font-size: .78rem; color: #7a8589; text-align: center; }
+    </style>
+</head>
+<body>
+    <main class="card">
+        <h1>Crear cuenta</h1>
+        <p class="sub">Para personas que no son estudiantes de la UAM.</p>
+
+        <form id="reg-form" novalidate>
+            <label for="fullName">Nombre completo</label>
+            <input id="fullName" required>
+
+            <label for="email">Correo</label>
+            <input id="email" type="email" autocomplete="email" required>
+
+            <label for="cedula">Cédula</label>
+            <input id="cedula" placeholder="001-000000-0000A">
+
+            <label for="password">Contraseña (mín. 8)</label>
+            <input id="password" type="password" autocomplete="new-password" required>
+
+            <button id="submit" type="submit">Crear cuenta</button>
+            <div id="msg" class="msg" role="status" aria-live="polite"></div>
+        </form>
+
+        <p class="hint">¿Sos estudiante? <a href="./login.html">Ingresá con tu cuenta UAM</a></p>
+    </main>
+
+    <script>
+        const API_BASE = "http://localhost:8080";
+        const form = document.getElementById("reg-form");
+        const submitBtn = document.getElementById("submit");
+        const msg = document.getElementById("msg");
+
+        form.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            msg.className = "msg"; msg.textContent = "";
+
+            const payload = {
+                fullName: document.getElementById("fullName").value.trim(),
+                email: document.getElementById("email").value.trim(),
+                cedula: document.getElementById("cedula").value.trim(),
+                password: document.getElementById("password").value,
+            };
+            if (payload.password.length < 8) { showError("La contraseña debe tener al menos 8 caracteres."); return; }
+
+            submitBtn.disabled = true; submitBtn.textContent = "Creando…";
+            try {
+                const res = await fetch(`${API_BASE}/api/auth/register`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload),
+                });
+                const data = await res.json().catch(() => ({}));
+                if (res.ok) {
+                    sessionStorage.setItem("cf_token", data.token);
+                    sessionStorage.setItem("cf_user", JSON.stringify(data.user));
+                    window.location.href = "./home.html";
+                    return;
+                }
+                if (res.status === 409) showError("Ya existe una cuenta con ese correo.");
+                else showError(data.message || "No se pudo crear la cuenta.");
+            } catch (err) {
+                showError("Error de conexión con el servidor.");
+            } finally {
+                submitBtn.disabled = false; submitBtn.textContent = "Crear cuenta";
+            }
+        });
+
+        function showError(t) { msg.className = "msg error"; msg.textContent = t; }
+    </script>
+</body>
+</html>

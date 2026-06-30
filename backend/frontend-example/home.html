@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CampusFood UAM · Inicio</title>
+    <style>
+        :root { --teal: #4498A6; --ink: #1f2a2e; --bg: #f6f4ef; }
+        * { box-sizing: border-box; }
+        body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--ink);
+               display: grid; place-items: center; min-height: 100vh; margin: 0; }
+        .card { background: #fff; width: min(440px, 92vw); padding: 28px; border-radius: 14px;
+                box-shadow: 0 10px 40px rgba(0,0,0,.08); }
+        .row { display: flex; align-items: center; gap: 14px; }
+        img.avatar { width: 56px; height: 56px; border-radius: 50%; object-fit: cover;
+                     background: #e7e3da; }
+        h1 { font-size: 1.2rem; margin: 0; }
+        .muted { color: #5b6b6f; font-size: .9rem; }
+        dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; margin: 22px 0 0;
+             font-size: .9rem; }
+        dt { font-weight: 600; color: #5b6b6f; }
+        button { margin-top: 22px; padding: 10px 16px; border: 0; border-radius: 9px;
+                 background: var(--teal); color: #fff; font-weight: 600; cursor: pointer; }
+        pre { background: #f3f1ec; padding: 12px; border-radius: 9px; font-size: .75rem;
+              overflow:auto; }
+    </style>
+</head>
+<body>
+    <main class="card">
+        <div class="row">
+            <img id="avatar" class="avatar" alt="" />
+            <div>
+                <h1 id="name">…</h1>
+                <div class="muted" id="email"></div>
+            </div>
+        </div>
+
+        <dl>
+            <dt>Proveedor</dt><dd id="provider"></dd>
+            <dt>Rol</dt><dd id="role"></dd>
+            <dt>Moodle ID</dt><dd id="moodleId"></dd>
+        </dl>
+
+        <p class="muted" style="margin-top:20px">Sesión verificada contra el backend (<code>/api/auth/me</code>):</p>
+        <pre id="me">cargando…</pre>
+
+        <button id="logout" type="button">Cerrar sesión</button>
+    </main>
+
+    <script>
+        const API_BASE = "http://localhost:8080";
+        const token = sessionStorage.getItem("cf_token");
+        const user = JSON.parse(sessionStorage.getItem("cf_user") || "null");
+
+        if (!token || !user) {
+            window.location.href = "./login.html";
+        } else {
+            document.getElementById("name").textContent = user.fullName;
+            document.getElementById("email").textContent = user.email || "";
+            document.getElementById("provider").textContent = user.authProvider;
+            document.getElementById("role").textContent = user.role;
+            document.getElementById("moodleId").textContent = user.moodleId ?? "—";
+            if (user.pictureUrl) document.getElementById("avatar").src = user.pictureUrl;
+
+            // Verifica el JWT propio contra el backend.
+            fetch(`${API_BASE}/api/auth/me`, {
+                headers: { "Authorization": "Bearer " + token }
+            })
+            .then(r => r.json())
+            .then(d => document.getElementById("me").textContent = JSON.stringify(d, null, 2))
+            .catch(() => document.getElementById("me").textContent = "No se pudo verificar la sesión.");
+        }
+
+        document.getElementById("logout").addEventListener("click", () => {
+            sessionStorage.clear();
+            window.location.href = "./login.html";
+        });
+    </script>
+</body>
+</html>
