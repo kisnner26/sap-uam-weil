@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SAP-UAM · Test de Inteligencia de Weil</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&family=Playfair+Display:ital,wght@0,800;1,800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css?v=16">
+</head>
+<body>
+<div class="toast-wrap" id="toast-wrap" aria-live="polite"></div>
+<div class="submit-dialog app-hidden" id="submit-dialog" role="dialog" aria-modal="true" aria-labelledby="submit-dialog-title"></div>
+
+<main id="view-auth" class="login-only">
+  <div class="pr">
+    <div class="pr__canvas" aria-hidden="true">
+      <div class="pr__dark"></div>
+      <div class="pr__bigword">WEIL</div>
+      <div class="pr__matrix">
+        <div class="prm-cell prm-tl"></div><div class="prm-cell prm-tr"></div><div class="prm-cell prm-tl"></div><div class="prm-cell prm-tr"></div>
+        <div class="prm-cell prm-tr"></div><div class="prm-cell prm-tl"></div><div class="prm-cell prm-tr"></div><div class="prm-cell prm-tl"></div>
+        <div class="prm-cell prm-tl"></div><div class="prm-cell prm-tr"></div><div class="prm-cell prm-tl"></div><div class="prm-cell prm-q"><span>?</span></div>
+      </div>
+    </div>
+
+    <section class="pr__left" aria-label="Identidad del sistema">
+      <div class="pr__logo">
+        <img src="assets/uam-logo.webp" alt="Universidad Americana UAM" class="pr__logo-img">
+        <div>
+          <span class="pr__inst">Universidad Americana</span>
+          <span class="pr__sub">SAP-UAM · Managua, Nicaragua</span>
+        </div>
+      </div>
+
+      <div class="pr__hero">
+        <h1 class="pr__h1">Test de<br>Inteligencia<br>de <em>Weil</em></h1>
+        <div class="pr__rule"></div>
+        <p class="pr__tag"><span></span>Módulo de Evaluación Cognitiva</p>
+        <p class="pr__desc">Acceso institucional para aspirantes y personal autorizado.</p>
+        <figure class="pr__campus-card">
+          <img src="assets/uam-campus-edificio-m.webp" alt="Campus Universidad Americana UAM Managua" loading="eager">
+          <figcaption>Campus UAM Managua</figcaption>
+        </figure>
+      </div>
+
+      <div class="pr__stats" aria-label="Datos del módulo">
+        <div class="pr__stat"><span class="pr__sn">60</span><span class="pr__sl">ítems</span></div>
+        <div class="pr__stat-sep"></div>
+        <div class="pr__stat"><span class="pr__sn">5</span><span class="pr__sl">láminas</span></div>
+        <div class="pr__stat-sep"></div>
+        <div class="pr__stat"><span class="pr__sn">UAM</span><span class="pr__sl">Admisión</span></div>
+      </div>
+    </section>
+
+    <section class="pr__right" aria-label="Formulario de acceso">
+      <div class="pr__panel">
+        <figure class="pr__student-card">
+          <img src="assets/uam-estudiantes.webp" alt="Estudiantes de la Universidad Americana UAM Managua" loading="eager">
+        </figure>
+        <p class="pr__access-title">Acceso al sistema</p>
+
+        <form id="form-unified" class="pr__form" novalidate>
+          <div class="pf">
+            <label for="unified-id" id="unified-id-label">CIF o correo</label>
+            <div class="pi" id="wrap-unified-id">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="pi__ico" id="unified-ico" aria-hidden="true"><circle cx="12" cy="8" r="3.4"/><path d="M5 19c1-3.4 3.8-5 7-5s6 1.6 7 5"/></svg>
+              <input id="unified-id" type="text" inputmode="text" maxlength="80" placeholder="CIF UAM o correo registrado" autocomplete="username">
+            </div>
+            <div class="pi__msg" id="unified-id-msg"></div>
+          </div>
+
+          <div id="staff-pass-wrap">
+            <div class="pf">
+              <label for="unified-pass" id="unified-pass-label">Contraseña</label>
+              <div class="pi pi--pass" id="wrap-unified-pass">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="pi__ico" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+                <input id="unified-pass" type="password" autocomplete="current-password" placeholder="••••••••">
+                <button type="button" class="pi__toggle-pass" id="toggle-pass-u" aria-label="Mostrar contraseña">
+                  <svg id="icon-eye-show-u" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                  <svg id="icon-eye-hide-u" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="app-hidden"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24M1 1l22 22"/></svg>
+                </button>
+              </div>
+              <div class="pi__msg" id="unified-pass-msg"></div>
+            </div>
+          </div>
+
+          <div id="manual-extra" class="app-hidden">
+            <div class="pf">
+              <label for="fullname">Nombre completo</label>
+              <div class="pi" id="wrap-name"><input id="fullname" type="text" placeholder="Nombres y apellidos" autocomplete="name"></div>
+              <div class="pi__msg" id="name-msg"></div>
+            </div>
+            <div class="pf">
+              <label for="cedula">Cédula</label>
+              <div class="pi" id="wrap-cedula"><input id="cedula" type="text" maxlength="32" placeholder="Número de cédula" autocomplete="off"></div>
+              <div class="pi__msg" id="cedula-msg"></div>
+            </div>
+          </div>
+
+          <button class="pr__btn" id="btn-unified" type="submit" disabled>
+            <span id="btn-unified-label">Ingresar</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </button>
+          <button type="button" class="auth-secondary" id="manual-register-toggle" data-action="toggle-manual-register">Crear cuenta externa</button>
+          <p class="pr__foot" id="unified-foot">Usá tu CIF UAM o tu correo registrado en este mismo campo.</p>
+        </form>
+      </div>
+    </section>
+  </div>
+</main>
+
+<main id="view-app" class="app-shell app-hidden" aria-label="Sistema de aplicación Weill">
+  <header class="app-top">
+    <a class="brand" href="#" data-action="go-home" aria-label="Inicio">
+      <img src="assets/uam-logo.webp" alt="UAM" class="brand__logo">
+      <span><strong>SAP-UAM</strong><small>Test de Inteligencia No Verbal de Weil</small></span>
+    </a>
+    <nav class="top-nav" id="main-nav" aria-label="Navegación principal"></nav>
+    <div class="session-pill">
+      <span id="session-label">Sesión</span>
+      <button type="button" class="ghost-btn" data-action="logout">Salir</button>
+    </div>
+  </header>
+  <section class="app-content" id="app-content" tabindex="-1"></section>
+</main>
+
+<script async src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script src="app.js?v=19"></script>
+</body>
+</html>
