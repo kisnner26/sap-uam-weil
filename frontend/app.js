@@ -21,7 +21,7 @@ const API_BASE = (() => {
   }
   return `http://localhost:${apiPort}`;
 })();
-const STATIC_PAGES_MODE = /\.github\.io$/i.test(location.hostname) && !window.SAP_UAM_API_BASE;
+const STATIC_PAGES_MODE = ((/\.github\.io$/i.test(location.hostname) || new URLSearchParams(location.search).has('demo')) && !window.SAP_UAM_API_BASE);
 
 const ANSWER_PATTERN = [2, 8, 7, 4, 5, 6, 8, 4, 4, 7, 3, 2];
 const TOTAL_PAGES = 5;
@@ -1011,8 +1011,8 @@ function renderSettings() {
   return `
     <div class="screen-title"><div><p class="eyebrow">Ajustes</p><h2>Preferencias locales</h2><p>Se guardan en este navegador.</p></div></div>
     <div class="settings-grid">
-      <section class="panel"><h3>Datos del aspirante</h3><div class="detail-list">
-        <label class="setting-row setting-row--field"><div><strong>Carrera</strong><small>Se llena desde Moodle si está disponible.</small></div><input class="profile-input" type="text" data-profile-field="carrera" value="${esc(normalizeCareer(profile.carrera))}" placeholder=""></label>
+      <section class="panel settings-profile-panel"><h3>Datos del aspirante</h3><div class="settings-profile-form">
+        <label class="setting-row setting-row--field"><div><strong>Carrera</strong><small>Se llena desde Moodle si está disponible; podés completarla manualmente.</small></div><input class="profile-input" type="text" data-profile-field="carrera" value="${esc(normalizeCareer(profile.carrera))}" placeholder="Ej. Medicina General"></label>
       </div></section>
       <section class="panel"><h3>Visual</h3><div class="detail-list">
         ${settingSwitch('dark', 'Modo oscuro', 'Alto contraste para ambientes con poca luz.')}
