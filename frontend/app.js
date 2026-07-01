@@ -851,6 +851,12 @@ function firstMissingIndex() {
   return appState.answers.findIndex(value => value === null);
 }
 
+function missingIndexes() {
+  return appState.answers
+    .map((answer, index) => answer === null ? index : null)
+    .filter(index => index !== null);
+}
+
 function canNavigateTo(route) {
   if (appState.role === 'aspirante' && route === 'test' && !testRouteAvailable()) return false;
   return !isExamLocked() || route === 'test';
@@ -1266,14 +1272,91 @@ function selectAnswer(option) {
   render();
 }
 
-function finishTest() {
+function requestFinishTest() {
+  const missing = missingIndexes();
+  if (missing.length) {
+    showSubmitDialog({
+      status: 'incomplete',
+      missing,
+      title: 'Entrega incompleta',
+      message: `Faltan ${missing.length} respuestas para poder entregar el test.`
+    });
+    playSound('error');
+    return;
+  }
+  showSubmitDialog({
+    status: 'ready',
+    missing: [],
+    title: 'Confirmar entrega',
+    message: 'Todas las respuestas están completas. Al entregar, se cerrará la prueba y se generará la calificación.'
+  });
+  playSound('nav');
+}
+
+function showSubmitDialog({ status, missing, title, message }) {
+  const dialog = $('#submit-dialog');
+  if (!dialog) return;
+  const answered = answeredCount();
+  const firstMissing = missing[0] ?? null;
+  const missingPreview = missing.slice(0, 12).map(index => index + 1).join(', ');
+  dialog.innerHTML = `
+    <div class="submit-dialog__backdrop" data-action="close-submit-dialog"></div>
+    <section class="submit-dialog__card submit-dialog__card--${status}" role="document">
+      <div class="submit-dialog__head">
+        <p class="eyebrow">${status === 'ready' ? 'Validación completa' : 'Revisión requerida'}</p>
+        <h2 id="submit-dialog-title">${esc(title)}</h2>
+        <p>${esc(message)}</p>
+      </div>
+      <div class="submit-dialog__stats" aria-label="Resumen de entrega">
+        <div><strong>${answered}</strong><span>respondidas</span></div>
+        <div><strong>${TOTAL_ITEMS - answered}</strong><span>pendientes</span></div>
+      </div>
+      ${status === 'incomplete' ? `
+        <div class="submit-dialog__pending">
+          <strong>Primer pendiente: ítem ${firstMissing + 1}</strong>
+          <span>También faltan: ${esc(missingPreview)}${missing.length > 12 ? '...' : ''}</span>
+        </div>` : `
+        <div class="submit-dialog__ready">
+          <strong>Listo para entregar</strong>
+          <span>La sesión quedará cerrada y podrás descargar el PDF desde Resultados.</span>
+        </div>`}
+      <div class="submit-dialog__actions">
+        <button class="ghost-btn" type="button" data-action="close-submit-dialog">Seguir revisando</button>
+        ${status === 'incomplete'
+          ? `<button class="solid-btn" type="button" data-action="go-first-missing" data-target-index="${firstMissing}">Ir al primer pendiente</button>`
+          : '<button class="solid-btn" type="button" data-action="confirm-submit-test">Entregar y calificar</button>'}
+      </div>
+    </section>`;
+  dialog.classList.remove('app-hidden');
+  requestAnimationFrame(() => dialog.querySelector('.solid-btn, .ghost-btn')?.focus());
+}
+
+function closeSubmitDialog() {
+  const dialog = $('#submit-dialog');
+  if (!dialog) return;
+  dialog.classList.add('app-hidden');
+  dialog.innerHTML = '';
+}
+
+function goFirstMissing(index) {
+  closeSubmitDialog();
+  const target = Number(index);
+  if (Number.isInteger(target) && target >= 0 && target < TOTAL_ITEMS) {
+    appState.currentIndex = target;
+    saveDraft();
+    render();
+  }
+}
+
+function completeTest() {
   const missing = TOTAL_ITEMS - answeredCount();
   if (missing) {
-    const target = firstMissingIndex();
-    if (target >= 0) appState.currentIndex = target;
+    requestFinishTest();
+    return;
+  }
+  if (!appState.startedAt) {
     playSound('error');
-    toast(`Faltan ${missing} respuestas. Completá la prueba para finalizar.`, 'err');
-    routeTo('test');
+    toast('La prueba no está iniciada.', 'err');
     return;
   }
   const score = totalScore();
@@ -1300,6 +1383,7 @@ function finishTest() {
     securityEvents: [...appState.securityEvents]
   };
   appState.result = result;
+  closeSubmitDialog();
   endSecureExamMode();
   saveRecord(result);
   saveDraft();
@@ -1346,7 +1430,10 @@ function handleDocumentClick(event) {
     if (action === 'start-test') startTest();
     if (action === 'prev-item') { appState.currentIndex = Math.max(0, appState.currentIndex - 1); playSound('nav'); render(); saveDraft(); }
     if (action === 'next-item') { appState.currentIndex = Math.min(TOTAL_ITEMS - 1, appState.currentIndex + 1); playSound('nav'); render(); saveDraft(); }
-    if (action === 'finish-test') finishTest();
+    if (action === 'finish-test') requestFinishTest();
+    if (action === 'close-submit-dialog') closeSubmitDialog();
+    if (action === 'go-first-missing') goFirstMissing(actionTarget.dataset.targetIndex);
+    if (action === 'confirm-submit-test') completeTest();
     if (action === 'restore-fullscreen') enterFullscreen();
     if (action === 'download-pdf') downloadResultPdf();
     if (action === 'reset-test') resetTest();

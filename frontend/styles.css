@@ -33,6 +33,21 @@ a{color:inherit;text-decoration:none}
 .toast-wrap{position:fixed;right:20px;bottom:20px;z-index:80;display:grid;gap:10px;justify-items:end}
 .toast{max-width:min(360px,calc(100vw - 32px));padding:12px 14px;border:1px solid rgba(255,255,255,.14);border-radius:8px;background:#101315;color:#fff;box-shadow:0 16px 36px rgba(0,0,0,.22);font-weight:800;font-size:.9rem;line-height:1.35;opacity:0;transform:translateY(10px);transition:opacity .18s ease,transform .18s ease}
 .toast.show{opacity:1;transform:none}.toast--ok{background:#163d2a}.toast--err{background:#6b1f1a}.toast--info{background:#142f45}
+.submit-dialog{position:fixed;inset:0;z-index:95;display:grid;place-items:center;padding:22px}
+.submit-dialog__backdrop{position:absolute;inset:0;background:rgba(10,13,14,.62);backdrop-filter:blur(7px)}
+.submit-dialog__card{position:relative;width:min(520px,100%);padding:22px;border:1px solid var(--line);border-radius:8px;background:var(--surface);box-shadow:0 28px 80px rgba(0,0,0,.28)}
+.submit-dialog__head h2{margin-top:6px;font-size:1.65rem;line-height:1.05}
+.submit-dialog__head p:not(.eyebrow){margin-top:8px;color:var(--muted);font-weight:800;line-height:1.45}
+.submit-dialog__stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:18px 0}
+.submit-dialog__stats div{padding:14px;border:1px solid var(--line);border-radius:8px;background:var(--surface-2)}
+.submit-dialog__stats strong{display:block;font-size:2rem;line-height:1}
+.submit-dialog__stats span{display:block;margin-top:6px;color:var(--muted);font-weight:900;font-size:.78rem}
+.submit-dialog__pending,.submit-dialog__ready{display:grid;gap:4px;padding:13px 14px;border:1px solid var(--line);border-radius:8px;background:var(--surface-2);font-weight:850}
+.submit-dialog__pending{border-color:#efb8b2;background:#fff1ef;color:var(--red)}
+.submit-dialog__ready{border-color:#b7dfc5;background:#e7f5ec;color:var(--green)}
+.submit-dialog__pending span,.submit-dialog__ready span{color:var(--ink-2);font-weight:800;font-size:.85rem}
+.submit-dialog__actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:18px}
+.submit-dialog__actions .ghost-btn,.submit-dialog__actions .solid-btn{width:100%;height:42px}
 
 /* Login */
 .pr{position:relative;isolation:isolate;min-height:100dvh;display:grid;grid-template-columns:minmax(0,1fr) minmax(430px,1fr);overflow:hidden;background:var(--paper)}
@@ -168,6 +183,7 @@ body.theme-dark .question-figure{background:#11191b}
   .response-card,.progress-card,.step-card{padding:14px}
   .progress-card__stats,.step-actions{grid-template-columns:1fr}
   .result-actions{width:100%}
+  .submit-dialog__actions,.submit-dialog__stats{grid-template-columns:1fr}
 }
 
 /* Compact exam layout: keep the whole task visible in one viewport on desktop. */
