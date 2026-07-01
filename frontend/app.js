@@ -6,17 +6,22 @@ const STORAGE = {
   results: 'sapWeillResultsV2',
   draftPrefix: 'sapWeillDraftV2:',
   profileEditsPrefix: 'sapWeillProfileEditsV1:',
+  staticUsers: 'sapWeillStaticUsersV1',
+  staticSession: 'sapWeillStaticSessionV1',
   sessionUser: 'sapWeillSessionUser'
 };
 
 const API_BASE = (() => {
+  if (window.SAP_UAM_API_BASE) return String(window.SAP_UAM_API_BASE).replace(/\/$/, '');
   const apiPort = '8080';
+  const isLocal = ['localhost', '127.0.0.1', '::1', ''].includes(location.hostname);
   if (location.protocol === 'http:' || location.protocol === 'https:') {
     if (location.port === apiPort) return '';
-    return `${location.protocol}//${location.hostname}:${apiPort}`;
+    return isLocal ? `${location.protocol}//${location.hostname}:${apiPort}` : '';
   }
   return `http://localhost:${apiPort}`;
 })();
+const STATIC_PAGES_MODE = /\.github\.io$/i.test(location.hostname) && !window.SAP_UAM_API_BASE;
 
 const ANSWER_PATTERN = [2, 8, 7, 4, 5, 6, 8, 4, 4, 7, 3, 2];
 const TOTAL_PAGES = 5;
@@ -208,6 +213,9 @@ function setAuthBusy(isBusy) {
 }
 
 async function apiRequest(path, body = null, options = {}) {
+  if (STATIC_PAGES_MODE && path.startsWith('/api/auth/')) {
+    return staticAuthRequest(path, body);
+  }
   const response = await fetch(`${API_BASE}${path}`, {
     method: body ? 'POST' : 'GET',
     credentials: 'include',
@@ -222,6 +230,65 @@ async function apiRequest(path, body = null, options = {}) {
     throw new Error(message);
   }
   return data;
+}
+
+function staticAuthRequest(path, body = null) {
+  const users = readStaticUsers();
+  if (path === '/api/auth/me') {
+    const user = safeJson(localStorage.getItem(STORAGE.staticSession));
+    if (!user?.id) throw new Error('Necesitas iniciar sesión.');
+    return Promise.resolve(user);
+  }
+  if (path === '/api/auth/logout') {
+    localStorage.removeItem(STORAGE.staticSession);
+    return Promise.resolve({ ok: true });
+  }
+  if (path === '/api/auth/moodle-login') {
+    return Promise.reject(new Error('El acceso Moodle requiere el backend. En GitHub Pages usá "Crear cuenta externa" para probar la interfaz.'));
+  }
+  if (path === '/api/auth/register') {
+    const email = String(body?.email || '').trim().toLowerCase();
+    if (users.some(user => user.email === email)) {
+      return Promise.reject(new Error('Ya existe una cuenta con ese correo en este navegador.'));
+    }
+    const user = {
+      id: Date.now(),
+      fullName: String(body?.fullName || 'Usuario Demo').trim(),
+      email,
+      password: String(body?.password || ''),
+      pictureUrl: '',
+      career: '',
+      role: 'CLIENTE',
+      authProvider: 'manual',
+      moodleId: null
+    };
+    users.push(user);
+    localStorage.setItem(STORAGE.staticUsers, JSON.stringify(users));
+    localStorage.setItem(STORAGE.staticSession, JSON.stringify(publicStaticUser(user)));
+    return Promise.resolve({ token: 'github-pages-demo', expiresInSeconds: 86400, user: publicStaticUser(user) });
+  }
+  if (path === '/api/auth/login') {
+    const email = String(body?.email || '').trim().toLowerCase();
+    const password = String(body?.password || '');
+    const user = users.find(item => item.email === email && item.password === password);
+    if (!user) return Promise.reject(new Error('Correo o contraseña incorrectos.'));
+    localStorage.setItem(STORAGE.staticSession, JSON.stringify(publicStaticUser(user)));
+    return Promise.resolve({ token: 'github-pages-demo', expiresInSeconds: 86400, user: publicStaticUser(user) });
+  }
+  return Promise.reject(new Error('Esta acción requiere el backend.'));
+}
+
+function readStaticUsers() {
+  try {
+    return JSON.parse(localStorage.getItem(STORAGE.staticUsers) || '[]');
+  } catch {
+    return [];
+  }
+}
+
+function publicStaticUser(user) {
+  const { password, ...safeUser } = user;
+  return safeUser;
 }
 
 function safeJson(text) {
