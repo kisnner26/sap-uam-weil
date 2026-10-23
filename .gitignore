@@ -1,6 +1,25 @@
 # Carpeta de test descartada
 weil-front-real/
 
+# Herramientas locales de asistentes (nunca versionar)
+.claude/
+.codex/
+
+# Secretos y configuracion local
+.env
+.env.*
+!.env.example
+
+# Dependencias y compilados
+node_modules/
+target/
+*.class
+
+# Editores
+.idea/
+.vscode/
+*.iml
+
 # macOS
 .DS_Store
 .AppleDouble

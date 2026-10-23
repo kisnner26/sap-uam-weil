@@ -1,0 +1,9 @@
+{
+  "name": "sap-uam-weil",
+  "private": true,
+  "description": "Pruebas del frontend de SAP-UAM (Test de Weil)",
+  "scripts": {
+    "test": "node --test frontend/*.test.js",
+    "serve": "npx serve frontend -l 8765"
+  }
+}

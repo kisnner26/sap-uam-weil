@@ -123,3 +123,16 @@ las pantallas de acceso, inicio, perfil y resultados pertenecen a la plataforma.
 `frontend/client-session.js` guarda en el dispositivo únicamente respuestas, posición, hora de inicio e incidencias. no persiste puntaje, percentil, ci, clasificación ni claves dentro del borrador. los datos locales permiten recuperación, pero no son autoridad para una entrega de producción; el backend vuelve a validar versión, propiedad, sesión exclusiva y respuestas completas.
 
 al entregar, el backend recalcula el puntaje directo y el desglose por lámina con la clave versionada. el frontend usa ese valor en producción; el cálculo local queda limitado a la demostración estática de github pages.
+
+## Limitaciones conocidas
+
+- **La clave de respuestas del Weil también viaja en `frontend/test-catalog.js`.** Con backend, la
+  calificación oficial se calcula en el servidor (`AssessmentService`), pero el modo demo
+  (GitHub Pages, sin backend) y la revisión de respuestas necesitan la clave en el navegador, así
+  que cualquiera puede leerla antes de rendir el test. Para evaluaciones reales, la clave debe
+  salir del frontend: el servidor devolvería las respuestas correctas solo después de entregar,
+  y el modo demo quedaría sin calificación local.
+- **El límite de intentos de acceso es por instancia** (contador en memoria). Con varias réplicas
+  del backend habría que moverlo a un almacén compartido.
+- **El modo demo** guarda sus cuentas en `localStorage` del navegador (con contraseña protegida
+  con PBKDF2); sirve para probar la interfaz, no para uso real.

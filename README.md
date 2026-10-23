@@ -66,6 +66,6 @@ mvn spring-boot:run
 ## Tests
 
 ```bash
-cd backend && mvn test
-node --test ../frontend/test-catalog.test.js
+cd backend && mvn test      # backend
+npm test                    # frontend (desde la raíz del repositorio)
 ```

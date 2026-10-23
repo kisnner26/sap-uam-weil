@@ -46,17 +46,29 @@ intento activo y que una versión desactualizada no sobrescriba cambios reciente
 
 | Variable               | Descripción                                              |
 |------------------------|----------------------------------------------------------|
-| `APP_JWT_SECRET`       | Secreto HMAC ≥ 32 bytes para firmar el JWT propio.       |
+| `APP_JWT_SECRET`       | **Obligatoria.** Secreto HMAC ≥ 32 bytes para firmar el JWT propio. |
+| `APP_CORS_ORIGINS`     | **Obligatoria.** Orígenes del frontend separados por coma. |
+| `DB_URL`, `DB_USER`, `DB_PASSWORD` | **Obligatorias.** Conexión Postgres.       |
 | `APP_JWT_EXPIRATION_MS`| Vigencia del token (ms). Default 24h.                    |
-| `APP_CORS_ORIGINS`     | Orígenes del frontend separados por coma.                |
 | `MOODLE_BASE_URL`      | Base de Moodle. Default `https://uamvirtual.uam.edu.ni/grado`. |
-| `DB_URL/DB_USER/DB_PASSWORD` | Conexión Postgres (perfil `prod`).                 |
+
+Con el perfil `prod` las variables obligatorias **no tienen valor por defecto**: si falta
+alguna, la aplicación se niega a arrancar y nombra cuál falta (en vez de iniciar con una
+clave o una base de datos conocidas).
 
 Arrancar en producción:
 
 ```bash
-SPRING_PROFILES_ACTIVE=prod APP_JWT_SECRET=... DB_URL=... mvn spring-boot:run
+SPRING_PROFILES_ACTIVE=prod APP_JWT_SECRET=... APP_CORS_ORIGINS=... \
+  DB_URL=... DB_USER=... DB_PASSWORD=... mvn spring-boot:run
 ```
+
+### Límite de intentos de acceso
+
+`/api/auth/login`, `/api/auth/moodle-login` y `/api/auth/register` aceptan, por IP, 20
+peticiones cada 5 minutos; pasado el límite responden `429` con `Retry-After`. Se ajusta con
+`app.security.auth-rate-limit.max-requests` y `app.security.auth-rate-limit.window-seconds`.
+El contador vive en memoria: con varias instancias del backend cada una lleva el suyo.
 
 > Con el perfil `prod`, JPA usa `ddl-auto: validate`: creá la tabla antes con
 > [`src/main/resources/db/schema_postgres.sql`](src/main/resources/db/schema_postgres.sql).
