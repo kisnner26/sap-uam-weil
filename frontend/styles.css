@@ -114,9 +114,14 @@ body.theme-dark .lock-chip{background:#3a321d;color:#f0d06a;border-color:#6d5d2a
 .page-dot:hover{border-color:var(--teal)}
 .page-dot.is-active{background:var(--teal);border-color:var(--teal);color:#fff;box-shadow:inset 0 -3px 0 var(--gold)}
 .page-dot.is-complete:not(.is-active){border-color:var(--teal);color:var(--teal)}
-.question-figure{min-height:calc(100dvh - 296px);display:grid;place-items:center;margin:0;padding:30px;background:#edf2f3}
+.question-figure{position:relative;min-height:calc(100dvh - 296px);display:grid;place-items:center;margin:0;padding:30px;background:#edf2f3}
 body.theme-dark .question-figure{background:#11191b}
 .question-figure img{width:min(100%,760px);max-height:calc(100dvh - 380px);min-height:430px;object-fit:contain;border:1px solid #cfd7da;border-radius:8px;background:#fff;box-shadow:0 16px 36px rgba(20,23,24,.13)}
+.question-figure.is-loading::after,.question-figure.is-error::after{position:absolute;inset:0;display:grid;place-items:center;background:var(--surface);color:var(--muted);content:"cargando lámina"}
+.question-figure.is-loading::after{background:linear-gradient(100deg,var(--surface) 20%,var(--surface-soft) 45%,var(--surface) 70%);background-size:240% 100%;animation:media-loading 1.2s ease-in-out infinite}
+.question-figure.is-error::after{color:var(--danger);content:"no se pudo cargar la lámina"}
+@keyframes media-loading{to{background-position:-240% 0}}
+@media (prefers-reduced-motion:reduce){.question-figure.is-loading::after{animation:none}}
 .item-rail{display:grid;grid-template-columns:repeat(12,1fr);gap:7px;padding:14px 18px;border-top:1px solid var(--line);background:var(--surface)}
 .rail-btn{height:34px;border:1px solid var(--line);border-radius:7px;background:var(--surface-2);font-weight:900;font-size:.82rem}
 .rail-btn:hover{border-color:var(--teal)}

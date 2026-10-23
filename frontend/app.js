@@ -3,12 +3,15 @@ const $$ = (selector, scope = document) => Array.from(scope.querySelectorAll(sel
 
 const STORAGE = {
   settings: 'sapUam.settings.v1',
-  results: 'sapUam.results.v1',
+  legacyResultIndex: 'sapUam.results.v1',
+  resultIndex: 'sapUam.results.index.v2',
+  resultDetailPrefix: 'sapUam.results.detail.v2:',
   draftPrefix: 'sapUam.draft.v1:',
   profileEditsPrefix: 'sapUam.profile.v1:',
   staticUsers: 'sapUam.demo.users.v1',
   staticSession: 'sapUam.demo.session.v1',
   sessionUser: 'sapUam.session.user',
+  attemptLeasePrefix: 'sapUam.attempt.lease.v1:',
   legacy: {
     settings: 'sapWeillSettingsV2',
     results: 'sapWeillResultsV2',
@@ -56,11 +59,13 @@ const NAV = {
 };
 const BAREMOS = ACTIVE_TEST.baremos;
 
-const appState = {
+const stateStore = window.SAP_UAM_STATE.create({
   mode: null,
   authMode: null,
   manualRegistering: false,
   authBusy: false,
+  startBusy: false,
+  submitBusy: false,
   sessionUser: null,
   role: null,
   route: 'inicio',
@@ -71,8 +76,96 @@ const appState = {
   result: null,
   focusLosses: 0,
   securityEvents: [],
+  remoteAttempt: null,
   settings: loadSettings()
-};
+});
+const appState = stateStore.state;
+
+const draftRepository = window.SAP_UAM_SESSION.createDraftRepository(
+  localStorage,
+  context => `${STORAGE.draftPrefix}${context.testId}:${context.profileId}`,
+  context => `${STORAGE.legacy.draftPrefix}${context.profileId}`
+);
+const resultRepository = window.SAP_UAM_SESSION.createResultRepository(
+  localStorage,
+  STORAGE.resultIndex,
+  STORAGE.resultDetailPrefix,
+  [STORAGE.legacyResultIndex, STORAGE.legacy.results]
+);
+
+function sessionContext(profile = appState.profile) {
+  return {
+    testId: ACTIVE_TEST.id,
+    testVersion: ACTIVE_TEST.version,
+    profileId: profile?.cif || 'anon'
+  };
+}
+
+function attemptLeaseKey(profile = appState.profile) {
+  return `${STORAGE.attemptLeasePrefix}${ACTIVE_TEST.id}:${profile?.cif || 'anon'}`;
+}
+
+function readAttemptLease() {
+  return safeJson(sessionStorage.getItem(attemptLeaseKey())) || null;
+}
+
+function storeAttemptLease(attempt) {
+  appState.remoteAttempt = attempt;
+  sessionStorage.setItem(attemptLeaseKey(), JSON.stringify({
+    id: attempt.id,
+    version: attempt.version,
+    leaseToken: attempt.leaseToken,
+    leaseExpiresAt: attempt.leaseExpiresAt
+  }));
+}
+
+async function openRemoteAttempt() {
+  if (STATIC_PAGES_MODE) return null;
+  const existing = readAttemptLease();
+  const attempt = await apiRequest('/api/attempts', {
+    testId: ACTIVE_TEST.id,
+    testVersion: ACTIVE_TEST.version,
+    leaseToken: existing?.leaseToken || null
+  });
+  storeAttemptLease(attempt);
+  if (Array.isArray(attempt.responses)) {
+    for (const response of attempt.responses) {
+      if (appState.answers[response.itemIndex] === null) appState.answers[response.itemIndex] = response.selectedOption;
+    }
+  }
+  return attempt;
+}
+
+async function renewRemoteAttemptLease() {
+  if (STATIC_PAGES_MODE || !isExamLocked()) return;
+  const attempt = appState.remoteAttempt || readAttemptLease();
+  if (!attempt?.id || !attempt?.leaseToken) return;
+  try {
+    const renewed = await apiRequest(`/api/attempts/${attempt.id}/lease`, {
+      leaseToken: attempt.leaseToken,
+      expectedVersion: attempt.version
+    });
+    storeAttemptLease(renewed);
+  } catch (error) {
+    try {
+      await openRemoteAttempt();
+    } catch {
+      toast(error.message || 'No se pudo renovar la sesión exclusiva.', 'err');
+    }
+  }
+}
+
+async function submitRemoteAttempt() {
+  if (STATIC_PAGES_MODE) return;
+  const attempt = appState.remoteAttempt || readAttemptLease();
+  if (!attempt?.id || !attempt?.leaseToken) throw new Error('No existe una sesión exclusiva para este intento.');
+  const submitted = await apiRequest(`/api/attempts/${attempt.id}/submit`, {
+    leaseToken: attempt.leaseToken,
+    expectedVersion: attempt.version,
+    answers: [...appState.answers]
+  });
+  storeAttemptLease(submitted);
+}
 
 function toast(message, kind = 'info') {
   const wrap = $('#toast-wrap');
@@ -438,26 +531,11 @@ function notifySecurity(message = 'Modo examen activo: no podés salir de la pru
 }
 
 function records() {
-  try {
-    const saved = localStorage.getItem(STORAGE.results) || localStorage.getItem(STORAGE.legacy.results) || '[]';
-    return JSON.parse(saved);
-  } catch {
-    return [];
-  }
+  return resultRepository.list();
 }
 
 function saveRecord(result) {
-  const list = records().filter(item => item.id !== result.id);
-  list.unshift(result);
-  localStorage.setItem(STORAGE.results, JSON.stringify(list.slice(0, 80)));
-}
-
-function draftKey(profile = appState.profile) {
-  return `${STORAGE.draftPrefix}${ACTIVE_TEST.id}:${profile?.cif || 'anon'}`;
-}
-
-function legacyDraftKey(profile = appState.profile) {
-  return `${STORAGE.legacy.draftPrefix}${profile?.cif || 'anon'}`;
+  resultRepository.save(result);
 }
 
 function profileEditKey(profile = appState.profile) {
@@ -496,27 +574,20 @@ function saveProfileEdits() {
 
 function saveDraft() {
   if (!appState.profile || appState.role !== 'aspirante') return;
-  localStorage.setItem(draftKey(), JSON.stringify({
-    answers: appState.answers,
-    currentIndex: appState.currentIndex,
-    startedAt: appState.startedAt,
-    result: appState.result,
-    focusLosses: appState.focusLosses,
-    securityEvents: appState.securityEvents
-  }));
+  draftRepository.save(sessionContext(), appState);
 }
 
 function loadDraft(profile) {
   try {
-    const saved = localStorage.getItem(draftKey(profile)) || localStorage.getItem(legacyDraftKey(profile)) || '{}';
-    const draft = JSON.parse(saved);
+    const draft = draftRepository.load(sessionContext(profile)) || {};
     if (Array.isArray(draft.answers) && draft.answers.length === TOTAL_ITEMS) {
       appState.answers = draft.answers;
       appState.currentIndex = Number(draft.currentIndex) || 0;
       appState.startedAt = draft.startedAt || null;
-      appState.result = draft.result || null;
       appState.focusLosses = Number(draft.focusLosses) || 0;
       appState.securityEvents = Array.isArray(draft.securityEvents) ? draft.securityEvents.slice(-SECURITY_EVENT_LIMIT) : [];
+      const latest = records().find(item => item.testId === ACTIVE_TEST.id && String(item.profile?.cif) === String(profile?.cif));
+      appState.result = latest ? resultRepository.get(latest.id) : null;
       return true;
     }
   } catch {}
@@ -588,9 +659,16 @@ function enterAspirante(profileOverride = null) {
   appState.result = null;
   appState.focusLosses = 0;
   appState.securityEvents = [];
-  loadDraft(profile);
+  const restoredDraft = loadDraft(profile);
+  if (!restoredDraft) {
+    const latest = records().find(item => item.testId === ACTIVE_TEST.id && String(item.profile?.cif) === String(profile?.cif));
+    appState.result = latest ? resultRepository.get(latest.id) : null;
+  }
   if (appState.startedAt && !appState.result) appState.route = 'test';
   showApp();
+  if (appState.startedAt && !appState.result && !STATIC_PAGES_MODE) {
+    openRemoteAttempt().catch(error => toast(error.message || 'No se pudo recuperar la sesión exclusiva.', 'err'));
+  }
 }
 
 function enterStaff() {
@@ -660,6 +738,7 @@ function render() {
   applyExamSecurityUi();
   if (appState.role === 'staff') renderStaff();
   else renderAspirante();
+  if (appState.route === 'test') prepareCurrentItemMedia();
 }
 
 function renderAspirante() {
@@ -703,7 +782,7 @@ function renderHome() {
             </div>
           </div>
         </div>
-        <div class="hero-visual"><img src="${LAMINAS[0]}" alt="Vista parcial del material de ${esc(ACTIVE_TEST.shortName)}"></div>
+        <div class="hero-visual"><img src="${LAMINAS[0]}" alt="Vista parcial del material de ${esc(ACTIVE_TEST.shortName)}" loading="lazy" decoding="async"></div>
       </section>
       <aside class="status-stack">
         <section class="panel next-step-panel">
@@ -756,7 +835,7 @@ function recordSecurityEvent(type, detail = '') {
   };
   appState.securityEvents = [...appState.securityEvents, event].slice(-SECURITY_EVENT_LIMIT);
   if (type === 'window-blur' || type === 'visibility-hidden' || type === 'fullscreen-exit') appState.focusLosses += 1;
-  saveDraft();
+  stateStore.publish('security', { securityEvent: event });
 }
 
 async function enterFullscreen() {
@@ -846,7 +925,7 @@ function renderTest() {
           <div class="page-progress" aria-label="Cambiar lámina">${LAMINAS.map((_, i) => `<button type="button" class="page-dot ${i === page ? 'is-active' : ''} ${pageAnswered(i) === ITEMS_PER_PAGE ? 'is-complete' : ''}" data-page="${i}" aria-label="Lámina ${i + 1}">${i + 1}</button>`).join('')}</div>
         </div>
         <figure class="question-figure">
-          <img src="${ITEM_IMAGES[index]}" alt="Ejercicio ${local + 1} de ${esc(ACTIVE_TEST.sections[page].label)}" width="1200" height="900">
+          <img src="${ITEM_IMAGES[index]}" alt="Ejercicio ${local + 1} de ${esc(ACTIVE_TEST.sections[page].label)}" width="1200" height="900" decoding="async" fetchpriority="high">
         </figure>
         <div class="item-rail" aria-label="Ítems de la lámina">${Array.from({ length: ITEMS_PER_PAGE }, (_, i) => {
           const absolute = page * ITEMS_PER_PAGE + i;
@@ -889,6 +968,44 @@ function renderTest() {
         </section>
       </aside>
     </div>`;
+}
+
+function prepareCurrentItemMedia() {
+  const currentImage = $('.question-figure img');
+  if (currentImage && !currentImage.complete) {
+    currentImage.closest('.question-figure')?.classList.add('is-loading');
+    currentImage.addEventListener('load', () => currentImage.closest('.question-figure')?.classList.remove('is-loading'), { once: true });
+    currentImage.addEventListener('error', () => currentImage.closest('.question-figure')?.classList.add('is-error'), { once: true });
+  }
+  const nextIndex = appState.currentIndex + 1;
+  if (nextIndex < ITEM_IMAGES.length) {
+    const nextImage = new Image();
+    nextImage.decoding = 'async';
+    nextImage.src = ITEM_IMAGES[nextIndex];
+  }
+}
+
+function updateTestViewAfterAnswer() {
+  if (appState.route !== 'test') return;
+  const index = appState.currentIndex;
+  const selected = appState.answers[index];
+  $$('.choice-btn').forEach(button => button.classList.toggle('is-selected', Number(button.dataset.option) === selected));
+  const selectedPill = $('.selected-pill');
+  if (selectedPill) selectedPill.textContent = selected || '-';
+  const answered = answeredCount();
+  const progress = Math.round((answered / TOTAL_ITEMS) * 100);
+  const stats = $$('.progress-card__stats strong');
+  if (stats[0]) stats[0].textContent = answered;
+  if (stats[1]) stats[1].textContent = TOTAL_ITEMS - answered;
+  const bar = $('.progress-card .progress-bar');
+  if (bar) bar.style.width = `${progress}%`;
+  const progressChip = $$('.exam-head__meta .chip').at(-1);
+  if (progressChip) progressChip.textContent = `${progress}% completado`;
+  const railButton = $(`.rail-btn[data-item="${index}"]`);
+  railButton?.classList.add('is-answered');
+  railButton?.setAttribute('aria-label', `Ítem ${(index % ITEMS_PER_PAGE) + 1}, respondido`);
+  const sectionCount = $('.stage-toolbar span');
+  if (sectionCount) sectionCount.textContent = `${pageAnswered(Math.floor(index / ITEMS_PER_PAGE))} de ${ITEMS_PER_PAGE} respondidos`;
 }
 
 function elapsedLabel() {
@@ -1201,7 +1318,31 @@ function createPdfDocument(pageContents) {
   return pdf;
 }
 
-function startTest() {
+async function startTest() {
+  if (appState.result) {
+    routeTo('test');
+    return;
+  }
+  if (appState.startBusy) return;
+  appState.startBusy = true;
+  const startButton = $('[data-action="start-test"]');
+  if (startButton) {
+    startButton.disabled = true;
+    startButton.textContent = 'Reservando intento...';
+  }
+  try {
+    await openRemoteAttempt();
+  } catch (error) {
+    playSound('error');
+    toast(error.message || 'No se pudo reservar el intento.', 'err');
+    return;
+  } finally {
+    appState.startBusy = false;
+    if (startButton?.isConnected) {
+      startButton.disabled = false;
+      startButton.textContent = answeredCount() ? 'Continuar evaluación' : 'Comenzar evaluación';
+    }
+  }
   if (!appState.startedAt) {
     appState.startedAt = new Date().toISOString();
     appState.focusLosses = 0;
@@ -1210,7 +1351,7 @@ function startTest() {
   playSound('start');
   routeTo('test');
   if (isExamLocked()) startSecureExamMode();
-  saveDraft();
+  stateStore.publish('assessment-navigation', { reason: 'start' });
 }
 
 function selectAnswer(option) {
@@ -1218,9 +1359,12 @@ function selectAnswer(option) {
   if (!Number.isInteger(option) || option < 1 || option > ACTIVE_TEST.optionCount) return;
   appState.answers[appState.currentIndex] = option;
   playSound('tap');
-  if (appState.settings.autoAdvance && appState.currentIndex < TOTAL_ITEMS - 1) appState.currentIndex += 1;
-  saveDraft();
-  render();
+  if (appState.settings.autoAdvance && appState.currentIndex < TOTAL_ITEMS - 1) {
+    appState.currentIndex += 1;
+    stateStore.publish('assessment-navigation', { reason: 'auto-advance' });
+    return;
+  }
+  stateStore.publish('answer', { index: appState.currentIndex, option });
 }
 
 function requestFinishTest() {
@@ -1302,12 +1446,11 @@ function goFirstMissing(index) {
   const target = Number(index);
   if (Number.isInteger(target) && target >= 0 && target < TOTAL_ITEMS) {
     appState.currentIndex = target;
-    saveDraft();
-    render();
+    stateStore.publish('assessment-navigation', { reason: 'missing-answer' });
   }
 }
 
-function completeTest() {
+async function completeTest() {
   const missing = TOTAL_ITEMS - answeredCount();
   if (missing) {
     requestFinishTest();
@@ -1317,6 +1460,26 @@ function completeTest() {
     playSound('error');
     toast('La prueba no está iniciada.', 'err');
     return;
+  }
+  if (appState.submitBusy) return;
+  appState.submitBusy = true;
+  const submitButton = $('[data-action="confirm-submit-test"]');
+  if (submitButton) {
+    submitButton.disabled = true;
+    submitButton.textContent = 'Entregando...';
+  }
+  try {
+    await submitRemoteAttempt();
+  } catch (error) {
+    playSound('error');
+    toast(error.message || 'No se pudo entregar el intento.', 'err');
+    return;
+  } finally {
+    appState.submitBusy = false;
+    if (submitButton?.isConnected) {
+      submitButton.disabled = false;
+      submitButton.textContent = 'Entregar y calificar';
+    }
   }
   const score = totalScore();
   const normColumn = resolveNormColumn(appState.profile);
@@ -1366,14 +1529,12 @@ function resetTest() {
     appState.securityEvents = [];
   }
   if (appState.profile?.cif) {
-    localStorage.removeItem(draftKey());
-    localStorage.removeItem(legacyDraftKey());
+    draftRepository.remove(sessionContext());
   }
   if (keepLocked) recordSecurityEvent('reset', 'El aspirante reinicio respuestas durante la prueba.');
   playSound('nav');
   toast('Respuestas reiniciadas.', 'info');
-  saveDraft();
-  render();
+  stateStore.publish('assessment-reset');
 }
 
 function handleDocumentClick(event) {
@@ -1397,8 +1558,8 @@ function handleDocumentClick(event) {
     if (action === 'logout') logout();
     if (action === 'go-home') routeTo(appState.role === 'staff' ? 'panel' : 'inicio');
     if (action === 'start-test') startTest();
-    if (action === 'prev-item') { appState.currentIndex = Math.max(0, appState.currentIndex - 1); playSound('nav'); render(); saveDraft(); }
-    if (action === 'next-item') { appState.currentIndex = Math.min(TOTAL_ITEMS - 1, appState.currentIndex + 1); playSound('nav'); render(); saveDraft(); }
+    if (action === 'prev-item') { appState.currentIndex = Math.max(0, appState.currentIndex - 1); playSound('nav'); stateStore.publish('assessment-navigation', { reason: 'previous' }); }
+    if (action === 'next-item') { appState.currentIndex = Math.min(TOTAL_ITEMS - 1, appState.currentIndex + 1); playSound('nav'); stateStore.publish('assessment-navigation', { reason: 'next' }); }
     if (action === 'finish-test') requestFinishTest();
     if (action === 'close-submit-dialog') closeSubmitDialog();
     if (action === 'go-first-missing') goFirstMissing(actionTarget.dataset.targetIndex);
@@ -1407,8 +1568,7 @@ function handleDocumentClick(event) {
     if (action === 'download-pdf') downloadResultPdf();
     if (action === 'reset-test') resetTest();
     if (action === 'clear-records' && window.confirm('¿Eliminar todos los reportes locales?')) {
-      localStorage.removeItem(STORAGE.results);
-      localStorage.removeItem(STORAGE.legacy.results);
+      resultRepository.clear();
       toast('Registros eliminados.', 'info');
       render();
     }
@@ -1431,15 +1591,13 @@ function handleDocumentClick(event) {
   if (itemTarget) {
     appState.currentIndex = Number(itemTarget.dataset.item);
     playSound('nav');
-    saveDraft();
-    render();
+    stateStore.publish('assessment-navigation', { reason: 'item' });
     return;
   }
   if (pageTarget) {
     appState.currentIndex = Number(pageTarget.dataset.page) * ITEMS_PER_PAGE;
     playSound('nav');
-    saveDraft();
-    render();
+    stateStore.publish('assessment-navigation', { reason: 'section' });
   }
 }
 
@@ -1525,16 +1683,14 @@ function handleKeydown(event) {
     event.preventDefault();
     appState.currentIndex = Math.min(TOTAL_ITEMS - 1, appState.currentIndex + 1);
     playSound('nav');
-    saveDraft();
-    render();
+    stateStore.publish('assessment-navigation', { reason: 'keyboard-next' });
     return;
   }
   if (event.key === 'ArrowLeft') {
     event.preventDefault();
     appState.currentIndex = Math.max(0, appState.currentIndex - 1);
     playSound('nav');
-    saveDraft();
-    render();
+    stateStore.publish('assessment-navigation', { reason: 'keyboard-previous' });
   }
 }
 
@@ -1563,6 +1719,14 @@ function handleFullscreenChange() {
   notifySecurity('Pantalla completa requerida para continuar la prueba.');
   render();
 }
+
+const persistedAssessmentEvents = new Set(['answer', 'assessment-navigation', 'assessment-reset', 'security']);
+stateStore.subscribe('*', event => {
+  if (persistedAssessmentEvents.has(event.type)) saveDraft();
+});
+stateStore.subscribe('answer', updateTestViewAfterAnswer);
+stateStore.subscribe('assessment-navigation', render);
+stateStore.subscribe('assessment-reset', render);
 
 $('#unified-id')?.addEventListener('input', validateLogin);
 $('#fullname')?.addEventListener('input', validateLogin);
@@ -1605,6 +1769,8 @@ setInterval(() => {
   const clock = $('#test-clock');
   if (clock && appState.route === 'test') clock.textContent = elapsedLabel();
 }, 1000);
+
+setInterval(renewRemoteAttemptLease, 60000);
 
 applySettings();
 $('#demo-access')?.classList.toggle('app-hidden', !STATIC_PAGES_MODE);
