@@ -9,6 +9,10 @@ spring:
 
 server:
   port: 8080
+  error:
+    # Nunca exponer detalles internos en las respuestas de error.
+    include-stacktrace: never
+    include-exception: false
 
 # ----------------------------------------------------------------------------
 # Configuracion propia de la app
@@ -62,9 +66,9 @@ spring:
     activate:
       on-profile: prod
   datasource:
-    url: ${DB_URL:jdbc:postgresql://localhost:5432/sapweill}
-    username: ${DB_USER:sapweill}
-    password: ${DB_PASSWORD:sapweill}
+    url: ${DB_URL}
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
@@ -74,3 +78,15 @@ spring:
       hibernate:
         jdbc:
           time_zone: America/Managua
+
+# En produccion estos valores son obligatorios y no tienen valor por defecto:
+# si falta alguno, la aplicacion no arranca (en vez de usar una clave conocida).
+app:
+  jwt:
+    secret: ${APP_JWT_SECRET}
+  cors:
+    allowed-origins: ${APP_CORS_ORIGINS}
+
+server:
+  # Detras de un proxy/balanceador: respeta X-Forwarded-* (cookie Secure e IP real).
+  forward-headers-strategy: framework

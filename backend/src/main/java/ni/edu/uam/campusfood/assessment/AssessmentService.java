@@ -126,12 +126,10 @@ public class AssessmentService {
     }
 
     private AssessmentAttempt ownedAttempt(Long userId, Long attemptId) {
-        AssessmentAttempt attempt = attempts.findById(attemptId)
+        // Mismo mensaje si no existe o es de otro usuario: no revela que ids son validos.
+        return attempts.findById(attemptId)
+                .filter(attempt -> attempt.getUser().getId().equals(userId))
                 .orElseThrow(() -> new AssessmentConflictException("Intento no encontrado."));
-        if (!attempt.getUser().getId().equals(userId)) {
-            throw new AssessmentConflictException("El intento no pertenece al usuario autenticado.");
-        }
-        return attempt;
     }
 
     private void flushOptimistically(AssessmentAttempt attempt) {

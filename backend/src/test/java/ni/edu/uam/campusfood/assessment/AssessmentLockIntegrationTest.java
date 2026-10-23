@@ -66,4 +66,38 @@ class AssessmentLockIntegrationTest {
         assertThat(submitted.responses()).hasSize(60);
         assertThat(responses.countByAttemptId(opened.id())).isEqualTo(60);
     }
+
+    @Test
+    void elPuntajeUsaLaClaveDelServidor() {
+        var opened = service.open(userId, "weil-form-a", 1, null);
+        int[] key = {2, 8, 7, 4, 5, 6, 8, 4, 4, 7, 3, 2};
+        var perfect = java.util.stream.IntStream.range(0, 60).mapToObj(i -> key[i % 12]).toList();
+
+        var submitted = service.submit(userId, opened.id(), opened.leaseToken(), opened.version(), perfect);
+
+        assertThat(submitted.directScore()).isEqualTo(60);
+        assertThat(submitted.pageScores()).containsExactly(12, 12, 12, 12, 12);
+    }
+
+    @Test
+    void unIntentoAjenoSeComportaComoSiNoExistiera() {
+        var opened = service.open(userId, "weil-form-a", 1, null);
+        Long otherUser = users.save(User.manual("Luis Pérez", "luis@example.com", "hash", "002")).getId();
+
+        Throwable foreign = org.assertj.core.api.Assertions.catchThrowable(() -> service.get(otherUser, opened.id()));
+        Throwable missing = org.assertj.core.api.Assertions.catchThrowable(() -> service.get(otherUser, 999_999L));
+
+        assertThat(foreign).isInstanceOf(AssessmentConflictException.class);
+        assertThat(foreign).hasMessage(missing.getMessage());
+    }
+
+    @Test
+    void unUsuarioNoPuedeEscribirEnElIntentoDeOtro() {
+        var opened = service.open(userId, "weil-form-a", 1, null);
+        Long otherUser = users.save(User.manual("Luis Pérez", "luis@example.com", "hash", "002")).getId();
+
+        assertThatThrownBy(() -> service.answer(otherUser, opened.id(), 0, 2, opened.leaseToken(), opened.version()))
+                .isInstanceOf(AssessmentConflictException.class)
+                .hasMessageContaining("Intento no encontrado");
+    }
 }
