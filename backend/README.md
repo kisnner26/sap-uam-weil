@@ -73,6 +73,17 @@ El contador vive en memoria: con varias instancias del backend cada una lleva el
 > Con el perfil `prod`, JPA usa `ddl-auto: validate`: creá la tabla antes con
 > [`src/main/resources/db/schema_postgres.sql`](src/main/resources/db/schema_postgres.sql).
 
+## Resultados solo para el personal
+
+Las respuestas de `/api/attempts/**` (las del aspirante) no incluyen puntaje, puntajes por lámina, percentil
+ni CI. Los resultados se listan con `GET /api/staff/attempts?testId=weil-form-a`, que exige rol `STAFF` o
+`ADMIN` (sin sesión responde 401; con otro rol, 403). Cada fila trae el aspirante, el puntaje directo, el
+puntaje por lámina, la edad y el grupo de baremo declarados al entregar.
+
+Los roles se asignan en la base de datos: `UPDATE users SET role = 'STAFF' WHERE email = '...';`.
+Las bases que ya existían necesitan las dos columnas nuevas del intento: están como `ALTER TABLE ... IF NOT EXISTS`
+en [`schema_postgres.sql`](src/main/resources/db/schema_postgres.sql).
+
 ## Endpoints
 
 ### `POST /api/auth/moodle-login` — login con cuenta UAM

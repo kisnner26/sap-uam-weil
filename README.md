@@ -63,6 +63,27 @@ mvn spring-boot:run
 
 > La contraseña de Moodle y el token de Moodle **nunca se persisten** en base de datos.
 
+## Quién ve los resultados
+
+El aspirante, al entregar, solo ve una **constancia de entrega**: nunca recibe el puntaje, el percentil
+ni el CI (ni en pantalla ni en las respuestas del servidor). Esos datos son solo para el personal.
+
+| Rol | Qué ve |
+|-----|--------|
+| `CLIENTE` (aspirante) | Constancia de entrega |
+| `STAFF` / `ADMIN` | Panel, listado de resultados con puntaje, percentil, CI y clasificación, y la tabla de baremos |
+
+Las cuentas nuevas son `CLIENTE`. Para dar acceso a una persona del personal, un administrador de la
+base de datos cambia su rol (no hay pantalla para esto a propósito):
+
+```sql
+UPDATE users SET role = 'STAFF' WHERE email = 'persona@uam.edu.ni';
+```
+
+El listado sale de `GET /api/staff/attempts`, que exige rol `STAFF` o `ADMIN` (403 en otro caso).
+El percentil y el CI se calculan al mostrarlos, con el baremo y con la edad y el grupo que el aspirante
+declaró al entregar.
+
 ## Respuesta por arrastre
 
 Cada ítem se responde como un rompecabezas: la figura trae un hueco y las 8 opciones son piezas

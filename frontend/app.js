@@ -46,7 +46,7 @@ const NAV = {
   aspirante: [
     ['inicio', 'Inicio'],
     ['test', 'Prueba'],
-    ['resultados', 'Resultados'],
+    ['resultados', 'Entrega'],
     ['perfil', 'Perfil'],
     ['ajustes', 'Ajustes']
   ],
@@ -155,6 +155,12 @@ async function renewRemoteAttemptLease() {
   }
 }
 
+function normProfileForServer(profile) {
+  const group = ['7-16', 'AN', 'AD', 'UN'].includes(profile?.grupo) ? profile.grupo : 'UN';
+  const age = Number(profile?.edad);
+  return { normGroup: group, age: Number.isFinite(age) && age >= 3 && age <= 120 ? age : null };
+}
+
 async function submitRemoteAttempt() {
   if (STATIC_PAGES_MODE) return null;
   const attempt = appState.remoteAttempt || readAttemptLease();
@@ -162,7 +168,8 @@ async function submitRemoteAttempt() {
   const submitted = await apiRequest(`/api/attempts/${attempt.id}/submit`, {
     leaseToken: attempt.leaseToken,
     expectedVersion: attempt.version,
-    answers: [...appState.answers]
+    answers: [...appState.answers],
+    ...normProfileForServer(appState.profile)
   });
   storeAttemptLease(submitted);
   return submitted;
@@ -462,6 +469,10 @@ function handleAuthSuccess(response, context = {}) {
   localStorage.setItem(STORAGE.sessionUser, JSON.stringify(user));
   playSound('success');
   toast('Sesión iniciada.', 'ok');
+  if (isStaffRole(user.role)) {
+    enterStaff(user);
+    return;
+  }
   enterAspirante(profileFromUser(user, context));
 }
 
@@ -472,7 +483,8 @@ async function restoreSessionFromBackend() {
     if (!user?.id) return;
     appState.sessionUser = user;
     localStorage.setItem(STORAGE.sessionUser, JSON.stringify(user));
-    enterAspirante(profileFromUser(user));
+    if (isStaffRole(user.role)) enterStaff(user);
+    else enterAspirante(profileFromUser(user));
   } catch {
     localStorage.removeItem(STORAGE.sessionUser);
   }
@@ -680,11 +692,40 @@ function enterAspirante(profileOverride = null) {
   }
 }
 
-function enterStaff() {
+function isStaffRole(role) {
+  return role === 'STAFF' || role === 'ADMIN';
+}
+
+function enterStaff(user = null) {
   appState.role = 'staff';
   appState.route = 'panel';
-  appState.profile = { username: ($('#unified-id')?.value || '').trim() };
+  appState.profile = { username: user?.fullName || user?.email || ($('#unified-id')?.value || '').trim() || 'Personal' };
+  appState.staffAttempts = null;
+  appState.staffError = '';
   showApp();
+}
+
+// Resultados de las evaluaciones: los entrega el servidor solo a personal y administracion.
+function withNorms(row) {
+  const column = resolveNormColumn({ grupo: row.normGroup, edad: row.age });
+  const percentile = percentileFromScore(row.directScore, column);
+  const ci = ciFromPercentile(percentile);
+  return { ...row, normColumn: column, percentile, ci, classification: classifyCI(ci) };
+}
+
+async function loadStaffAttempts(force = false) {
+  if (STATIC_PAGES_MODE || appState.staffLoading || (appState.staffAttempts && !force)) return;
+  appState.staffLoading = true;
+  appState.staffError = '';
+  try {
+    const rows = await apiRequest(`/api/staff/attempts?testId=${encodeURIComponent(ACTIVE_TEST.id)}`);
+    appState.staffAttempts = (Array.isArray(rows) ? rows : []).map(withNorms);
+  } catch (error) {
+    appState.staffError = error.message || 'No se pudieron cargar los resultados.';
+  } finally {
+    appState.staffLoading = false;
+    if (appState.role === 'staff') render();
+  }
 }
 
 function showApp() {
@@ -713,6 +754,11 @@ function logout() {
   toast('Sesión cerrada.', 'info');
 }
 
+// Las cuentas externas no tienen CIF: se dice asi en lugar de mostrar el numero interno de usuario.
+function identityLabel(profile) {
+  return appState.sessionUser?.authProvider === 'manual' ? 'Cuenta externa' : `CIF ${profile?.cif ?? ''}`;
+}
+
 function renderShell() {
   const nav = (NAV[appState.role] || []).filter(([route]) => route !== 'test' || testRouteAvailable());
   const locked = isExamLocked();
@@ -725,8 +771,8 @@ function renderShell() {
     sessionLabel.innerHTML = `<b>${esc(appState.profile?.username)}</b><small>Personal</small>`;
     sessionLabel.title = `Personal · ${appState.profile?.username || ''}`;
   } else {
-    sessionLabel.innerHTML = `<b>${esc(appState.profile?.fullName)}</b><small>CIF ${esc(appState.profile?.cif)}</small>`;
-    sessionLabel.title = `${appState.profile?.fullName || ''} · CIF ${appState.profile?.cif || ''}`;
+    sessionLabel.innerHTML = `<b>${esc(appState.profile?.fullName)}</b><small>${esc(identityLabel(appState.profile))}</small>`;
+    sessionLabel.title = `${appState.profile?.fullName || ''} · ${identityLabel(appState.profile)}`;
   }
 }
 
@@ -777,7 +823,7 @@ function renderHome() {
       <section class="hero-band assessment-card">
         <div class="hero-copy">
           <div>
-            <div class="assessment-card__top"><p class="eyebrow">${esc(ACTIVE_TEST.shortName)}</p><span class="status-badge">${result ? 'Completada' : count ? 'En progreso' : 'Asignada'}</span></div>
+            <div class="assessment-card__top"><p class="eyebrow">${esc(ACTIVE_TEST.shortName)}</p><span class="status-badge">${result ? 'Entregada' : count ? 'En progreso' : 'Asignada'}</span></div>
             <h2>${esc(ACTIVE_TEST.name)}</h2>
             <p>${esc(ACTIVE_TEST.description)}</p>
             <dl class="assessment-meta">
@@ -790,8 +836,9 @@ function renderHome() {
             <div class="progress-label"><span>Progreso</span><strong>${progress}%</strong></div>
             <div class="progress-shell" role="progressbar" aria-label="Progreso de ${esc(ACTIVE_TEST.shortName)}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${progress}"><div class="progress-bar" style="width:${progress}%"></div></div>
             <div class="hero-actions">
-              <button class="solid-btn" type="button" data-action="start-test">${result ? 'Revisar respuestas' : count ? 'Continuar evaluación' : 'Comenzar evaluación'}</button>
-              ${result ? '<button class="ghost-btn" type="button" data-route="resultados">Ver resultado</button>' : ''}
+              ${result
+                ? '<button class="solid-btn" type="button" data-route="resultados">Ver constancia de entrega</button>'
+                : `<button class="solid-btn" type="button" data-action="start-test">${count ? 'Continuar evaluación' : 'Comenzar evaluación'}</button>`}
             </div>
           </div>
         </div>
@@ -828,7 +875,7 @@ function isExamLocked() {
 }
 
 function testRouteAvailable() {
-  return appState.role === 'aspirante' && !!appState.startedAt;
+  return appState.role === 'aspirante' && !!appState.startedAt && !appState.result;
 }
 
 function applyExamSecurityUi() {
@@ -977,7 +1024,7 @@ function renderTest() {
             <button class="ghost-btn" type="button" data-action="prev-item" ${index === 0 ? 'disabled' : ''}>Anterior</button>
             <button class="ghost-btn" type="button" data-action="next-item" ${index === TOTAL_ITEMS - 1 ? 'disabled' : ''}>Siguiente</button>
           </div>
-          <button class="solid-btn wide-btn" type="button" data-action="finish-test">Finalizar y calificar</button>
+          <button class="solid-btn wide-btn" type="button" data-action="finish-test">Finalizar y entregar</button>
           <button class="danger-btn wide-btn" type="button" data-action="reset-test">Reiniciar respuestas</button>
         </section>
       </aside>
@@ -1100,43 +1147,29 @@ function elapsedLabel() {
 function renderResults() {
   const result = appState.result;
   if (!result) {
-    return `<div class="screen-title"><div><p class="eyebrow">Resultados</p><h2>Sin calificación</h2><p>La prueba todavía no fue finalizada.</p></div><button class="solid-btn" type="button" data-action="start-test">Ir a la prueba</button></div><div class="empty-state">No hay resultados para mostrar.</div>`;
+    return `<div class="screen-title"><div><p class="eyebrow">Entrega</p><h2>Prueba pendiente</h2><p>Todavía no entregaste la prueba.</p></div><button class="solid-btn" type="button" data-action="start-test">Ir a la prueba</button></div><div class="empty-state">Cuando entregues la prueba, aquí verás la constancia de entrega.</div>`;
   }
+  const receipt = appState.remoteAttempt?.id ? `N.º ${String(appState.remoteAttempt.id).padStart(6, '0')}` : '';
+  const answered = (result.answers || []).filter(value => value !== null).length || result.total;
   return `
     <div class="screen-title">
-      <div><p class="eyebrow">Resultados</p><h2>Reporte de ${esc(result.profile.fullName)}</h2><p>${formatDate(result.endedAt)} · Baremo ${esc(result.normColumn)}</p></div>
-      <div class="result-actions">
-        <button class="solid-btn" type="button" data-action="download-pdf">Descargar PDF</button>
-        <button class="ghost-btn" type="button" data-action="start-test">Revisar respuestas</button>
+      <div><p class="eyebrow">Entrega</p><h2>Prueba entregada</h2><p>Gracias, ${esc(String(result.profile.fullName).split(' ')[0])}.</p></div>
+    </div>
+    <section class="panel confirmation-card" aria-live="polite">
+      <div class="confirmation-mark" aria-hidden="true">✓</div>
+      <h3>Recibimos tus respuestas</h3>
+      <p>El equipo de Admisión revisará tu evaluación y te comunicará los resultados por los medios oficiales de la universidad. No necesitas hacer nada más.</p>
+      <dl class="confirmation-meta">
+        <div><dt>Evaluación</dt><dd>${esc(result.testName || ACTIVE_TEST.shortName)}</dd></div>
+        <div><dt>Entregada</dt><dd>${formatDate(result.endedAt)}</dd></div>
+        <div><dt>Respondiste</dt><dd>${answered} de ${result.total} ítems</dd></div>
+        <div><dt>Tiempo</dt><dd>${formatDuration(result.durationSec)}</dd></div>
+        ${receipt ? `<div><dt>Comprobante</dt><dd>${receipt}</dd></div>` : ''}
+      </dl>
+      <div class="confirmation-actions">
+        <button class="ghost-btn" type="button" data-route="inicio">Volver al inicio</button>
+        <button class="solid-btn" type="button" data-action="logout">Cerrar sesión</button>
       </div>
-    </div>
-    <div class="results-grid">
-      <section class="score-card">
-        <p class="eyebrow">Puntaje directo</p>
-        <div class="score-big">${result.score}</div>
-        <p>${esc(result.classification)}</p>
-        <div class="score-meta">
-          <div><strong>${result.percentile}</strong><span>Percentil</span></div>
-          <div><strong>${result.ci}</strong><span>CI</span></div>
-          <div><strong>${formatDuration(result.durationSec)}</strong><span>Tiempo</span></div>
-          <div><strong>${result.total}</strong><span>Ítems</span></div>
-          <div><strong>${(result.securityEvents || []).length}</strong><span>Incidencias</span></div>
-        </div>
-      </section>
-      <section class="table-wrap">
-        <table class="data-table">
-          <thead><tr><th>Lámina</th><th>Aciertos</th><th>Estado</th><th>Respondidos</th></tr></thead>
-          <tbody>${Array.from({ length: TOTAL_PAGES }, (_, page) => {
-            const score = result.pageScores[page];
-            return `<tr><td>${esc(ACTIVE_TEST.sections[page].label)}</td><td>${score}/${ITEMS_PER_PAGE}</td><td><span class="pill ${score >= 8 ? 'good' : 'warn'}">${score >= 8 ? 'Fuerte' : 'Revisar'}</span></td><td>${result.answers.slice(page * ITEMS_PER_PAGE, (page + 1) * ITEMS_PER_PAGE).filter(v => v !== null).length}/${ITEMS_PER_PAGE}</td></tr>`;
-          }).join('')}</tbody>
-        </table>
-      </section>
-    </div>
-    <div class="divider"></div>
-    <section class="panel">
-      <h3>Revisión de respuestas</h3>
-      <div class="review-grid">${result.answers.map((answer, index) => `<span class="review-cell ${answer === correctAnswer(index) ? 'ok' : 'bad'}" title="Ítem ${index + 1}: ${answer || '-'} / ${correctAnswer(index)}">${index + 1}</span>`).join('')}</div>
     </section>`;
 }
 
@@ -1144,11 +1177,11 @@ function renderProfile() {
   const profile = appState.profile;
   const result = appState.result;
   return `
-    <div class="screen-title"><div><p class="eyebrow">Perfil</p><h2>Datos del aspirante</h2><p>Información usada para la calificación local.</p></div></div>
+    <div class="screen-title"><div><p class="eyebrow">Perfil</p><h2>Datos del aspirante</h2><p>Estos son los datos con los que te registraste.</p></div></div>
     <div class="profile-grid">
       <section class="panel profile-card">
         <div class="avatar" aria-hidden="true">${esc(initials(profile.fullName))}</div>
-        <div><h3>${esc(profile.fullName)}</h3><p class="muted">CIF ${esc(profile.cif)}</p></div>
+        <div><h3>${esc(profile.fullName)}</h3><p class="muted">${esc(identityLabel(profile))}</p></div>
         <button class="solid-btn" type="button" data-action="start-test">${answeredCount() ? 'Continuar prueba' : 'Iniciar prueba'}</button>
       </section>
       <section class="panel">
@@ -1156,9 +1189,8 @@ function renderProfile() {
         <div class="detail-list">
           <div class="detail-row"><span>Carrera</span><strong>${esc(normalizeCareer(profile.carrera))}</strong></div>
           <div class="detail-row"><span>Edad</span><strong>${esc(profile.edad)}</strong></div>
-          <div class="detail-row"><span>Baremo</span><strong>${esc(resolveNormColumn(profile))}</strong></div>
           <div class="detail-row"><span>Avance</span><strong>${answeredCount()}/${TOTAL_ITEMS}</strong></div>
-          <div class="detail-row"><span>Último resultado</span><strong>${result ? `${result.score}/${result.total}` : 'Sin resultado'}</strong></div>
+          <div class="detail-row"><span>Estado</span><strong>${result ? 'Entregada' : answeredCount() ? 'En progreso' : 'Sin iniciar'}</strong></div>
         </div>
       </section>
     </div>`;
@@ -1193,17 +1225,26 @@ function settingSwitch(key, title, description) {
 function renderStaff() {
   const content = $('#app-content');
   if (!content) return;
+  if (!STATIC_PAGES_MODE && ['panel', 'aspirantes'].includes(appState.route)) loadStaffAttempts();
   if (appState.route === 'aspirantes') content.innerHTML = renderStaffApplicants();
   else if (appState.route === 'baremo') content.innerHTML = renderBaremo();
   else if (appState.route === 'ajustes') content.innerHTML = renderSettings();
   else content.innerHTML = renderStaffPanel();
 }
 
+function staffStatusCard() {
+  if (appState.staffError) {
+    return `<div class="empty-state">${esc(appState.staffError)}<br><button class="ghost-btn" type="button" data-action="reload-staff">Reintentar</button></div>`;
+  }
+  return '<div class="empty-state">Cargando resultados…</div>';
+}
+
 function renderStaffPanel() {
-  const list = records();
-  const avg = list.length ? Math.round(list.reduce((sum, item) => sum + item.score, 0) / list.length) : '--';
-  const top = list.length ? Math.max(...list.map(item => item.score)) : '--';
-  return `
+  if (STATIC_PAGES_MODE) {
+    const list = records();
+    const avg = list.length ? Math.round(list.reduce((sum, item) => sum + item.score, 0) / list.length) : '--';
+    const top = list.length ? Math.max(...list.map(item => item.score)) : '--';
+    return `
     <div class="screen-title"><div><p class="eyebrow">Personal</p><h2>Panel de aplicaciones</h2><p>${esc(appState.profile.username)}</p></div><button class="solid-btn" type="button" data-route="aspirantes">Ver aspirantes</button></div>
     <div class="staff-grid">
       <div class="metric"><strong>${list.length}</strong><span>reportes guardados</span></div>
@@ -1211,13 +1252,36 @@ function renderStaffPanel() {
       <div class="metric"><strong>${top}</strong><span>mejor puntaje</span></div>
     </div>
     ${renderRecordsTable(list.slice(0, 8))}`;
+  }
+  const rows = appState.staffAttempts;
+  const avg = rows?.length ? Math.round(rows.reduce((sum, item) => sum + item.directScore, 0) / rows.length) : '--';
+  const top = rows?.length ? Math.max(...rows.map(item => item.directScore)) : '--';
+  return `
+    <div class="screen-title"><div><p class="eyebrow">Personal</p><h2>Panel de aplicaciones</h2><p>${esc(appState.profile.username)}</p></div><button class="solid-btn" type="button" data-route="aspirantes">Ver aspirantes</button></div>
+    <div class="staff-grid">
+      <div class="metric"><strong>${rows ? rows.length : '--'}</strong><span>pruebas entregadas</span></div>
+      <div class="metric"><strong>${avg}</strong><span>promedio directo</span></div>
+      <div class="metric"><strong>${top}</strong><span>mejor puntaje</span></div>
+    </div>
+    ${rows ? renderStaffAttemptsTable(rows.slice(0, 8)) : staffStatusCard()}`;
 }
 
 function renderStaffApplicants() {
-  const list = records();
-  return `
+  if (STATIC_PAGES_MODE) {
+    const list = records();
+    return `
     <div class="screen-title"><div><p class="eyebrow">Aspirantes</p><h2>Resultados locales</h2><p>${list.length} registros en este navegador.</p></div><button class="danger-btn" type="button" data-action="clear-records">Limpiar registros</button></div>
     ${renderRecordsTable(list)}`;
+  }
+  const rows = appState.staffAttempts;
+  return `
+    <div class="screen-title"><div><p class="eyebrow">Aspirantes</p><h2>Resultados</h2><p>${rows ? `${rows.length} pruebas entregadas.` : 'Pruebas entregadas por los aspirantes.'}</p></div><button class="ghost-btn" type="button" data-action="reload-staff">Actualizar</button></div>
+    ${rows ? renderStaffAttemptsTable(rows) : staffStatusCard()}`;
+}
+
+function renderStaffAttemptsTable(rows) {
+  if (!rows.length) return '<div class="empty-state">Todavía no hay pruebas entregadas.</div>';
+  return `<section class="table-wrap"><table class="data-table"><thead><tr><th>Aspirante</th><th>Carrera</th><th>Puntaje</th><th>Percentil</th><th>CI</th><th>Clasificación</th><th>Entregada</th><th>Tiempo</th></tr></thead><tbody>${rows.map(item => `<tr><td><strong>${esc(item.fullName)}</strong><br><span class="muted tiny">${esc(item.email || '')}</span></td><td>${esc(normalizeCareer(item.career))}</td><td>${item.directScore}/${TOTAL_ITEMS}</td><td>${item.percentile}</td><td>${item.ci}</td><td>${esc(item.classification)}</td><td>${formatDate(item.submittedAt)}</td><td>${formatDuration(item.durationSeconds)}</td></tr>`).join('')}</tbody></table></section>`;
 }
 
 function renderRecordsTable(list) {
@@ -1404,7 +1468,7 @@ function createPdfDocument(pageContents) {
 
 async function startTest() {
   if (appState.result) {
-    routeTo('test');
+    routeTo('resultados');
     return;
   }
   if (appState.startBusy) return;
@@ -1467,7 +1531,7 @@ function requestFinishTest() {
     status: 'ready',
     missing: [],
     title: 'Confirmar entrega',
-    message: 'Todas las respuestas están completas. Al entregar, se cerrará la prueba y se generará la calificación.'
+    message: 'Todas las respuestas están completas. Al entregar, se cerrará la prueba y ya no podrás cambiar tus respuestas.'
   });
   playSound('nav');
 }
@@ -1506,7 +1570,7 @@ function showSubmitDialog({ status, missing, title, message }) {
         <button class="ghost-btn" type="button" data-action="close-submit-dialog">Seguir revisando</button>
         ${status === 'incomplete'
           ? `<button class="solid-btn" type="button" data-action="go-first-missing" data-target-index="${firstMissing}">Ir al primer pendiente</button>`
-          : '<button class="solid-btn" type="button" data-action="confirm-submit-test">Entregar y calificar</button>'}
+          : '<button class="solid-btn" type="button" data-action="confirm-submit-test">Entregar prueba</button>'}
       </div>
     </section>`;
   dialog.classList.remove('app-hidden');
@@ -1563,13 +1627,15 @@ async function completeTest() {
     appState.submitBusy = false;
     if (submitButton?.isConnected) {
       submitButton.disabled = false;
-      submitButton.textContent = 'Entregar y calificar';
+      submitButton.textContent = 'Entregar prueba';
     }
   }
-  const score = Number.isInteger(remoteSubmission?.directScore) ? remoteSubmission.directScore : totalScore();
+  // Con servidor, el puntaje, el percentil y el CI son solo del personal: el aspirante no los recibe ni se calculan aqui.
+  const scored = STATIC_PAGES_MODE;
+  const score = scored ? totalScore() : null;
   const normColumn = resolveNormColumn(appState.profile);
-  const percentile = percentileFromScore(score, normColumn);
-  const ci = ciFromPercentile(percentile);
+  const percentile = scored ? percentileFromScore(score, normColumn) : null;
+  const ci = scored ? ciFromPercentile(percentile) : null;
   const endedAt = new Date().toISOString();
   const durationSec = appState.startedAt ? (new Date(endedAt).getTime() - new Date(appState.startedAt).getTime()) / 1000 : 0;
   const result = {
@@ -1581,13 +1647,11 @@ async function completeTest() {
     answers: [...appState.answers],
     score,
     total: TOTAL_ITEMS,
-    pageScores: Array.isArray(remoteSubmission?.pageScores) && remoteSubmission.pageScores.length === TOTAL_PAGES
-      ? remoteSubmission.pageScores
-      : Array.from({ length: TOTAL_PAGES }, (_, page) => pageScore(page)),
+    pageScores: scored ? Array.from({ length: TOTAL_PAGES }, (_, page) => pageScore(page)) : [],
     percentile,
     ci,
     normColumn,
-    classification: classifyCI(ci),
+    classification: scored ? classifyCI(ci) : '',
     startedAt: appState.startedAt,
     endedAt,
     durationSec,
@@ -1600,7 +1664,7 @@ async function completeTest() {
   saveRecord(result);
   saveDraft();
   playSound('success');
-  toast('Prueba calificada y guardada.', 'ok');
+  toast('Prueba entregada. Gracias.', 'ok');
   routeTo('resultados');
 }
 
@@ -1648,6 +1712,7 @@ function handleDocumentClick(event) {
     if (action === 'prev-item') { appState.currentIndex = Math.max(0, appState.currentIndex - 1); playSound('nav'); stateStore.publish('assessment-navigation', { reason: 'previous' }); }
     if (action === 'next-item') { appState.currentIndex = Math.min(TOTAL_ITEMS - 1, appState.currentIndex + 1); playSound('nav'); stateStore.publish('assessment-navigation', { reason: 'next' }); }
     if (action === 'clear-answer') clearAnswer();
+    if (action === 'reload-staff') loadStaffAttempts(true);
     if (action === 'finish-test') requestFinishTest();
     if (action === 'close-submit-dialog') closeSubmitDialog();
     if (action === 'go-first-missing') goFirstMissing(actionTarget.dataset.targetIndex);

@@ -51,3 +51,16 @@ test('rechaza identificadores de test no registrados', () => {
   const catalog = loadCatalog();
   assert.throws(() => catalog.get('inexistente'), /Test no registrado/);
 });
+
+test('el personal obtiene percentil y CI con la edad y el grupo que guarda el servidor', () => {
+  const scoring = loadCatalog().get('weil-form-a').scoring;
+  // Fila del listado del personal: 30 aciertos de un aspirante de 12 anos (grupo 7-16)
+  const column = scoring.resolveNormColumn({ grupo: '7-16', edad: 12 });
+  const percentile = scoring.percentile(30, column);
+  const ci = scoring.ci(percentile);
+
+  assert.equal(column, '12');
+  assert.equal(percentile, 20);
+  assert.equal(ci, 87);
+  assert.equal(scoring.classify(ci), 'Inteligencia media');
+});

@@ -431,3 +431,15 @@ input[type="range"]{height:36px;cursor:pointer}
 /* Baremos: la columna de percentil queda fija al desplazar horizontalmente */
 .baremo-table th:first-child,.baremo-table td:first-child{position:sticky;left:0;z-index:1;background:var(--surface);box-shadow:1px 0 0 var(--line)}
 .baremo-table th:first-child{background:var(--surface-2)}
+
+/* Constancia de entrega: lo unico que ve el aspirante al terminar */
+.confirmation-card{max-width:720px;display:grid;gap:14px;justify-items:start;padding:28px}
+.confirmation-mark{display:grid;place-items:center;width:56px;height:56px;border-radius:50%;background:var(--teal-soft);color:var(--teal);font-size:1.8rem;font-weight:900}
+.confirmation-card h3{font-size:1.5rem}
+.confirmation-card p{max-width:56ch;color:var(--ink-2);line-height:1.55}
+.confirmation-meta{width:100%;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));border-block:1px solid var(--line)}
+.confirmation-meta div{padding:14px 16px 14px 0}
+.confirmation-meta dt{color:var(--muted);font-size:.74rem;font-weight:800}
+.confirmation-meta dd{margin-top:4px;font-weight:900}
+.confirmation-actions{display:flex;flex-wrap:wrap;gap:10px}
+@media(max-width:560px){.confirmation-card{padding:20px}.confirmation-actions{width:100%}.confirmation-actions>*{flex:1}}
