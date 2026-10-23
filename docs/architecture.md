@@ -121,3 +121,5 @@ las pantallas de acceso, inicio, perfil y resultados pertenecen a la plataforma.
 ### client session state
 
 `frontend/client-session.js` guarda en el dispositivo únicamente respuestas, posición, hora de inicio e incidencias. no persiste puntaje, percentil, ci, clasificación ni claves dentro del borrador. los datos locales permiten recuperación, pero no son autoridad para una entrega de producción; el backend vuelve a validar versión, propiedad, sesión exclusiva y respuestas completas.
+
+al entregar, el backend recalcula el puntaje directo y el desglose por lámina con la clave versionada. el frontend usa ese valor en producción; el cálculo local queda limitado a la demostración estática de github pages.
