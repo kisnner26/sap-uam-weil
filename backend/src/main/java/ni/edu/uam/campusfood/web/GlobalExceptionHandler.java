@@ -1,6 +1,7 @@
 package ni.edu.uam.campusfood.web;
 
 import ni.edu.uam.campusfood.auth.AuthException;
+import ni.edu.uam.campusfood.assessment.AssessmentConflictException;
 import ni.edu.uam.campusfood.moodle.MoodleException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -40,6 +41,16 @@ public class GlobalExceptionHandler {
                 .map(fe -> fe.getField() + ": " + fe.getDefaultMessage())
                 .collect(Collectors.joining("; "));
         return build(HttpStatus.BAD_REQUEST, msg.isBlank() ? "Datos invalidos" : msg);
+    }
+
+    @ExceptionHandler(AssessmentConflictException.class)
+    public ResponseEntity<ApiError> handleAssessmentConflict(AssessmentConflictException ex) {
+        return build(HttpStatus.CONFLICT, ex.getMessage());
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ApiError> handleIllegalArgument(IllegalArgumentException ex) {
+        return build(HttpStatus.BAD_REQUEST, ex.getMessage());
     }
 
     private ResponseEntity<ApiError> build(HttpStatus status, String message) {

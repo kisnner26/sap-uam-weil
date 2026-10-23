@@ -1,6 +1,8 @@
 spring:
   application:
     name: sap-uam-backend
+  jpa:
+    open-in-view: false
   # Perfil por defecto: desarrollo con H2 en memoria.
   profiles:
     active: dev

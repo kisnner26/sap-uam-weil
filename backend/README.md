@@ -39,6 +39,9 @@ Incluye un test de integración (`MoodleLoginIntegrationTest`) que simula Moodle
 MockWebServer y cubre: login OK (crea usuario + JWT, **sin** guardar la contraseña),
 credenciales inválidas → 401, y Moodle respondiendo HTML → 503.
 
+`AssessmentLockIntegrationTest` verifica que una segunda sesión no pueda tomar un
+intento activo y que una versión desactualizada no sobrescriba cambios recientes.
+
 ## Variables de entorno (producción)
 
 | Variable               | Descripción                                              |
@@ -98,6 +101,20 @@ Lee la cookie httpOnly `sap_uam_session` o el header `Authorization: Bearer <jwt
 
 ### `POST /api/auth/logout`
 Borra la cookie httpOnly local del navegador.
+
+### Intentos de evaluación
+
+Todos requieren una sesión autenticada:
+
+- `GET /api/attempts`: lista liviana de intentos, sin respuestas.
+- `POST /api/attempts`: crea o recupera un intento y entrega un arrendamiento exclusivo.
+- `GET /api/attempts/{id}`: carga el detalle y las respuestas cuando se solicitan.
+- `POST /api/attempts/{id}/lease`: renueva el arrendamiento exclusivo.
+- `PUT /api/attempts/{id}/responses/{itemIndex}`: sincronización idempotente opcional.
+- `POST /api/attempts/{id}/submit`: valida y guarda las 60 respuestas en una transacción.
+
+Las escrituras envían `leaseToken` y `expectedVersion`. Un arrendamiento ajeno,
+vencido o una versión desactualizada responde **409 Conflict**.
 
 ## Flujo Moodle (2 llamadas, desde el backend)
 
