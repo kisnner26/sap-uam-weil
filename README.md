@@ -1,8 +1,8 @@
-# SAP-UAM · Test de Inteligencia de Weil
+# SAP-UAM · Plataforma de evaluaciones
 
 ![Banner](banner.png)
 
-Sistema web institucional para la aplicación del **Test de Inteligencia de Weil** en la Universidad Americana (UAM), Nicaragua. Permite el acceso mediante credenciales Moodle UAM o cuenta externa, y administra el proceso completo de evaluación cognitiva.
+Plataforma web institucional de evaluaciones para la Universidad Americana (UAM), Nicaragua. La primera evaluación integrada es el **Test de Inteligencia No Verbal de Weil**. Permite acceso mediante credenciales Moodle UAM o cuenta externa y conserva las reglas de aplicación y calificación existentes.
 
 ## Stack
 
@@ -20,6 +20,7 @@ sap-uam-weil/
 ├── frontend/
 │   ├── index.html
 │   ├── app.js
+│   ├── test-catalog.js
 │   ├── styles.css
 │   └── assets/
 └── backend/
@@ -27,6 +28,12 @@ sap-uam-weil/
     ├── src/main/java/ni/edu/uam/campusfood/
     └── src/main/resources/application.yml
 ```
+
+## Arquitectura
+
+La solución evoluciona como un monolito modular: identidad, catálogo, aplicaciones, calificación y reportes tienen límites explícitos, pero comparten un único despliegue. La definición de Weil ya está separada del shell de la plataforma mediante un catálogo versionado.
+
+Ver [docs/architecture.md](docs/architecture.md) para el modelo de dominio, contratos, API objetivo y plan de migración del cálculo al backend.
 
 ## Ejecutar en desarrollo
 
@@ -60,4 +67,5 @@ mvn spring-boot:run
 
 ```bash
 cd backend && mvn test
+node --test ../frontend/test-catalog.test.js
 ```
