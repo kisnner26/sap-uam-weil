@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SAP-UAM · Test de Inteligencia de Weil</title>
+<title>SAP-UAM · Evaluaciones</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&family=Playfair+Display:ital,wght@0,800;1,800&display=swap" rel="stylesheet">
@@ -104,6 +104,7 @@
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
           </button>
           <button type="button" class="auth-secondary" id="manual-register-toggle" data-action="toggle-manual-register">Crear cuenta externa</button>
+          <button type="button" class="auth-secondary app-hidden" id="demo-access" data-action="enter-demo">Explorar demostración</button>
           <p class="pr__foot" id="unified-foot">Usá tu CIF UAM o tu correo registrado en este mismo campo.</p>
         </form>
       </div>
@@ -111,11 +112,11 @@
   </div>
 </main>
 
-<main id="view-app" class="app-shell app-hidden" aria-label="Sistema de aplicación Weill">
+<main id="view-app" class="app-shell app-hidden" aria-label="Sistema de evaluaciones SAP-UAM">
   <header class="app-top">
     <a class="brand" href="#" data-action="go-home" aria-label="Inicio">
       <img src="assets/uam-logo.webp" alt="UAM" class="brand__logo">
-      <span><strong>SAP-UAM</strong><small>Test de Inteligencia No Verbal de Weil</small></span>
+      <span><strong>SAP-UAM</strong><small>Plataforma de evaluaciones</small></span>
     </a>
     <nav class="top-nav" id="main-nav" aria-label="Navegación principal"></nav>
     <div class="session-pill">
@@ -126,7 +127,7 @@
   <section class="app-content" id="app-content" tabindex="-1"></section>
 </main>
 
-<script async src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
-<script src="app.js?v=19"></script>
+<script src="test-catalog.js?v=1"></script>
+<script src="app.js?v=20"></script>
 </body>
 </html>

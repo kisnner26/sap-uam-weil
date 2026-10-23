@@ -2,13 +2,22 @@ const $ = (selector, scope = document) => scope.querySelector(selector);
 const $$ = (selector, scope = document) => Array.from(scope.querySelectorAll(selector));
 
 const STORAGE = {
-  settings: 'sapWeillSettingsV2',
-  results: 'sapWeillResultsV2',
-  draftPrefix: 'sapWeillDraftV2:',
-  profileEditsPrefix: 'sapWeillProfileEditsV1:',
-  staticUsers: 'sapWeillStaticUsersV1',
-  staticSession: 'sapWeillStaticSessionV1',
-  sessionUser: 'sapWeillSessionUser'
+  settings: 'sapUam.settings.v1',
+  results: 'sapUam.results.v1',
+  draftPrefix: 'sapUam.draft.v1:',
+  profileEditsPrefix: 'sapUam.profile.v1:',
+  staticUsers: 'sapUam.demo.users.v1',
+  staticSession: 'sapUam.demo.session.v1',
+  sessionUser: 'sapUam.session.user',
+  legacy: {
+    settings: 'sapWeillSettingsV2',
+    results: 'sapWeillResultsV2',
+    draftPrefix: 'sapWeillDraftV2:',
+    profileEditsPrefix: 'sapWeillProfileEditsV1:',
+    staticUsers: 'sapWeillStaticUsersV1',
+    staticSession: 'sapWeillStaticSessionV1',
+    sessionUser: 'sapWeillSessionUser'
+  }
 };
 
 const API_BASE = (() => {
@@ -23,17 +32,13 @@ const API_BASE = (() => {
 })();
 const STATIC_PAGES_MODE = ((/\.github\.io$/i.test(location.hostname) || new URLSearchParams(location.search).has('demo')) && !window.SAP_UAM_API_BASE);
 
-const ANSWER_PATTERN = [2, 8, 7, 4, 5, 6, 8, 4, 4, 7, 3, 2];
-const TOTAL_PAGES = 5;
-const ITEMS_PER_PAGE = 12;
+const ACTIVE_TEST = window.SAP_UAM_TESTS.get(window.SAP_UAM_TEST_ID || window.SAP_UAM_TESTS.defaultTestId);
+const TOTAL_PAGES = ACTIVE_TEST.sections.length;
+const ITEMS_PER_PAGE = ACTIVE_TEST.itemsPerSection;
 const TOTAL_ITEMS = TOTAL_PAGES * ITEMS_PER_PAGE;
 const SECURITY_EVENT_LIMIT = 40;
-const LAMINAS = Array.from({ length: TOTAL_PAGES }, (_, index) => `assets/weill-pages/lamina-${index + 1}.png`);
-const ITEM_IMAGES = Array.from({ length: TOTAL_ITEMS }, (_, index) => {
-  const page = Math.floor(index / ITEMS_PER_PAGE) + 1;
-  const item = String((index % ITEMS_PER_PAGE) + 1).padStart(2, '0');
-  return `assets/weill-items/lamina-${page}-item-${item}.png?v=2`;
-});
+const LAMINAS = ACTIVE_TEST.sections.map((_, index) => ACTIVE_TEST.media.sectionImage(index));
+const ITEM_IMAGES = Array.from({ length: TOTAL_ITEMS }, (_, index) => ACTIVE_TEST.media.itemImage(index));
 const NAV = {
   aspirante: [
     ['inicio', 'Inicio'],
@@ -49,26 +54,7 @@ const NAV = {
     ['ajustes', 'Ajustes']
   ]
 };
-const BAREMOS = [
-  { p: 90, '7': 35, '8': 41, '9': 42, '10': 46, '11': 46, '12': 46, '13': 47, '14': 47, '15': 48, '16': 50, AN: 30, AD: 47, UN: 57 },
-  { p: 80, '7': 31, '8': 36, '9': 39, '10': 42, '11': 43, '12': 43, '13': 43, '14': 43, '15': 43, '16': 46, AN: 23, AD: 43, UN: 56 },
-  { p: 75, '7': 30, '8': 34, '9': 36, '10': 40, '11': 42, '12': 42, '13': 42, '14': 42, '15': 42, '16': 44, AN: 22, AD: 42, UN: 55 },
-  { p: 70, '7': 29, '8': 33, '9': 37, '10': 39, '11': 41, '12': 41, '13': 41, '14': 41, '15': 41, '16': 42, AN: 21, AD: 40, UN: 54 },
-  { p: 60, '7': 27, '8': 31, '9': 35, '10': 37, '11': 38, '12': 38, '13': 38, '14': 39, '15': 39, '16': 41, AN: 19, AD: 37, UN: 53 },
-  { p: 50, '7': 25, '8': 28, '9': 33, '10': 33, '11': 33, '12': 34, '13': 34, '14': 35, '15': 36, '16': 36, AN: 17, AD: 35, UN: 51 },
-  { p: 40, '7': 23, '8': 26, '9': 31, '10': 32, '11': 32, '12': 33, '13': 33, '14': 34, '15': 35, '16': 35, AN: 16, AD: 33, UN: 49 },
-  { p: 30, '7': 21, '8': 23, '9': 30, '10': 31, '11': 31, '12': 32, '13': 32, '14': 33, '15': 34, '16': 34, AN: 13, AD: 30, UN: 46 },
-  { p: 25, '7': 29, '8': 22, '9': 28, '10': 29, '11': 30, '12': 31, '13': 31, '14': 32, '15': 32, '16': 32, AN: 12, AD: 28, UN: 44 },
-  { p: 20, '7': 17, '8': 20, '9': 26, '10': 28, '11': 29, '12': 30, '13': 30, '14': 31, '15': 31, '16': 31, AN: 8, AD: 26, UN: 42 },
-  { p: 10, '7': 11, '8': 15, '9': 21, '10': 25, '11': 25, '12': 27, '13': 26, '14': 27, '15': 26, '16': 25, AN: 7, AD: 21, UN: 40 },
-  { p: 5, '7': 8, '8': 12, '9': 16, '10': 19, '11': 21, '12': 22, '13': 22, '14': 22, '15': 23, '16': 23, AN: 5, AD: 16, UN: 35 }
-];
-const CI_EQ = [
-  { p: 99, ci: 135 }, { p: 97, ci: 129 }, { p: 95, ci: 125 }, { p: 90, ci: 119 },
-  { p: 80, ci: 113 }, { p: 75, ci: 110 }, { p: 70, ci: 108 }, { p: 60, ci: 104 },
-  { p: 50, ci: 100 }, { p: 40, ci: 96 }, { p: 30, ci: 92 }, { p: 25, ci: 90 },
-  { p: 20, ci: 87 }, { p: 10, ci: 81 }, { p: 5, ci: 75 }, { p: 3, ci: 72 }, { p: 1, ci: 65 }
-];
+const BAREMOS = ACTIVE_TEST.baremos;
 
 const appState = {
   mode: null,
@@ -235,12 +221,13 @@ async function apiRequest(path, body = null, options = {}) {
 function staticAuthRequest(path, body = null) {
   const users = readStaticUsers();
   if (path === '/api/auth/me') {
-    const user = safeJson(localStorage.getItem(STORAGE.staticSession));
+    const user = safeJson(localStorage.getItem(STORAGE.staticSession) || localStorage.getItem(STORAGE.legacy.staticSession));
     if (!user?.id) throw new Error('Necesitas iniciar sesión.');
     return Promise.resolve(user);
   }
   if (path === '/api/auth/logout') {
     localStorage.removeItem(STORAGE.staticSession);
+    localStorage.removeItem(STORAGE.legacy.staticSession);
     return Promise.resolve({ ok: true });
   }
   if (path === '/api/auth/moodle-login') {
@@ -280,7 +267,7 @@ function staticAuthRequest(path, body = null) {
 
 function readStaticUsers() {
   try {
-    return JSON.parse(localStorage.getItem(STORAGE.staticUsers) || '[]');
+    return JSON.parse(localStorage.getItem(STORAGE.staticUsers) || localStorage.getItem(STORAGE.legacy.staticUsers) || '[]');
   } catch {
     return [];
   }
@@ -392,7 +379,8 @@ async function restoreSessionFromBackend() {
 function loadSettings() {
   const fallback = { dark: false, compact: false, smooth: true, sound: true, autoAdvance: false, secondsPerPage: 240 };
   try {
-    return { ...fallback, ...JSON.parse(localStorage.getItem(STORAGE.settings) || '{}') };
+    const saved = localStorage.getItem(STORAGE.settings) || localStorage.getItem(STORAGE.legacy.settings) || '{}';
+    return { ...fallback, ...JSON.parse(saved) };
   } catch {
     return fallback;
   }
@@ -451,7 +439,8 @@ function notifySecurity(message = 'Modo examen activo: no podés salir de la pru
 
 function records() {
   try {
-    return JSON.parse(localStorage.getItem(STORAGE.results) || '[]');
+    const saved = localStorage.getItem(STORAGE.results) || localStorage.getItem(STORAGE.legacy.results) || '[]';
+    return JSON.parse(saved);
   } catch {
     return [];
   }
@@ -464,7 +453,11 @@ function saveRecord(result) {
 }
 
 function draftKey(profile = appState.profile) {
-  return `${STORAGE.draftPrefix}${profile?.cif || 'anon'}`;
+  return `${STORAGE.draftPrefix}${ACTIVE_TEST.id}:${profile?.cif || 'anon'}`;
+}
+
+function legacyDraftKey(profile = appState.profile) {
+  return `${STORAGE.legacy.draftPrefix}${profile?.cif || 'anon'}`;
 }
 
 function profileEditKey(profile = appState.profile) {
@@ -472,9 +465,15 @@ function profileEditKey(profile = appState.profile) {
   return `${STORAGE.profileEditsPrefix}${id}`;
 }
 
+function legacyProfileEditKey(profile = appState.profile) {
+  const id = profile?.moodleId || profile?.cif || profile?.email || 'anon';
+  return `${STORAGE.legacy.profileEditsPrefix}${id}`;
+}
+
 function loadProfileEdits(profile) {
   try {
-    const data = JSON.parse(localStorage.getItem(profileEditKey(profile)) || '{}');
+    const saved = localStorage.getItem(profileEditKey(profile)) || localStorage.getItem(legacyProfileEditKey(profile)) || '{}';
+    const data = JSON.parse(saved);
     return {
       ...(data.carrera !== undefined ? { carrera: normalizeCareer(data.carrera) } : {}),
       ...(data.edad !== undefined ? { edad: Number(data.edad) || 18 } : {}),
@@ -509,7 +508,8 @@ function saveDraft() {
 
 function loadDraft(profile) {
   try {
-    const draft = JSON.parse(localStorage.getItem(draftKey(profile)) || '{}');
+    const saved = localStorage.getItem(draftKey(profile)) || localStorage.getItem(legacyDraftKey(profile)) || '{}';
+    const draft = JSON.parse(saved);
     if (Array.isArray(draft.answers) && draft.answers.length === TOTAL_ITEMS) {
       appState.answers = draft.answers;
       appState.currentIndex = Number(draft.currentIndex) || 0;
@@ -528,52 +528,31 @@ function answeredCount() {
 }
 
 function correctAnswer(index) {
-  return ANSWER_PATTERN[index % ITEMS_PER_PAGE];
+  return ACTIVE_TEST.scoring.correctAnswer(index);
 }
 
 function pageScore(pageIndex) {
-  const start = pageIndex * ITEMS_PER_PAGE;
-  let score = 0;
-  for (let i = 0; i < ITEMS_PER_PAGE; i += 1) {
-    const index = start + i;
-    if (appState.answers[index] === correctAnswer(index)) score += 1;
-  }
-  return score;
+  return ACTIVE_TEST.scoring.score(appState.answers).pageScores[pageIndex];
 }
 
 function totalScore() {
-  return appState.answers.reduce((sum, answer, index) => sum + (answer === correctAnswer(index) ? 1 : 0), 0);
+  return ACTIVE_TEST.scoring.score(appState.answers).total;
 }
 
 function resolveNormColumn(profile) {
-  const age = Number(profile?.edad || 0);
-  if (profile?.grupo === '7-16' && age >= 7 && age <= 16) return String(age);
-  if (profile?.grupo === 'AN') return 'AN';
-  if (profile?.grupo === 'AD') return 'AD';
-  return 'UN';
+  return ACTIVE_TEST.scoring.resolveNormColumn(profile);
 }
 
 function percentileFromScore(score, column) {
-  for (const row of BAREMOS) {
-    if (score >= Number(row[column])) return row.p;
-  }
-  return 1;
+  return ACTIVE_TEST.scoring.percentile(score, column);
 }
 
 function ciFromPercentile(percentile) {
-  for (const row of CI_EQ) {
-    if (percentile >= row.p) return row.ci;
-  }
-  return 65;
+  return ACTIVE_TEST.scoring.ci(percentile);
 }
 
 function classifyCI(ci) {
-  if (ci >= 140) return 'Inteligencia muy superior';
-  if (ci >= 124) return 'Inteligencia superior';
-  if (ci >= 116) return 'Buena inteligencia';
-  if (ci >= 85) return 'Inteligencia media';
-  if (ci >= 70) return 'Rango bajo';
-  return 'Rango muy bajo';
+  return ACTIVE_TEST.scoring.classify(ci);
 }
 
 function formatDate(value) {
@@ -638,6 +617,7 @@ function logout() {
   saveDraft();
   apiRequest('/api/auth/logout', {}, { method: 'POST' }).catch(() => {});
   localStorage.removeItem(STORAGE.sessionUser);
+  localStorage.removeItem(STORAGE.legacy.sessionUser);
   appState.sessionUser = null;
   appState.role = null;
   appState.profile = null;
@@ -680,27 +660,6 @@ function render() {
   applyExamSecurityUi();
   if (appState.role === 'staff') renderStaff();
   else renderAspirante();
-  animateCurrentView();
-}
-
-function animateCurrentView() {
-  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-  requestAnimationFrame(() => {
-    const main = $('#app-content');
-    if (!main) return;
-    if (window.gsap) {
-      if (appState.route === 'test') {
-        window.gsap.fromTo('.question-figure img', { autoAlpha: 0, y: 16, scale: 0.985 }, { autoAlpha: 1, y: 0, scale: 1, duration: 0.32, ease: 'power2.out' });
-        window.gsap.fromTo('.response-column > *', { autoAlpha: 0, x: 14 }, { autoAlpha: 1, x: 0, duration: 0.28, stagger: 0.04, ease: 'power2.out' });
-      } else {
-        window.gsap.fromTo(main.children, { autoAlpha: 0, y: 10 }, { autoAlpha: 1, y: 0, duration: 0.28, stagger: 0.035, ease: 'power2.out' });
-      }
-      return;
-    }
-    main.classList.remove('soft-enter');
-    void main.offsetWidth;
-    main.classList.add('soft-enter');
-  });
 }
 
 function renderAspirante() {
@@ -720,60 +679,51 @@ function renderHome() {
   const profileLine = [appState.profile.fullName, normalizeCareer(appState.profile.carrera)].filter(Boolean).join(' · ');
   return `
     <div class="screen-title">
-      <div><p class="eyebrow">Portal del aspirante</p><h2>${result ? 'Resultado disponible' : count ? 'Aplicación en progreso' : 'Aplicación lista'}</h2><p>${esc(profileLine)}</p></div>
-      <button class="solid-btn" type="button" data-action="start-test">${count ? 'Continuar prueba' : 'Iniciar prueba'}</button>
+      <div><p class="eyebrow">Centro de evaluaciones</p><h2>Hola, ${esc(appState.profile.fullName.split(' ')[0])}</h2><p>${esc(profileLine)}</p></div>
     </div>
     <div class="dashboard-grid">
-      <section class="hero-band">
+      <section class="hero-band assessment-card">
         <div class="hero-copy">
           <div>
-            <p class="eyebrow">Weil · Forma A</p>
-            <h2>Evaluación no verbal</h2>
-            <p>Aplicación digital con 5 láminas, 60 respuestas y calificación local por baremo.</p>
+            <div class="assessment-card__top"><p class="eyebrow">${esc(ACTIVE_TEST.shortName)}</p><span class="status-badge">${result ? 'Completada' : count ? 'En progreso' : 'Asignada'}</span></div>
+            <h2>${esc(ACTIVE_TEST.name)}</h2>
+            <p>${esc(ACTIVE_TEST.description)}</p>
+            <dl class="assessment-meta">
+              <div><dt>Ítems</dt><dd>${TOTAL_ITEMS}</dd></div>
+              <div><dt>Secciones</dt><dd>${TOTAL_PAGES}</dd></div>
+              <div><dt>Tiempo estimado</dt><dd>${ACTIVE_TEST.estimatedMinutes} min</dd></div>
+            </dl>
           </div>
           <div>
-            <div class="progress-shell" aria-label="Progreso"><div class="progress-bar" style="width:${progress}%"></div></div>
+            <div class="progress-label"><span>Progreso</span><strong>${progress}%</strong></div>
+            <div class="progress-shell" role="progressbar" aria-label="Progreso de ${esc(ACTIVE_TEST.shortName)}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${progress}"><div class="progress-bar" style="width:${progress}%"></div></div>
             <div class="hero-actions">
-              <button class="solid-btn" type="button" data-action="start-test">${count ? 'Retomar' : 'Comenzar'}</button>
-              <button class="ghost-btn" type="button" data-route="perfil">Ver perfil</button>
-              ${result ? '<button class="ghost-btn" type="button" data-route="resultados">Abrir resultados</button>' : ''}
+              <button class="solid-btn" type="button" data-action="start-test">${result ? 'Revisar respuestas' : count ? 'Continuar evaluación' : 'Comenzar evaluación'}</button>
+              ${result ? '<button class="ghost-btn" type="button" data-route="resultados">Ver resultado</button>' : ''}
             </div>
           </div>
         </div>
-        <div class="hero-visual"><img src="${LAMINAS[0]}" alt="Lámina 1 del test Weil"></div>
+        <div class="hero-visual"><img src="${LAMINAS[0]}" alt="Vista parcial del material de ${esc(ACTIVE_TEST.shortName)}"></div>
       </section>
       <aside class="status-stack">
-        <div class="metric-grid">
-          <div class="metric"><strong>${count}</strong><span>respondidos</span></div>
-          <div class="metric"><strong>${TOTAL_ITEMS - count}</strong><span>pendientes</span></div>
-          <div class="metric"><strong>${result ? result.score : '--'}</strong><span>puntaje</span></div>
-        </div>
-        <section class="panel">
-          <h3>Estado</h3>
-          <div class="check-list">
-            <div class="check-row"><span class="check-dot">1</span><span>Perfil identificado</span></div>
-            <div class="check-row"><span class="check-dot">2</span><span>Material cargado</span></div>
-            <div class="check-row"><span class="check-dot">3</span><span>${result ? 'Calificación guardada' : count ? 'Avance guardado' : 'Prueba sin iniciar'}</span></div>
+        <section class="panel next-step-panel">
+          <p class="eyebrow">Siguiente paso</p>
+          <h3>${result ? 'Tu resultado está listo' : count ? `Continuá desde el ítem ${appState.currentIndex + 1}` : 'Prepará tu espacio'}</h3>
+          <p>${result ? 'Consultá el reporte y la revisión de respuestas.' : 'Buscá un lugar sin interrupciones. El progreso se guarda automáticamente.'}</p>
+          <div class="metric-strip">
+            <div><strong>${count}</strong><span>respondidos</span></div>
+            <div><strong>${TOTAL_ITEMS - count}</strong><span>pendientes</span></div>
           </div>
         </section>
-        <section class="panel pretest-help">
-          <h3>Controles de la prueba</h3>
-          <div class="shortcut-grid" aria-label="Atajos disponibles durante la prueba">
-            <div><kbd>1-8</kbd><span>Responder opciones</span></div>
-            <div><kbd>Enter</kbd><span>Avanzar</span></div>
-            <div><kbd>←</kbd><span>Volver</span></div>
-            <div><kbd>→</kbd><span>Siguiente</span></div>
+        <section class="panel readiness-panel">
+          <h3>Antes de comenzar</h3>
+          <div class="check-list">
+            <div class="check-row"><span class="check-dot">1</span><span>Leé cada figura con calma.</span></div>
+            <div class="check-row"><span class="check-dot">2</span><span>Respondé todos los ítems.</span></div>
+            <div class="check-row"><span class="check-dot">3</span><span>Finalizá para generar el reporte.</span></div>
           </div>
         </section>
       </aside>
-    </div>
-    <div class="divider"></div>
-    <div class="lamina-grid">${LAMINAS.map((src, index) => `
-      <article class="lamina-card">
-        <img src="${src}" alt="Lámina ${index + 1}">
-        <strong>Lámina ${index + 1}</strong>
-        <span>${pageAnswered(index)}/12 respuestas</span>
-      </article>`).join('')}
     </div>`;
 }
 
@@ -890,13 +840,13 @@ function renderTest() {
       <section class="question-stage" aria-label="Ejercicio actual">
         <div class="stage-toolbar">
           <div>
-            <strong>Lámina ${page + 1}</strong>
-            <span>${pageAnswered(page)} de 12 respondidos</span>
+            <strong>${esc(ACTIVE_TEST.sections[page].label)}</strong>
+            <span>${pageAnswered(page)} de ${ITEMS_PER_PAGE} respondidos</span>
           </div>
           <div class="page-progress" aria-label="Cambiar lámina">${LAMINAS.map((_, i) => `<button type="button" class="page-dot ${i === page ? 'is-active' : ''} ${pageAnswered(i) === ITEMS_PER_PAGE ? 'is-complete' : ''}" data-page="${i}" aria-label="Lámina ${i + 1}">${i + 1}</button>`).join('')}</div>
         </div>
         <figure class="question-figure">
-          <img src="${ITEM_IMAGES[index]}" alt="Ejercicio ${local + 1} de la lámina ${page + 1}">
+          <img src="${ITEM_IMAGES[index]}" alt="Ejercicio ${local + 1} de ${esc(ACTIVE_TEST.sections[page].label)}" width="1200" height="900">
         </figure>
         <div class="item-rail" aria-label="Ítems de la lámina">${Array.from({ length: ITEMS_PER_PAGE }, (_, i) => {
           const absolute = page * ITEMS_PER_PAGE + i;
@@ -911,10 +861,11 @@ function renderTest() {
             <div>
               <p class="eyebrow">Respuesta</p>
               <h3>Seleccioná una opción</h3>
+              <p class="response-hint">${esc(ACTIVE_TEST.instructions)}</p>
             </div>
             <span class="selected-pill" aria-label="Respuesta seleccionada">${selected || '-'}</span>
           </div>
-          <div class="choice-grid">${Array.from({ length: 8 }, (_, i) => {
+          <div class="choice-grid">${Array.from({ length: ACTIVE_TEST.optionCount }, (_, i) => {
             const option = i + 1;
             return `<button type="button" class="choice-btn ${selected === option ? 'is-selected' : ''}" data-option="${option}" aria-label="Responder opción ${option}">${option}</button>`;
           }).join('')}</div>
@@ -976,7 +927,7 @@ function renderResults() {
           <thead><tr><th>Lámina</th><th>Aciertos</th><th>Estado</th><th>Respondidos</th></tr></thead>
           <tbody>${Array.from({ length: TOTAL_PAGES }, (_, page) => {
             const score = result.pageScores[page];
-            return `<tr><td>Lámina ${page + 1}</td><td>${score}/12</td><td><span class="pill ${score >= 8 ? 'good' : 'warn'}">${score >= 8 ? 'Fuerte' : 'Revisar'}</span></td><td>${result.answers.slice(page * ITEMS_PER_PAGE, (page + 1) * ITEMS_PER_PAGE).filter(v => v !== null).length}/12</td></tr>`;
+            return `<tr><td>${esc(ACTIVE_TEST.sections[page].label)}</td><td>${score}/${ITEMS_PER_PAGE}</td><td><span class="pill ${score >= 8 ? 'good' : 'warn'}">${score >= 8 ? 'Fuerte' : 'Revisar'}</span></td><td>${result.answers.slice(page * ITEMS_PER_PAGE, (page + 1) * ITEMS_PER_PAGE).filter(v => v !== null).length}/${ITEMS_PER_PAGE}</td></tr>`;
           }).join('')}</tbody>
         </table>
       </section>
@@ -1070,7 +1021,7 @@ function renderStaffApplicants() {
 
 function renderRecordsTable(list) {
   if (!list.length) return '<div class="empty-state">Todavía no hay aplicaciones finalizadas.</div>';
-  return `<section class="table-wrap"><table class="data-table"><thead><tr><th>Aspirante</th><th>Carrera</th><th>Puntaje</th><th>Percentil</th><th>CI</th><th>Fecha</th></tr></thead><tbody>${list.map(item => `<tr><td><strong>${esc(item.profile.fullName)}</strong><br><span class="muted tiny">CIF ${esc(item.profile.cif)}</span></td><td>${esc(normalizeCareer(item.profile.carrera))}</td><td>${item.score}/${item.total}</td><td>${item.percentile}</td><td>${item.ci}</td><td>${formatDate(item.endedAt)}</td></tr>`).join('')}</tbody></table></section>`;
+  return `<section class="table-wrap"><table class="data-table"><thead><tr><th>Aspirante</th><th>Evaluación</th><th>Carrera</th><th>Puntaje</th><th>Percentil</th><th>CI</th><th>Fecha</th></tr></thead><tbody>${list.map(item => `<tr><td><strong>${esc(item.profile.fullName)}</strong><br><span class="muted tiny">CIF ${esc(item.profile.cif)}</span></td><td>${esc(item.testName || ACTIVE_TEST.shortName)}</td><td>${esc(normalizeCareer(item.profile.carrera))}</td><td>${item.score}/${item.total}</td><td>${item.percentile}</td><td>${item.ci}</td><td>${formatDate(item.endedAt)}</td></tr>`).join('')}</tbody></table></section>`;
 }
 
 function renderBaremo() {
@@ -1264,7 +1215,7 @@ function startTest() {
 
 function selectAnswer(option) {
   if (appState.role !== 'aspirante' || appState.route !== 'test') return;
-  if (!Number.isInteger(option) || option < 1 || option > 8) return;
+  if (!Number.isInteger(option) || option < 1 || option > ACTIVE_TEST.optionCount) return;
   appState.answers[appState.currentIndex] = option;
   playSound('tap');
   if (appState.settings.autoAdvance && appState.currentIndex < TOTAL_ITEMS - 1) appState.currentIndex += 1;
@@ -1293,9 +1244,12 @@ function requestFinishTest() {
   playSound('nav');
 }
 
+let dialogReturnFocus = null;
+
 function showSubmitDialog({ status, missing, title, message }) {
   const dialog = $('#submit-dialog');
   if (!dialog) return;
+  dialogReturnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
   const answered = answeredCount();
   const firstMissing = missing[0] ?? null;
   const missingPreview = missing.slice(0, 12).map(index => index + 1).join(', ');
@@ -1305,7 +1259,7 @@ function showSubmitDialog({ status, missing, title, message }) {
       <div class="submit-dialog__head">
         <p class="eyebrow">${status === 'ready' ? 'Validación completa' : 'Revisión requerida'}</p>
         <h2 id="submit-dialog-title">${esc(title)}</h2>
-        <p>${esc(message)}</p>
+        <p id="submit-dialog-message">${esc(message)}</p>
       </div>
       <div class="submit-dialog__stats" aria-label="Resumen de entrega">
         <div><strong>${answered}</strong><span>respondidas</span></div>
@@ -1328,6 +1282,8 @@ function showSubmitDialog({ status, missing, title, message }) {
       </div>
     </section>`;
   dialog.classList.remove('app-hidden');
+  dialog.setAttribute('aria-describedby', 'submit-dialog-message');
+  $('#view-app').inert = true;
   requestAnimationFrame(() => dialog.querySelector('.solid-btn, .ghost-btn')?.focus());
 }
 
@@ -1336,6 +1292,9 @@ function closeSubmitDialog() {
   if (!dialog) return;
   dialog.classList.add('app-hidden');
   dialog.innerHTML = '';
+  $('#view-app').inert = false;
+  dialogReturnFocus?.focus({ preventScroll: true });
+  dialogReturnFocus = null;
 }
 
 function goFirstMissing(index) {
@@ -1367,6 +1326,9 @@ function completeTest() {
   const durationSec = appState.startedAt ? (new Date(endedAt).getTime() - new Date(appState.startedAt).getTime()) / 1000 : 0;
   const result = {
     id: `${appState.profile.cif}-${Date.now()}`,
+    testId: ACTIVE_TEST.id,
+    testVersion: ACTIVE_TEST.version,
+    testName: ACTIVE_TEST.shortName,
     profile: appState.profile,
     answers: [...appState.answers],
     score,
@@ -1403,7 +1365,10 @@ function resetTest() {
     appState.focusLosses = 0;
     appState.securityEvents = [];
   }
-  if (appState.profile?.cif) localStorage.removeItem(draftKey());
+  if (appState.profile?.cif) {
+    localStorage.removeItem(draftKey());
+    localStorage.removeItem(legacyDraftKey());
+  }
   if (keepLocked) recordSecurityEvent('reset', 'El aspirante reinicio respuestas durante la prueba.');
   playSound('nav');
   toast('Respuestas reiniciadas.', 'info');
@@ -1425,6 +1390,10 @@ function handleDocumentClick(event) {
       validateLogin();
       return;
     }
+    if (action === 'enter-demo') {
+      enterAspirante({ fullName: 'Usuario de demostración', cif: 'DEMO', edad: 18, grupo: 'UN', carrera: '' });
+      return;
+    }
     if (action === 'logout') logout();
     if (action === 'go-home') routeTo(appState.role === 'staff' ? 'panel' : 'inicio');
     if (action === 'start-test') startTest();
@@ -1437,7 +1406,12 @@ function handleDocumentClick(event) {
     if (action === 'restore-fullscreen') enterFullscreen();
     if (action === 'download-pdf') downloadResultPdf();
     if (action === 'reset-test') resetTest();
-    if (action === 'clear-records' && window.confirm('¿Eliminar todos los reportes locales?')) { localStorage.removeItem(STORAGE.results); toast('Registros eliminados.', 'info'); render(); }
+    if (action === 'clear-records' && window.confirm('¿Eliminar todos los reportes locales?')) {
+      localStorage.removeItem(STORAGE.results);
+      localStorage.removeItem(STORAGE.legacy.results);
+      toast('Registros eliminados.', 'info');
+      render();
+    }
     return;
   }
   if (routeTarget) {
@@ -1510,6 +1484,28 @@ function isForbiddenExamKey(event) {
 
 function handleKeydown(event) {
   if (isTypingField(event.target)) return;
+  const dialog = $('#submit-dialog');
+  if (dialog && !dialog.classList.contains('app-hidden')) {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      closeSubmitDialog();
+      return;
+    }
+    if (event.key === 'Tab') {
+      const controls = $$('button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])', dialog);
+      if (!controls.length) return;
+      const first = controls[0];
+      const last = controls[controls.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
+    return;
+  }
   if (isForbiddenExamKey(event)) {
     event.preventDefault();
     event.stopPropagation();
@@ -1519,9 +1515,10 @@ function handleKeydown(event) {
     return;
   }
   if (appState.role !== 'aspirante' || appState.route !== 'test') return;
-  if (/^[1-8]$/.test(event.key)) {
+  const numericOption = Number(event.key);
+  if (Number.isInteger(numericOption) && numericOption >= 1 && numericOption <= ACTIVE_TEST.optionCount) {
     event.preventDefault();
-    selectAnswer(Number(event.key));
+    selectAnswer(numericOption);
     return;
   }
   if (event.key === 'Enter' || event.key === 'ArrowRight') {
@@ -1610,5 +1607,6 @@ setInterval(() => {
 }, 1000);
 
 applySettings();
+$('#demo-access')?.classList.toggle('app-hidden', !STATIC_PAGES_MODE);
 validateLogin();
 restoreSessionFromBackend();
