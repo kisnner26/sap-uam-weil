@@ -335,3 +335,99 @@ body.theme-dark .question-figure.puzzle{background:#11191b}
   .question-figure.puzzle .puzzle-piece img{width:100%;height:auto}
   .puzzle-piece::after{left:-3px;top:-3px;min-width:14px;font-size:.6rem;line-height:14px}
 }
+
+/* ================= Pulido de interfaz ================= */
+
+/* Foco visible para quien navega con teclado */
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid var(--teal);outline-offset:2px}
+
+/* Legibilidad y objetivos tactiles de al menos ~44 px */
+.brand{min-height:44px}
+.pr__sub{font-size:.75rem}
+.exam-head__meta button.chip{min-height:36px}
+input[type="range"]{height:36px;cursor:pointer}
+
+/* Cabecera: el nombre del aspirante se ve completo, en dos lineas */
+#session-label{display:grid;gap:1px;max-width:min(44vw,360px);line-height:1.2;text-align:right;white-space:normal}
+#session-label b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink);font-size:.86rem;font-weight:900}
+#session-label small{color:var(--muted);font-size:.74rem;font-weight:800}
+
+/* Figura: esqueleto mientras carga y aparicion suave */
+.puzzle-base{transition:opacity .25s ease}
+.puzzle-board:not(.is-ready) .puzzle-base{opacity:0}
+.puzzle-board:not(.is-ready):not(.is-error)::before{content:"";position:absolute;inset:0;background:linear-gradient(100deg,var(--surface-2) 20%,var(--surface) 45%,var(--surface-2) 70%);background-size:240% 100%;animation:media-loading 1.2s ease-in-out infinite}
+.puzzle-board.is-error::after{content:"No se pudo cargar la figura. Recargá la página.";position:absolute;inset:0;display:grid;place-items:center;padding:16px;text-align:center;color:var(--red);font-weight:800}
+
+/* Tablas: nunca se recortan; si no caben, se desplazan */
+.table-wrap{overflow-x:auto}
+
+/* Tabletas y pantallas medianas */
+@media(max-width:1120px){
+  .exam-head{flex-direction:row;align-items:center;flex-wrap:wrap;gap:8px 16px;margin-bottom:12px}
+  .exam-head .eyebrow{display:none}
+  .exam-head h2{margin-top:0;font-size:1.4rem}
+  .exam-head p:not(.eyebrow){margin-top:2px;font-size:.86rem}
+  .exam-head__meta{justify-content:flex-start;gap:6px}
+  .exam-head .chip{min-height:30px;padding:0 9px;font-size:.74rem}
+  .exam-head__meta button.chip{min-height:36px}
+  .puzzle-stage{flex:none;height:clamp(220px,calc(84dvh - 324px),560px)}
+}
+/* Tableta horizontal: figura a la izquierda y piezas a la derecha, todo sin desplazarse */
+@media(min-width:900px) and (max-width:1120px){
+  .question-figure.puzzle{flex-direction:row;align-items:stretch;gap:16px;padding:14px}
+  .puzzle-stage{flex:1 1 0;min-width:0;width:auto;height:clamp(300px,calc(100dvh - 300px),620px)}
+  .puzzle-tray{grid-template-columns:repeat(2,auto);align-content:center;align-self:center;gap:10px 12px}
+  .puzzle-piece{height:auto;width:clamp(84px,10vw,120px)}
+  .question-figure.puzzle .puzzle-piece img{width:100%;height:auto}
+}
+
+/* Telefonos y tabletas verticales */
+@media(max-width:720px){
+  #session-label{display:none}
+  /* La navegacion queda fija al borde, sin flotar sobre el contenido */
+  .app-shell:not(:has(.test-workbench)) .top-nav{right:0;left:0;bottom:0;gap:4px;padding:6px 8px calc(6px + env(safe-area-inset-bottom));border:0;border-top:1px solid var(--line);border-radius:0;box-shadow:0 -8px 22px rgba(20,23,24,.08)}
+  .app-shell:not(:has(.test-workbench)) .nav-btn{min-height:46px;padding-inline:2px;font-size:.74rem}
+  .app-shell:not(:has(.test-workbench)) .app-content{padding-bottom:calc(84px + env(safe-area-inset-bottom))}
+  .toast-wrap{bottom:calc(74px + env(safe-area-inset-bottom))}
+  .exam-head{flex-direction:column;align-items:flex-start;gap:8px}
+  .exam-head h2{font-size:1.3rem}
+  .rail-btn{height:40px}
+}
+@media(max-width:560px){
+  /* Acceso: el formulario aparece sin tener que desplazarse */
+  .pr__hero{padding:20px 0 6px}
+  .pr__h1{font-size:2.5rem}
+  .pr__desc{display:none}
+  .pr__left{padding:18px 20px 22px}
+  .pr__student-card{height:96px;margin-bottom:14px}
+  /* Resultados */
+  .data-table th,.data-table td{padding:11px 8px;font-size:.8rem}
+  .data-table th{font-size:.72rem;white-space:normal}
+}
+@media(max-width:480px){
+  /* Las tres cifras del resumen en una sola fila, con separadores parejos */
+  .assessment-meta{grid-template-columns:repeat(3,1fr)}
+  .assessment-meta div,.assessment-meta div+div,.assessment-meta div:nth-child(odd),.assessment-meta div:nth-child(even){padding:12px 8px;border-bottom:0}
+  .assessment-meta div+div{border-left:1px solid var(--line)}
+  .assessment-meta div:first-child{padding-left:0;border-left:0}
+}
+
+/* Controles del acceso comodos de tocar */
+@media(max-width:900px){
+  .pi__toggle-pass{min-width:44px;min-height:44px}
+  .auth-secondary{min-height:44px;padding-block:12px}
+}
+
+@media(max-width:560px){
+  /* Cifras del resultado en dos columnas, en lugar de una caja por fila */
+  .score-meta{grid-template-columns:repeat(2,1fr);gap:8px}
+  .score-meta>*{padding:10px 12px}
+  .score-big{margin:8px 0;font-size:3.2rem}
+}
+@media(max-width:430px){
+  .app-shell:not(:has(.test-workbench)) .nav-btn{font-size:.72rem;letter-spacing:-.015em;white-space:nowrap}
+}
+
+/* Baremos: la columna de percentil queda fija al desplazar horizontalmente */
+.baremo-table th:first-child,.baremo-table td:first-child{position:sticky;left:0;z-index:1;background:var(--surface);box-shadow:1px 0 0 var(--line)}
+.baremo-table th:first-child{background:var(--surface-2)}

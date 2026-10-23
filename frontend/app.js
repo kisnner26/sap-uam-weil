@@ -720,10 +720,14 @@ function renderShell() {
     const isLocked = locked && route !== 'test';
     return `<button type="button" class="nav-btn ${appState.route === route ? 'is-active' : ''} ${isLocked ? 'is-locked' : ''}" data-route="${route}" ${isLocked ? 'aria-disabled="true"' : ''}>${label}</button>`;
   }).join('');
-  const label = appState.role === 'staff'
-    ? `Personal · ${esc(appState.profile?.username)}`
-    : `${esc(appState.profile?.fullName)} · CIF ${esc(appState.profile?.cif)}`;
-  $('#session-label').innerHTML = label;
+  const sessionLabel = $('#session-label');
+  if (appState.role === 'staff') {
+    sessionLabel.innerHTML = `<b>${esc(appState.profile?.username)}</b><small>Personal</small>`;
+    sessionLabel.title = `Personal · ${appState.profile?.username || ''}`;
+  } else {
+    sessionLabel.innerHTML = `<b>${esc(appState.profile?.fullName)}</b><small>CIF ${esc(appState.profile?.cif)}</small>`;
+    sessionLabel.title = `${appState.profile?.fullName || ''} · CIF ${appState.profile?.cif || ''}`;
+  }
 }
 
 function routeTo(route) {
@@ -835,6 +839,12 @@ function isFullscreenActive() {
   return !!(document.fullscreenElement || document.webkitFullscreenElement);
 }
 
+// iPhone y algunos navegadores no ofrecen pantalla completa: no se le exige ni se le anota como incidencia.
+function fullscreenSupported() {
+  const root = document.documentElement;
+  return !!(root.requestFullscreen || root.webkitRequestFullscreen);
+}
+
 function recordSecurityEvent(type, detail = '') {
   if (!isExamLocked()) return;
   const event = {
@@ -851,11 +861,7 @@ async function enterFullscreen() {
   if (!isExamLocked()) return;
   const root = document.documentElement;
   const request = root.requestFullscreen || root.webkitRequestFullscreen;
-  if (!request) {
-    recordSecurityEvent('fullscreen-unavailable', 'El navegador no permite pantalla completa.');
-    toast('Este navegador no permite activar pantalla completa.', 'err');
-    return;
-  }
+  if (!request) return;
   try {
     await request.call(root);
     toast('Modo examen activado en pantalla completa.', 'ok');
@@ -904,8 +910,6 @@ function renderTest() {
   const index = appState.currentIndex;
   const page = Math.floor(index / ITEMS_PER_PAGE);
   const local = index % ITEMS_PER_PAGE;
-  const row = Math.floor(local / 3) + 1;
-  const col = (local % 3) + 1;
   const selected = appState.answers[index];
   const puzzle = ACTIVE_TEST.media.puzzleItem?.(index) || null;
   const progress = Math.round((answeredCount() / TOTAL_ITEMS) * 100);
@@ -915,11 +919,11 @@ function renderTest() {
       <div>
         <p class="eyebrow">Aplicación activa</p>
         <h2>Ítem ${index + 1} de ${TOTAL_ITEMS}</h2>
-        <p>Lámina ${page + 1} · Ítem ${local + 1} · Fila ${row}, posición ${col}</p>
+        <p>Lámina ${page + 1} · Ítem ${local + 1} de ${ITEMS_PER_PAGE}</p>
       </div>
       <div class="exam-head__meta">
         <span class="chip lock-chip">Prueba bloqueada</span>
-        <button class="chip security-chip ${isFullscreenActive() ? 'is-ok' : 'is-alert'}" type="button" data-action="restore-fullscreen">${isFullscreenActive() ? 'Pantalla completa' : 'Activar pantalla completa'}</button>
+        ${fullscreenSupported() ? `<button class="chip security-chip ${isFullscreenActive() ? 'is-ok' : 'is-alert'}" type="button" data-action="restore-fullscreen">${isFullscreenActive() ? 'Pantalla completa' : 'Activar pantalla completa'}</button>` : ''}
         <span class="chip ${securityEvents ? 'security-chip is-alert' : 'security-chip'}">Incidencias ${securityEvents}</span>
         <span class="chip" id="test-clock">${elapsedLabel()}</span>
         <span class="chip">${progress}% completado</span>
@@ -1037,7 +1041,17 @@ function clearAnswer() {
 }
 
 function prepareCurrentItemMedia() {
-  const currentImage = $('.puzzle-base') || $('.question-figure img');
+  const puzzleBase = $('.puzzle-base');
+  if (puzzleBase) {
+    const board = puzzleBase.closest('.puzzle-board');
+    const ready = () => board?.classList.add('is-ready');
+    if (puzzleBase.complete && puzzleBase.naturalWidth) ready();
+    else {
+      puzzleBase.addEventListener('load', ready, { once: true });
+      puzzleBase.addEventListener('error', () => board?.classList.add('is-error'), { once: true });
+    }
+  }
+  const currentImage = puzzleBase || $('.question-figure img');
   if (currentImage && !currentImage.complete) {
     currentImage.closest('.question-figure')?.classList.add('is-loading');
     currentImage.addEventListener('load', () => currentImage.closest('.question-figure')?.classList.remove('is-loading'), { once: true });
