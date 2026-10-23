@@ -85,7 +85,7 @@ las pantallas de acceso, inicio, perfil y resultados pertenecen a la plataforma.
 ## migración recomendada
 
 1. consolidar el catálogo y las claves de almacenamiento por `testId`, ya aplicado en el frontend.
-2. persistir asignaciones, intentos y respuestas en el backend manteniendo el borrador local como recuperación ante fallos.
+2. persistir intentos y respuestas en el backend manteniendo el borrador local como recuperación ante fallos, ya aplicado mediante `/api/attempts`.
 3. mover la clave y el baremo de weil al adaptador de calificación del backend.
 4. cambiar el frontend para que la entrega consuma `POST /submit` y solo muestre el resultado devuelto.
 5. agregar el próximo test como otro contrato y otra estrategia, sin copiar el shell ni la autenticación.
@@ -97,3 +97,27 @@ las pantallas de acceso, inicio, perfil y resultados pertenecen a la plataforma.
 - los reportes requieren autorización por propietario o rol institucional.
 - el log de incidencias tiene retención definida y no se usa como diagnóstico psicológico.
 - los datos psicométricos se tratan como información sensible: cifrado en tránsito, acceso mínimo y auditoría de lectura.
+
+## patrones aplicados
+
+### lazy load
+
+- el visor inserta únicamente la imagen del ítem actual y precarga solo la siguiente.
+- la imagen define sus dimensiones y presenta estados de carga y error para evitar saltos visuales.
+- el índice local de resultados contiene solo resúmenes; respuestas, incidencias y desglose se leen desde una clave de detalle cuando se abre un reporte.
+- `GET /api/attempts` devuelve resúmenes y `GET /api/attempts/{id}` carga las respuestas bajo demanda.
+
+### mvc observer
+
+`frontend/platform-state.js` publica eventos de dominio. la vista, el repositorio de borradores y los controles de navegación se suscriben por separado. una respuesta actualiza selección, progreso y estado del ítem sin reconstruir toda la pantalla; un cambio de ítem sí reconstruye el visor porque cambia el recurso principal.
+
+### optimistic y pessimistic offline lock
+
+- al abrir un intento, el servicio bloquea pesimistamente la fila del usuario. así dos solicitudes simultáneas no crean dos intentos activos.
+- el intento entrega un arrendamiento exclusivo de dos minutos. el mismo cliente lo renueva; otra ventana o dispositivo recibe `409 conflict` mientras siga vigente.
+- cada escritura incluye `expectedVersion`. `@Version` detecta modificaciones concurrentes aunque ambas solicitudes hayan leído el mismo estado.
+- el índice parcial `uk_attempt_active` refuerza en postgres la regla de un intento activo por usuario y test.
+
+### client session state
+
+`frontend/client-session.js` guarda en el dispositivo únicamente respuestas, posición, hora de inicio e incidencias. no persiste puntaje, percentil, ci, clasificación ni claves dentro del borrador. los datos locales permiten recuperación, pero no son autoridad para una entrega de producción; el backend vuelve a validar versión, propiedad, sesión exclusiva y respuestas completas.
