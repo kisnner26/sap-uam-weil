@@ -63,6 +63,23 @@ mvn spring-boot:run
 
 > La contraseña de Moodle y el token de Moodle **nunca se persisten** en base de datos.
 
+## Respuesta por arrastre
+
+Cada ítem se responde como un rompecabezas: la figura trae un hueco y las 8 opciones son piezas
+sueltas que se arrastran hasta él (con ratón o con el dedo). También se puede tocar una pieza, usar
+las teclas 1 a 8, o sacar la pieza del hueco arrastrándola afuera. Arrastrar la pieza N equivale a
+responder la opción N, así que la calificación y el servidor no cambian.
+
+Las piezas se generan a partir de las láminas completas (`frontend/assets/weill-pages`):
+
+```bash
+pip install opencv-python-headless numpy
+python3 tools/build_puzzle_assets.py              # regenera frontend/assets/weill-puzzle y puzzle-data.js
+python3 tools/build_puzzle_assets.py --dry-run --debug /tmp/debug   # solo detecta y dibuja lo encontrado
+```
+
+Si un ítem no tiene piezas, la pantalla vuelve al teclado numérico de siempre.
+
 ## Tests
 
 ```bash

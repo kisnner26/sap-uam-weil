@@ -907,6 +907,7 @@ function renderTest() {
   const row = Math.floor(local / 3) + 1;
   const col = (local % 3) + 1;
   const selected = appState.answers[index];
+  const puzzle = ACTIVE_TEST.media.puzzleItem?.(index) || null;
   const progress = Math.round((answeredCount() / TOTAL_ITEMS) * 100);
   const securityEvents = appState.securityEvents.length;
   return `
@@ -933,9 +934,9 @@ function renderTest() {
           </div>
           <div class="page-progress" aria-label="Cambiar lámina">${LAMINAS.map((_, i) => `<button type="button" class="page-dot ${i === page ? 'is-active' : ''} ${pageAnswered(i) === ITEMS_PER_PAGE ? 'is-complete' : ''}" data-page="${i}" aria-label="Lámina ${i + 1}">${i + 1}</button>`).join('')}</div>
         </div>
-        <figure class="question-figure">
+        ${puzzle ? renderPuzzle(puzzle, index, local, page, selected) : `<figure class="question-figure">
           <img src="${ITEM_IMAGES[index]}" alt="Ejercicio ${local + 1} de ${esc(ACTIVE_TEST.sections[page].label)}" width="1200" height="900" decoding="async" fetchpriority="high">
-        </figure>
+        </figure>`}
         <div class="item-rail" aria-label="Ítems de la lámina">${Array.from({ length: ITEMS_PER_PAGE }, (_, i) => {
           const absolute = page * ITEMS_PER_PAGE + i;
           const answered = appState.answers[absolute] !== null;
@@ -948,15 +949,15 @@ function renderTest() {
           <div class="response-card__top">
             <div>
               <p class="eyebrow">Respuesta</p>
-              <h3>Seleccioná una opción</h3>
-              <p class="response-hint">${esc(ACTIVE_TEST.instructions)}</p>
+              <h3>${puzzle ? 'Completá la figura' : 'Seleccioná una opción'}</h3>
+              <p class="response-hint">${puzzle ? 'Arrastrá la pieza que completa la figura hasta el hueco. También podés tocarla, o usar las teclas del 1 al 8.' : esc(ACTIVE_TEST.instructions)}</p>
             </div>
             <span class="selected-pill" aria-label="Respuesta seleccionada">${selected || '-'}</span>
           </div>
-          <div class="choice-grid">${Array.from({ length: ACTIVE_TEST.optionCount }, (_, i) => {
+          ${puzzle ? `<button type="button" class="ghost-btn wide-btn puzzle-clear" data-action="clear-answer" ${selected ? '' : 'disabled'}>Quitar pieza</button>` : `<div class="choice-grid">${Array.from({ length: ACTIVE_TEST.optionCount }, (_, i) => {
             const option = i + 1;
             return `<button type="button" class="choice-btn ${selected === option ? 'is-selected' : ''}" data-option="${option}" aria-label="Responder opción ${option}">${option}</button>`;
-          }).join('')}</div>
+          }).join('')}</div>`}
         </section>
 
         <section class="progress-card" aria-label="Avance de la prueba">
@@ -979,8 +980,64 @@ function renderTest() {
     </div>`;
 }
 
+function renderPuzzle(puzzle, index, local, page, selected) {
+  const label = `Ejercicio ${local + 1} de ${ACTIVE_TEST.sections[page].label}`;
+  const placed = selected ? puzzle.pieces[selected - 1] : '';
+  return `
+        <figure class="question-figure puzzle">
+          <div class="puzzle-stage">
+            <div class="puzzle-board" style="--pw:${puzzle.width};--ph:${puzzle.height}">
+              <img class="puzzle-base" src="${puzzle.base}" alt="${esc(label)}: figura incompleta" width="${puzzle.width}" height="${puzzle.height}" decoding="async" fetchpriority="high" draggable="false">
+              <div class="puzzle-slot ${selected ? 'is-filled' : ''}" data-slot style="${window.SAP_UAM_PUZZLE_VIEW.slotStyle(puzzle)}" aria-label="Hueco de la figura${selected ? `: pieza ${selected}` : ' vacío'}">
+                <img class="puzzle-placed" src="${placed}" alt="" draggable="false" ${selected ? `data-slot-piece="${selected}"` : 'hidden'}>
+              </div>
+            </div>
+          </div>
+          <div class="puzzle-tray" role="group" aria-label="Piezas disponibles">${puzzle.pieces.map((src, i) => `
+            <button type="button" class="puzzle-piece ${selected === i + 1 ? 'is-used' : ''}" data-piece="${i + 1}" data-option="${i + 1}" aria-label="Pieza ${i + 1}${selected === i + 1 ? ', colocada' : ''}">
+              <img src="${src}" alt="" draggable="false" decoding="async">
+            </button>`).join('')}
+          </div>
+        </figure>`;
+}
+
+function syncPuzzleView() {
+  const slot = $('[data-slot]');
+  if (!slot) return;
+  const selected = appState.answers[appState.currentIndex];
+  const placed = slot.querySelector('.puzzle-placed');
+  const piece = selected ? $(`.puzzle-piece[data-piece="${selected}"] img`) : null;
+  if (placed) {
+    if (piece) {
+      placed.src = piece.currentSrc || piece.src;
+      placed.dataset.slotPiece = selected;
+      placed.hidden = false;
+    } else {
+      placed.hidden = true;
+      placed.removeAttribute('data-slot-piece');
+    }
+  }
+  slot.classList.toggle('is-filled', !!piece);
+  slot.setAttribute('aria-label', piece ? `Hueco de la figura: pieza ${selected}` : 'Hueco de la figura vacío');
+  $$('.puzzle-piece').forEach(button => {
+    const used = Number(button.dataset.piece) === selected;
+    button.classList.toggle('is-used', used);
+    button.setAttribute('aria-label', `Pieza ${button.dataset.piece}${used ? ', colocada' : ''}`);
+  });
+  const clear = $('.puzzle-clear');
+  if (clear) clear.disabled = !selected;
+}
+
+function clearAnswer() {
+  if (appState.role !== 'aspirante' || appState.route !== 'test') return;
+  if (appState.answers[appState.currentIndex] === null) return;
+  appState.answers[appState.currentIndex] = null;
+  playSound('tap');
+  stateStore.publish('answer', { index: appState.currentIndex, option: null });
+}
+
 function prepareCurrentItemMedia() {
-  const currentImage = $('.question-figure img');
+  const currentImage = $('.puzzle-base') || $('.question-figure img');
   if (currentImage && !currentImage.complete) {
     currentImage.closest('.question-figure')?.classList.add('is-loading');
     currentImage.addEventListener('load', () => currentImage.closest('.question-figure')?.classList.remove('is-loading'), { once: true });
@@ -988,9 +1045,12 @@ function prepareCurrentItemMedia() {
   }
   const nextIndex = appState.currentIndex + 1;
   if (nextIndex < ITEM_IMAGES.length) {
-    const nextImage = new Image();
-    nextImage.decoding = 'async';
-    nextImage.src = ITEM_IMAGES[nextIndex];
+    const nextPuzzle = ACTIVE_TEST.media.puzzleItem?.(nextIndex);
+    (nextPuzzle ? [nextPuzzle.base, ...nextPuzzle.pieces] : [ITEM_IMAGES[nextIndex]]).forEach(src => {
+      const nextImage = new Image();
+      nextImage.decoding = 'async';
+      nextImage.src = src;
+    });
   }
 }
 
@@ -998,6 +1058,7 @@ function updateTestViewAfterAnswer() {
   if (appState.route !== 'test') return;
   const index = appState.currentIndex;
   const selected = appState.answers[index];
+  syncPuzzleView();
   $$('.choice-btn').forEach(button => button.classList.toggle('is-selected', Number(button.dataset.option) === selected));
   const selectedPill = $('.selected-pill');
   if (selectedPill) selectedPill.textContent = selected || '-';
@@ -1011,8 +1072,8 @@ function updateTestViewAfterAnswer() {
   const progressChip = $$('.exam-head__meta .chip').at(-1);
   if (progressChip) progressChip.textContent = `${progress}% completado`;
   const railButton = $(`.rail-btn[data-item="${index}"]`);
-  railButton?.classList.add('is-answered');
-  railButton?.setAttribute('aria-label', `Ítem ${(index % ITEMS_PER_PAGE) + 1}, respondido`);
+  railButton?.classList.toggle('is-answered', selected !== null);
+  railButton?.setAttribute('aria-label', `Ítem ${(index % ITEMS_PER_PAGE) + 1}${selected !== null ? ', respondido' : ''}`);
   const sectionCount = $('.stage-toolbar span');
   if (sectionCount) sectionCount.textContent = `${pageAnswered(Math.floor(index / ITEMS_PER_PAGE))} de ${ITEMS_PER_PAGE} respondidos`;
 }
@@ -1572,6 +1633,7 @@ function handleDocumentClick(event) {
     if (action === 'start-test') startTest();
     if (action === 'prev-item') { appState.currentIndex = Math.max(0, appState.currentIndex - 1); playSound('nav'); stateStore.publish('assessment-navigation', { reason: 'previous' }); }
     if (action === 'next-item') { appState.currentIndex = Math.min(TOTAL_ITEMS - 1, appState.currentIndex + 1); playSound('nav'); stateStore.publish('assessment-navigation', { reason: 'next' }); }
+    if (action === 'clear-answer') clearAnswer();
     if (action === 'finish-test') requestFinishTest();
     if (action === 'close-submit-dialog') closeSubmitDialog();
     if (action === 'go-first-missing') goFirstMissing(actionTarget.dataset.targetIndex);
@@ -1745,6 +1807,11 @@ $('#fullname')?.addEventListener('input', validateLogin);
 $('#cedula')?.addEventListener('input', validateLogin);
 $('#unified-pass')?.addEventListener('input', validateLogin);
 
+window.SAP_UAM_PUZZLE_VIEW.attachDrag(document, {
+  canInteract: () => appState.role === 'aspirante' && appState.route === 'test',
+  onDrop: option => selectAnswer(option),
+  onClear: clearAnswer
+});
 document.addEventListener('click', handleDocumentClick);
 document.addEventListener('change', handleDocumentChange);
 document.addEventListener('keydown', handleKeydown);

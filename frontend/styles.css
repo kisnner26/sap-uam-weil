@@ -280,3 +280,58 @@ p,li,small{text-wrap:pretty}
   .hero-copy{padding:18px}
   .hero-copy h2{font-size:1.85rem;line-height:1.05}
 }
+
+/* ---- Items como rompecabezas: figura con hueco + piezas que se arrastran ---- */
+.question-figure.puzzle{display:flex;flex-direction:column;align-items:center;gap:14px;min-height:0;padding:16px}
+.question-figure.puzzle img{width:auto;height:auto;min-height:0;max-height:none;max-width:none;border:0;border-radius:0;box-shadow:none;background:transparent;object-fit:fill;-webkit-user-drag:none;user-select:none;-webkit-user-select:none}
+/* El escenario ocupa el espacio libre; la figura se ajusta a el sin perder su proporcion. */
+.puzzle-stage{flex:1 1 0;min-height:0;width:100%;container-type:size;display:grid;place-items:center}
+.puzzle-board{position:relative;flex:none;width:min(100cqw,calc(100cqh * var(--pw) / var(--ph)));aspect-ratio:var(--pw) / var(--ph);background:#fff;border:1px solid #cfd7da;border-radius:8px;box-shadow:0 16px 36px rgba(20,23,24,.13);overflow:hidden}
+.question-figure.puzzle .puzzle-base{display:block;width:100%;height:100%}
+.puzzle-slot{position:absolute;border-radius:6px;transition:box-shadow .12s ease,background .12s ease}
+.puzzle-slot.is-over{background:rgba(0,108,118,.14);box-shadow:0 0 0 3px var(--teal)}
+.puzzle-slot:not(.is-filled){animation:puzzle-hint 2.4s ease-in-out infinite}
+.question-figure.puzzle .puzzle-placed{position:absolute;inset:0;width:100%;height:100%;cursor:grab;touch-action:none}
+.puzzle-placed[hidden]{display:none}
+.puzzle-tray{flex:none;display:grid;grid-template-columns:repeat(4,auto);gap:10px 14px;justify-content:center;padding:12px 16px;border:1px solid #cfd7da;border-radius:8px;background:#fff;box-shadow:0 10px 24px rgba(20,23,24,.08)}
+.puzzle-piece{position:relative;display:flex;height:clamp(44px,9dvh,84px);padding:0;border:0;border-radius:4px;background:transparent;cursor:grab;touch-action:none;transition:transform .12s ease,opacity .12s ease,filter .12s ease}
+.question-figure.puzzle .puzzle-piece img{height:100%}
+.puzzle-piece::after{content:attr(data-piece);position:absolute;left:-2px;top:-2px;min-width:16px;padding:0 4px;border-radius:8px;background:var(--ink);color:var(--surface);font-size:.66rem;font-weight:900;line-height:16px;text-align:center;opacity:.78;pointer-events:none}
+.puzzle-piece:hover{transform:translateY(-2px)}
+.puzzle-piece:focus-visible{outline:3px solid var(--teal);outline-offset:3px}
+.puzzle-piece.is-used{opacity:.32;filter:grayscale(1)}
+.puzzle-piece.is-dragging{opacity:.2}
+.puzzle-ghost{position:fixed;z-index:9999;pointer-events:none;transform:translate(-50%,-50%) scale(1.06);filter:drop-shadow(0 10px 14px rgba(0,0,0,.3));background:#fff;-webkit-user-drag:none}
+body.is-puzzle-dragging,body.is-puzzle-dragging *{cursor:grabbing!important;user-select:none}
+.puzzle-clear{margin-top:14px}
+body.theme-dark .question-figure.puzzle{background:#11191b}
+@keyframes puzzle-hint{0%,100%{box-shadow:0 0 0 0 rgba(0,108,118,0)}50%{box-shadow:0 0 0 4px rgba(0,108,118,.22)}}
+@media (prefers-reduced-motion:reduce){.puzzle-slot:not(.is-filled){animation:none}.puzzle-piece,.puzzle-slot{transition:none}}
+/* Escritorio: el examen ocupa todo el alto disponible y las piezas van al lado de la figura. */
+@media(min-width:1121px){
+  .question-stage:has(.puzzle){align-self:stretch}
+  .question-figure.puzzle{flex-direction:row;align-items:stretch;gap:18px;padding:18px}
+  .puzzle-stage{width:auto;flex:1 1 0;min-width:0}
+  .puzzle-tray{grid-template-columns:repeat(2,auto);align-content:center;align-self:center;gap:12px 14px}
+  .puzzle-piece{height:auto;width:clamp(96px,8.6vw,136px)}
+  .question-figure.puzzle .puzzle-piece img{width:100%;height:auto}
+}
+/* Pantallas sin altura fija para el examen: la figura toma una altura propia y la pagina fluye. */
+@media(max-width:1120px){
+  .question-stage:has(.puzzle){grid-template-rows:auto auto auto}
+  .question-figure.puzzle{height:auto;overflow:visible}
+  .puzzle-stage{flex:none;height:clamp(240px,46dvh,520px)}
+}
+@media(max-width:1120px){
+  .test-workbench:has(.puzzle){grid-template-columns:minmax(0,1fr)}
+  .question-stage:has(.puzzle),.question-figure.puzzle{min-width:0}
+}
+@media (max-width:560px){
+  .question-figure.puzzle{padding:10px;gap:12px}
+  .puzzle-stage{container-type:normal;display:block;height:auto}
+  .puzzle-board{width:100%}
+  .puzzle-tray{width:100%;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;padding:8px}
+  .puzzle-piece{height:auto;width:100%}
+  .question-figure.puzzle .puzzle-piece img{width:100%;height:auto}
+  .puzzle-piece::after{left:-3px;top:-3px;min-width:14px;font-size:.6rem;line-height:14px}
+}

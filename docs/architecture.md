@@ -136,3 +136,17 @@ al entregar, el backend recalcula el puntaje directo y el desglose por lámina c
   del backend habría que moverlo a un almacén compartido.
 - **El modo demo** guarda sus cuentas en `localStorage` del navegador (con contraseña protegida
   con PBKDF2); sirve para probar la interfaz, no para uso real.
+
+## Respuesta por arrastre (piezas)
+
+- `tools/build_puzzle_assets.py` corta cada ítem de las láminas completas: localiza los 12 marcos de la
+  página, ajusta la cuadrícula de 2×4 opciones y el hueco, y guarda la figura base y 8 piezas
+  (`frontend/assets/weill-puzzle`, ~540 archivos) más `frontend/puzzle-data.js` con el tamaño y el hueco.
+- Se corta desde las láminas y no desde `weill-items`, porque varios recortes de esa carpeta están
+  desplazados y les faltan partes (sobre todo en la lámina 4).
+- `frontend/puzzle-view.js` maneja el arrastre con eventos de puntero, no con el arrastre nativo del
+  navegador: la prueba bloqueada registra `dragstart` y `drop` como incidencias.
+- La respuesta sigue siendo un número 1 a 8 (`selectAnswer`), por lo que no cambian la calificación,
+  los locks ni la API.
+- Limitación: en la lámina 4 los ítems de la columna derecha vienen cortados por el borde del escaneo
+  original, así que a su pieza 4 le falta parte del borde derecho.

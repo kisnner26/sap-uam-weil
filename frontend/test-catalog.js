@@ -98,6 +98,21 @@
           const section = Math.floor(itemIndex / 12) + 1;
           const item = String((itemIndex % 12) + 1).padStart(2, '0');
           return `assets/weill-items/lamina-${section}-item-${item}.png?v=2`;
+        },
+        /** Figura base con hueco + 8 piezas sueltas, o null si el item no tiene piezas. */
+        puzzleItem(itemIndex) {
+          const data = global.SAP_UAM_PUZZLE?.['weil-form-a']?.[itemIndex];
+          if (!data) return null;
+          const section = Math.floor(itemIndex / 12) + 1;
+          const item = String((itemIndex % 12) + 1).padStart(2, '0');
+          const stem = `assets/weill-puzzle/l${section}i${item}`;
+          return {
+            base: `${stem}-base.png?v=2`,
+            pieces: Array.from({ length: 8 }, (_, i) => `${stem}-p${i + 1}.png?v=2`),
+            width: data.w,
+            height: data.h,
+            patch: data.patch
+          };
         }
       })
     })
