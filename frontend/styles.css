@@ -21,7 +21,7 @@
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html{-webkit-text-size-adjust:100%}
-body{min-height:100vh;font-family:var(--font-ui);color:var(--ink);background:var(--paper);overflow-x:hidden}
+body{min-height:100dvh;font-family:var(--font-ui);color:var(--ink);background:var(--paper);overflow-x:hidden}
 body.theme-dark{--paper:#121719;--paper-2:#151b1e;--surface:#1d2427;--surface-2:#182326;--ink:#f5f7f5;--ink-2:#d9dedc;--muted:#a9b2b1;--line:#344044;--line-dark:#d7e4e4;--teal:#6bc8cf;--teal-soft:#19363a;--gold:#e4ba35;--shadow:0 18px 50px rgba(0,0,0,.28)}
 button,input,select{font:inherit}
 button{cursor:pointer;border:0;background:none;color:inherit}
@@ -31,10 +31,10 @@ a{color:inherit;text-decoration:none}
 :focus-visible{outline:3px solid var(--gold);outline-offset:3px;border-radius:6px}
 .app-hidden{display:none!important}
 .toast-wrap{position:fixed;right:20px;bottom:20px;z-index:80;display:grid;gap:10px;justify-items:end}
-.toast{max-width:min(360px,calc(100vw - 32px));padding:12px 14px;border:1px solid rgba(255,255,255,.14);border-radius:8px;background:#101315;color:#fff;box-shadow:0 16px 36px rgba(0,0,0,.22);font-weight:800;font-size:.9rem;line-height:1.35;opacity:0;transform:translateY(10px);transition:opacity .18s ease,transform .18s ease}
-.toast.show{opacity:1;transform:none}.toast--ok{background:#163d2a}.toast--err{background:#6b1f1a}.toast--info{background:#142f45}
+.toast{max-width:min(360px,calc(100vw - 32px));padding:12px 14px;border:1px solid rgba(255,255,255,.14);border-radius:8px;background:#101315;color:#fff;box-shadow:0 16px 36px rgba(0,0,0,.22);font-weight:800;font-size:.9rem;line-height:1.35}
+.toast--ok{background:#163d2a}.toast--err{background:#6b1f1a}.toast--info{background:#142f45}
 .submit-dialog{position:fixed;inset:0;z-index:95;display:grid;place-items:center;padding:22px}
-.submit-dialog__backdrop{position:absolute;inset:0;background:rgba(10,13,14,.62);backdrop-filter:blur(7px)}
+.submit-dialog__backdrop{position:absolute;inset:0;background:rgba(10,13,14,.72)}
 .submit-dialog__card{position:relative;width:min(520px,100%);padding:22px;border:1px solid var(--line);border-radius:8px;background:var(--surface);box-shadow:0 28px 80px rgba(0,0,0,.28)}
 .submit-dialog__head h2{margin-top:6px;font-size:1.65rem;line-height:1.05}
 .submit-dialog__head p:not(.eyebrow){margin-top:8px;color:var(--muted);font-weight:800;line-height:1.45}
@@ -61,7 +61,7 @@ a{color:inherit;text-decoration:none}
 
 /* Application shell */
 .app-shell{min-height:100dvh;background:var(--paper-2);background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);background-size:28px 28px;color:var(--ink)}
-.app-top{position:sticky;top:0;z-index:50;display:grid;grid-template-columns:minmax(250px,.8fr) minmax(360px,1.25fr) minmax(210px,.65fr);gap:18px;align-items:center;padding:14px 22px;border-bottom:1px solid var(--line);background:color-mix(in srgb,var(--surface) 92%,transparent);backdrop-filter:saturate(1.2) blur(12px)}
+.app-top{position:sticky;top:0;z-index:50;display:grid;grid-template-columns:minmax(250px,.8fr) minmax(360px,1.25fr) minmax(210px,.65fr);gap:18px;align-items:center;padding:14px 22px;border-bottom:1px solid var(--line);background:var(--surface)}
 body.exam-locked{user-select:none}
 body.exam-locked .app-top{grid-template-columns:minmax(260px,1fr) auto}
 body.exam-locked .brand{pointer-events:none}
@@ -91,8 +91,6 @@ body.body-compact .panel,body.body-compact .answer-card,body.body-compact .metri
 
 /* Test-taking flow v2: one exercise, one answer task, no competing grids. */
 .app-content:has(.test-workbench){width:min(1600px,100%);padding-top:22px}
-.soft-enter{animation:softEnter .22s ease-out both}
-@keyframes softEnter{from{opacity:.72;transform:translateY(8px)}to{opacity:1;transform:none}}
 .exam-head{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;margin-bottom:18px}
 .exam-head h2{margin-top:4px;font-size:1.75rem;line-height:1.1}
 .exam-head p:not(.eyebrow){margin-top:5px;color:var(--muted);font-weight:800}
@@ -218,3 +216,62 @@ body.theme-dark .question-figure{background:#11191b}
 .shortcut-grid div{display:flex;align-items:center;gap:8px;min-height:38px;padding:8px;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
 .shortcut-grid kbd{min-width:34px;height:26px;display:grid;place-items:center;border:1px solid var(--line);border-bottom-width:3px;border-radius:6px;background:var(--surface-2);font:900 .78rem/1 var(--font-ui)}
 .shortcut-grid span{color:var(--muted);font-weight:850;font-size:.78rem}
+
+/* Shared assessment platform */
+h1,h2,h3{text-wrap:balance}
+p,li,small{text-wrap:pretty}
+.assessment-card{min-height:430px}
+.assessment-card__top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px}
+.status-badge{display:inline-flex;align-items:center;min-height:30px;padding:0 10px;border:1px solid color-mix(in srgb,var(--teal) 35%,var(--line));border-radius:999px;background:var(--teal-soft);color:var(--teal);font-size:.76rem;font-weight:900}
+.assessment-meta{display:flex;gap:0;margin-top:24px;border-block:1px solid var(--line)}
+.assessment-meta div{min-width:0;flex:1;padding:14px 16px 14px 0}
+.assessment-meta div+div{padding-left:16px;border-left:1px solid var(--line)}
+.assessment-meta dt{color:var(--muted);font-size:.72rem;font-weight:800}
+.assessment-meta dd{margin-top:5px;font-size:1rem;font-weight:900}
+.progress-label{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;color:var(--muted);font-size:.78rem;font-weight:800}
+.progress-label strong{color:var(--ink);font-variant-numeric:tabular-nums}
+.next-step-panel{display:grid;gap:10px;padding:22px;background:var(--ink);color:var(--surface)}
+.next-step-panel .eyebrow{color:var(--gold)}
+.next-step-panel h3{margin:0;font-size:1.35rem}
+.next-step-panel>p:not(.eyebrow){color:color-mix(in srgb,var(--surface) 72%,transparent);font-weight:700;line-height:1.55}
+.metric-strip{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.metric-strip div{padding:12px;border:1px solid color-mix(in srgb,var(--surface) 18%,transparent);border-radius:8px}
+.metric-strip strong,.metric-strip span{display:block}
+.metric-strip strong{font-size:1.5rem;font-variant-numeric:tabular-nums}
+.metric-strip span{margin-top:4px;color:color-mix(in srgb,var(--surface) 62%,transparent);font-size:.75rem;font-weight:800}
+.readiness-panel{padding:22px}
+.response-hint{max-width:36ch;margin-top:7px;color:var(--muted);font-size:.78rem;font-weight:700;line-height:1.4}
+.switch input:focus-visible+span{outline:3px solid var(--gold);outline-offset:3px}
+.ghost-btn,.solid-btn,.danger-btn{min-height:44px;height:auto;padding-block:8px}
+.nav-btn,.page-dot,.rail-btn{min-height:44px}
+.step-card .wide-btn{min-height:44px;height:auto}
+.choice-btn:active,.solid-btn:active{transform:translateY(1px)}
+
+@media(max-width:880px){
+  .assessment-card{min-height:0}
+  .assessment-meta{flex-wrap:wrap}
+  .assessment-meta div{min-width:33%}
+}
+
+@media(max-width:720px){
+  .app-shell:not(:has(.test-workbench)) .app-top{grid-template-columns:1fr auto;gap:10px;padding:10px 14px}
+  .app-shell:not(:has(.test-workbench)) .brand small{display:none}
+  .app-shell:not(:has(.test-workbench)) .session-pill span{display:none}
+  .app-shell:not(:has(.test-workbench)) .top-nav{position:fixed;z-index:50;right:10px;bottom:calc(10px + env(safe-area-inset-bottom));left:10px;grid-auto-flow:column;grid-template-columns:repeat(5,minmax(0,1fr));gap:3px;padding:5px;box-shadow:0 12px 34px rgba(20,23,24,.2)}
+  .app-shell:not(:has(.test-workbench)) .nav-btn{padding-inline:4px;font-size:.7rem}
+  .app-shell:not(:has(.test-workbench)) .app-content{padding-bottom:calc(92px + env(safe-area-inset-bottom))}
+  .toast-wrap{right:12px;bottom:calc(82px + env(safe-area-inset-bottom))}
+  .assessment-card__top{align-items:flex-start;flex-direction:column}
+  .assessment-meta{display:grid;grid-template-columns:1fr 1fr}
+  .assessment-meta div,.assessment-meta div+div{padding:12px 10px;border:0;border-bottom:1px solid var(--line)}
+  .assessment-meta div:nth-child(odd){padding-left:0}
+  .assessment-meta div:nth-child(even){border-left:1px solid var(--line)}
+}
+
+@media(max-width:480px){
+  .app-shell:not(:has(.test-workbench)) .top-nav{grid-template-columns:repeat(5,minmax(0,1fr))}
+  .assessment-meta{grid-template-columns:1fr}
+  .assessment-meta div,.assessment-meta div+div{padding:12px 0;border-left:0}
+  .hero-copy{padding:18px}
+  .hero-copy h2{font-size:1.85rem;line-height:1.05}
+}
