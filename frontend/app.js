@@ -312,7 +312,9 @@ async function apiRequest(path, body = null, options = {}) {
   return data;
 }
 
-function staticAuthRequest(path, body = null) {
+const demoCredentials = window.SAP_UAM_DEMO_CREDENTIALS.createVerifier(window.crypto);
+
+async function staticAuthRequest(path, body = null) {
   const users = readStaticUsers();
   if (path === '/api/auth/me') {
     const user = safeJson(localStorage.getItem(STORAGE.staticSession) || localStorage.getItem(STORAGE.legacy.staticSession));
@@ -336,7 +338,7 @@ function staticAuthRequest(path, body = null) {
       id: Date.now(),
       fullName: String(body?.fullName || 'Usuario Demo').trim(),
       email,
-      password: String(body?.password || ''),
+      ...(await demoCredentials.seal(String(body?.password || ''))),
       pictureUrl: '',
       career: '',
       role: 'CLIENTE',
@@ -351,8 +353,14 @@ function staticAuthRequest(path, body = null) {
   if (path === '/api/auth/login') {
     const email = String(body?.email || '').trim().toLowerCase();
     const password = String(body?.password || '');
-    const user = users.find(item => item.email === email && item.password === password);
-    if (!user) return Promise.reject(new Error('Correo o contraseña incorrectos.'));
+    const user = users.find(item => item.email === email);
+    const check = user ? await demoCredentials.verify(user, password) : { ok: false };
+    if (!check.ok) return Promise.reject(new Error('Correo o contraseña incorrectos.'));
+    if (check.upgrade) {
+      delete user.password;
+      Object.assign(user, check.upgrade);
+      localStorage.setItem(STORAGE.staticUsers, JSON.stringify(users));
+    }
     localStorage.setItem(STORAGE.staticSession, JSON.stringify(publicStaticUser(user)));
     return Promise.resolve({ token: 'github-pages-demo', expiresInSeconds: 86400, user: publicStaticUser(user) });
   }
@@ -368,7 +376,7 @@ function readStaticUsers() {
 }
 
 function publicStaticUser(user) {
-  const { password, ...safeUser } = user;
+  const { password, passwordHash, passwordSalt, ...safeUser } = user;
   return safeUser;
 }
 
