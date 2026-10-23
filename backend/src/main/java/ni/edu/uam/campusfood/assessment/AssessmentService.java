@@ -18,6 +18,7 @@ public class AssessmentService {
     private static final int WEIL_VERSION = 1;
     private static final int WEIL_ITEMS = 60;
     private static final int WEIL_OPTIONS = 8;
+    private static final int[] WEIL_ANSWER_PATTERN = {2, 8, 7, 4, 5, 6, 8, 4, 4, 7, 3, 2};
 
     private final AssessmentAttemptRepository attempts;
     private final AssessmentResponseRepository responses;
@@ -104,7 +105,8 @@ public class AssessmentService {
         if (responses.countByAttemptId(attemptId) != WEIL_ITEMS) {
             throw new AssessmentConflictException("El intento todavía tiene respuestas pendientes.");
         }
-        attempt.submit();
+        int directScore = scoreWeil(submittedAnswers).stream().mapToInt(Integer::intValue).sum();
+        attempt.submit(directScore);
         flushOptimistically(attempt);
         return detail(attempt, true);
     }
@@ -143,7 +145,18 @@ public class AssessmentService {
     private AttemptView detail(AssessmentAttempt attempt, boolean exposeLease) {
         List<ResponseView> answerList = responses.findByAttemptIdOrderByItemIndex(attempt.getId()).stream()
                 .map(ResponseView::from).toList();
-        return AttemptView.from(attempt, answerList, exposeLease);
+        List<Integer> orderedAnswers = answerList.stream().map(ResponseView::selectedOption).toList();
+        List<Integer> pageScores = orderedAnswers.size() == WEIL_ITEMS ? scoreWeil(orderedAnswers) : List.of();
+        return AttemptView.from(attempt, answerList, pageScores, exposeLease);
+    }
+
+    private static List<Integer> scoreWeil(List<Integer> answers) {
+        return java.util.stream.IntStream.range(0, 5)
+                .map(page -> java.util.stream.IntStream.range(0, WEIL_ANSWER_PATTERN.length)
+                        .map(local -> answers.get(page * WEIL_ANSWER_PATTERN.length + local) == WEIL_ANSWER_PATTERN[local] ? 1 : 0)
+                        .sum())
+                .boxed()
+                .toList();
     }
 
     private static void validateDefinition(String testId, int testVersion) {
@@ -180,12 +193,13 @@ public class AssessmentService {
     public record AttemptView(Long id, String testId, int testVersion, AttemptStatus status,
                               long version, String leaseToken, Instant leaseExpiresAt,
                               Instant startedAt, Instant updatedAt, Instant submittedAt,
-                              List<ResponseView> responses) {
-        static AttemptView from(AssessmentAttempt attempt, List<ResponseView> responses, boolean exposeLease) {
+                              Integer directScore, List<Integer> pageScores, List<ResponseView> responses) {
+        static AttemptView from(AssessmentAttempt attempt, List<ResponseView> responses,
+                                List<Integer> pageScores, boolean exposeLease) {
             return new AttemptView(attempt.getId(), attempt.getTestId(), attempt.getTestVersion(),
                     attempt.getStatus(), attempt.getVersion(), exposeLease ? attempt.getLeaseToken() : null,
                     exposeLease ? attempt.getLeaseExpiresAt() : null, attempt.getStartedAt(), attempt.getUpdatedAt(),
-                    attempt.getSubmittedAt(), responses);
+                    attempt.getSubmittedAt(), attempt.getDirectScore(), pageScores, responses);
         }
     }
 }

@@ -156,7 +156,7 @@ async function renewRemoteAttemptLease() {
 }
 
 async function submitRemoteAttempt() {
-  if (STATIC_PAGES_MODE) return;
+  if (STATIC_PAGES_MODE) return null;
   const attempt = appState.remoteAttempt || readAttemptLease();
   if (!attempt?.id || !attempt?.leaseToken) throw new Error('No existe una sesión exclusiva para este intento.');
   const submitted = await apiRequest(`/api/attempts/${attempt.id}/submit`, {
@@ -165,6 +165,7 @@ async function submitRemoteAttempt() {
     answers: [...appState.answers]
   });
   storeAttemptLease(submitted);
+  return submitted;
 }
 
 function toast(message, kind = 'info') {
@@ -1468,8 +1469,9 @@ async function completeTest() {
     submitButton.disabled = true;
     submitButton.textContent = 'Entregando...';
   }
+  let remoteSubmission = null;
   try {
-    await submitRemoteAttempt();
+    remoteSubmission = await submitRemoteAttempt();
   } catch (error) {
     playSound('error');
     toast(error.message || 'No se pudo entregar el intento.', 'err');
@@ -1481,7 +1483,7 @@ async function completeTest() {
       submitButton.textContent = 'Entregar y calificar';
     }
   }
-  const score = totalScore();
+  const score = Number.isInteger(remoteSubmission?.directScore) ? remoteSubmission.directScore : totalScore();
   const normColumn = resolveNormColumn(appState.profile);
   const percentile = percentileFromScore(score, normColumn);
   const ci = ciFromPercentile(percentile);
@@ -1496,7 +1498,9 @@ async function completeTest() {
     answers: [...appState.answers],
     score,
     total: TOTAL_ITEMS,
-    pageScores: Array.from({ length: TOTAL_PAGES }, (_, page) => pageScore(page)),
+    pageScores: Array.isArray(remoteSubmission?.pageScores) && remoteSubmission.pageScores.length === TOTAL_PAGES
+      ? remoteSubmission.pageScores
+      : Array.from({ length: TOTAL_PAGES }, (_, page) => pageScore(page)),
     percentile,
     ci,
     normColumn,

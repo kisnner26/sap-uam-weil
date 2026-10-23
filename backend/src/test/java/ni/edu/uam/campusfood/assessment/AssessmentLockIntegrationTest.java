@@ -61,6 +61,8 @@ class AssessmentLockIntegrationTest {
                 Collections.nCopies(60, 2));
 
         assertThat(submitted.status()).isEqualTo(AttemptStatus.SUBMITTED);
+        assertThat(submitted.directScore()).isEqualTo(10);
+        assertThat(submitted.pageScores()).containsExactly(2, 2, 2, 2, 2);
         assertThat(submitted.responses()).hasSize(60);
         assertThat(responses.countByAttemptId(opened.id())).isEqualTo(60);
     }

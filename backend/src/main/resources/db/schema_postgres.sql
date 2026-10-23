@@ -40,6 +40,7 @@ CREATE TABLE IF NOT EXISTS assessment_attempts (
     started_at       TIMESTAMPTZ  NOT NULL,
     updated_at       TIMESTAMPTZ  NOT NULL,
     submitted_at     TIMESTAMPTZ,
+    direct_score     INTEGER,
     version          BIGINT       NOT NULL DEFAULT 0,
     CONSTRAINT ck_attempt_status CHECK (status IN ('IN_PROGRESS', 'SUBMITTED'))
 );

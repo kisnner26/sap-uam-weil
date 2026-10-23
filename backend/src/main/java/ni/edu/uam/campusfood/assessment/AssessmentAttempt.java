@@ -51,6 +51,9 @@ public class AssessmentAttempt {
     @Column(name = "submitted_at")
     private Instant submittedAt;
 
+    @Column(name = "direct_score")
+    private Integer directScore;
+
     @Version
     @Column(nullable = false)
     private long version;
@@ -92,8 +95,9 @@ public class AssessmentAttempt {
         updatedAt = Instant.now();
     }
 
-    public void submit() {
+    public void submit(int score) {
         status = AttemptStatus.SUBMITTED;
+        directScore = score;
         submittedAt = Instant.now();
         leaseExpiresAt = submittedAt;
         updatedAt = submittedAt;
@@ -109,5 +113,6 @@ public class AssessmentAttempt {
     public Instant getStartedAt() { return startedAt; }
     public Instant getUpdatedAt() { return updatedAt; }
     public Instant getSubmittedAt() { return submittedAt; }
+    public Integer getDirectScore() { return directScore; }
     public long getVersion() { return version; }
 }
