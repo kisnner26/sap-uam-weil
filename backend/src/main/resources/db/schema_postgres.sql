@@ -41,9 +41,15 @@ CREATE TABLE IF NOT EXISTS assessment_attempts (
     updated_at       TIMESTAMPTZ  NOT NULL,
     submitted_at     TIMESTAMPTZ,
     direct_score     INTEGER,
+    participant_age  INTEGER,
+    norm_group       VARCHAR(8),
     version          BIGINT       NOT NULL DEFAULT 0,
     CONSTRAINT ck_attempt_status CHECK (status IN ('IN_PROGRESS', 'SUBMITTED'))
 );
+
+-- Bases creadas antes de guardar la edad y el grupo de baremo del aspirante:
+ALTER TABLE assessment_attempts ADD COLUMN IF NOT EXISTS participant_age INTEGER;
+ALTER TABLE assessment_attempts ADD COLUMN IF NOT EXISTS norm_group VARCHAR(8);
 
 CREATE INDEX IF NOT EXISTS ix_attempt_user_test
     ON assessment_attempts (user_id, test_id, status, started_at DESC);

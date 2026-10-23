@@ -1,5 +1,6 @@
 package ni.edu.uam.campusfood.assessment;
 
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
@@ -10,4 +11,7 @@ public interface AssessmentAttemptRepository extends JpaRepository<AssessmentAtt
             Long userId, String testId, AttemptStatus status);
 
     List<AssessmentAttempt> findByUserIdOrderByStartedAtDesc(Long userId);
+
+    @EntityGraph(attributePaths = "user")
+    List<AssessmentAttempt> findByTestIdAndStatusOrderBySubmittedAtDesc(String testId, AttemptStatus status);
 }

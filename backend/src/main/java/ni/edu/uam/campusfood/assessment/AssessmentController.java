@@ -58,7 +58,7 @@ public class AssessmentController {
     public AssessmentService.AttemptView submit(Authentication authentication, @PathVariable Long attemptId,
                                                 @Valid @RequestBody SubmitRequest request) {
         return service.submit(userId(authentication), attemptId, request.leaseToken(),
-                request.expectedVersion(), request.answers());
+                request.expectedVersion(), request.answers(), request.age(), request.normGroup());
     }
 
     private static Long userId(Authentication authentication) {
@@ -71,5 +71,7 @@ public class AssessmentController {
                                 @Min(0) long expectedVersion) {}
     public record SubmitRequest(@NotBlank String leaseToken, @Min(0) long expectedVersion,
                                 @jakarta.validation.constraints.Size(min = 60, max = 60)
-                                List<@jakarta.validation.constraints.NotNull @Min(1) @Max(8) Integer> answers) {}
+                                List<@jakarta.validation.constraints.NotNull @Min(1) @Max(8) Integer> answers,
+                                @Min(3) @Max(120) Integer age,
+                                @jakarta.validation.constraints.Pattern(regexp = "^(7-16|AN|AD|UN)$") String normGroup) {}
 }

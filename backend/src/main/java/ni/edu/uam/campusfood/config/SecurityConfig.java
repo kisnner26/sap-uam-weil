@@ -3,6 +3,7 @@ package ni.edu.uam.campusfood.config;
 import ni.edu.uam.campusfood.security.AuthRateLimitFilter;
 import ni.edu.uam.campusfood.security.JwtAuthFilter;
 import ni.edu.uam.campusfood.security.RequestRateLimiter;
+import ni.edu.uam.campusfood.security.RestAccessDeniedHandler;
 import ni.edu.uam.campusfood.security.RestAuthEntryPoint;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -30,6 +31,7 @@ public class SecurityConfig {
 
     private final JwtAuthFilter jwtAuthFilter;
     private final RestAuthEntryPoint authEntryPoint;
+    private final RestAccessDeniedHandler accessDeniedHandler;
     private final String allowedOrigins;
     private final Environment env;
     private final int authMaxRequests;
@@ -37,6 +39,7 @@ public class SecurityConfig {
 
     public SecurityConfig(JwtAuthFilter jwtAuthFilter,
                           RestAuthEntryPoint authEntryPoint,
+                          RestAccessDeniedHandler accessDeniedHandler,
                           Environment env,
                           @org.springframework.beans.factory.annotation.Value("${app.cors.allowed-origins:}")
                           String allowedOrigins,
@@ -46,6 +49,7 @@ public class SecurityConfig {
                           long authWindowSeconds) {
         this.jwtAuthFilter = jwtAuthFilter;
         this.authEntryPoint = authEntryPoint;
+        this.accessDeniedHandler = accessDeniedHandler;
         this.allowedOrigins = allowedOrigins;
         this.env = env;
         this.authMaxRequests = authMaxRequests;
@@ -60,7 +64,7 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .exceptionHandling(eh -> eh.authenticationEntryPoint(authEntryPoint))
+                .exceptionHandling(eh -> eh.authenticationEntryPoint(authEntryPoint).accessDeniedHandler(accessDeniedHandler))
                 .authorizeHttpRequests(auth -> {
                     auth.requestMatchers(
                             "/api/auth/moodle-login",
@@ -73,6 +77,8 @@ public class SecurityConfig {
                         // Consola H2 solo en desarrollo.
                         auth.requestMatchers("/h2-console/**").permitAll();
                     }
+                    // Resultados con puntaje: solo personal y administracion.
+                    auth.requestMatchers("/api/staff/**").hasAnyRole("STAFF", "ADMIN");
                     auth.anyRequest().authenticated();
                 })
                 .addFilterBefore(authRateLimitFilter(), UsernamePasswordAuthenticationFilter.class)

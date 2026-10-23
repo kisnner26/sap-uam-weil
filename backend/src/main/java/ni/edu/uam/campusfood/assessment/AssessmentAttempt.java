@@ -54,6 +54,13 @@ public class AssessmentAttempt {
     @Column(name = "direct_score")
     private Integer directScore;
 
+    /** Edad y grupo de baremo del aspirante: hacen falta para convertir el puntaje en percentil y CI. */
+    @Column(name = "participant_age")
+    private Integer participantAge;
+
+    @Column(name = "norm_group", length = 8)
+    private String normGroup;
+
     @Version
     @Column(nullable = false)
     private long version;
@@ -95,9 +102,11 @@ public class AssessmentAttempt {
         updatedAt = Instant.now();
     }
 
-    public void submit(int score) {
+    public void submit(int score, Integer age, String group) {
         status = AttemptStatus.SUBMITTED;
         directScore = score;
+        participantAge = age;
+        normGroup = group;
         submittedAt = Instant.now();
         leaseExpiresAt = submittedAt;
         updatedAt = submittedAt;
@@ -114,5 +123,7 @@ public class AssessmentAttempt {
     public Instant getUpdatedAt() { return updatedAt; }
     public Instant getSubmittedAt() { return submittedAt; }
     public Integer getDirectScore() { return directScore; }
+    public Integer getParticipantAge() { return participantAge; }
+    public String getNormGroup() { return normGroup; }
     public long getVersion() { return version; }
 }

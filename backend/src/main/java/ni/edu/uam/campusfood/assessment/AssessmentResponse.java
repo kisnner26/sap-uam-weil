@@ -36,6 +36,7 @@ public class AssessmentResponse {
     }
 
     public void select(int option) { selectedOption = option; }
+    public Long ownerAttemptId() { return attempt.getId(); }
     public int getItemIndex() { return itemIndex; }
     public int getSelectedOption() { return selectedOption; }
 }

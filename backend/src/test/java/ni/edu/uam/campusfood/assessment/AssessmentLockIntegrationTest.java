@@ -58,12 +58,15 @@ class AssessmentLockIntegrationTest {
         var opened = service.open(userId, "weil-form-a", 1, null);
 
         var submitted = service.submit(userId, opened.id(), opened.leaseToken(), opened.version(),
-                Collections.nCopies(60, 2));
+                Collections.nCopies(60, 2), 18, "UN");
 
         assertThat(submitted.status()).isEqualTo(AttemptStatus.SUBMITTED);
-        assertThat(submitted.directScore()).isEqualTo(10);
-        assertThat(submitted.pageScores()).containsExactly(2, 2, 2, 2, 2);
         assertThat(submitted.responses()).hasSize(60);
+        var staffRow = service.listSubmitted("weil-form-a").get(0);
+        assertThat(staffRow.directScore()).isEqualTo(10);
+        assertThat(staffRow.pageScores()).containsExactly(2, 2, 2, 2, 2);
+        assertThat(staffRow.age()).isEqualTo(18);
+        assertThat(staffRow.normGroup()).isEqualTo("UN");
         assertThat(responses.countByAttemptId(opened.id())).isEqualTo(60);
     }
 
@@ -73,10 +76,11 @@ class AssessmentLockIntegrationTest {
         int[] key = {2, 8, 7, 4, 5, 6, 8, 4, 4, 7, 3, 2};
         var perfect = java.util.stream.IntStream.range(0, 60).mapToObj(i -> key[i % 12]).toList();
 
-        var submitted = service.submit(userId, opened.id(), opened.leaseToken(), opened.version(), perfect);
+        service.submit(userId, opened.id(), opened.leaseToken(), opened.version(), perfect, 18, "UN");
 
-        assertThat(submitted.directScore()).isEqualTo(60);
-        assertThat(submitted.pageScores()).containsExactly(12, 12, 12, 12, 12);
+        var staffRow = service.listSubmitted("weil-form-a").get(0);
+        assertThat(staffRow.directScore()).isEqualTo(60);
+        assertThat(staffRow.pageScores()).containsExactly(12, 12, 12, 12, 12);
     }
 
     @Test
@@ -99,5 +103,24 @@ class AssessmentLockIntegrationTest {
         assertThatThrownBy(() -> service.answer(otherUser, opened.id(), 0, 2, opened.leaseToken(), opened.version()))
                 .isInstanceOf(AssessmentConflictException.class)
                 .hasMessageContaining("Intento no encontrado");
+    }
+
+    @Test
+    void laVistaDelAspiranteNoTieneCamposDePuntaje() {
+        var names = java.util.Arrays.stream(AssessmentService.AttemptView.class.getRecordComponents())
+                .map(java.lang.reflect.RecordComponent::getName).toList();
+
+        assertThat(names).doesNotContain("directScore", "pageScores", "percentile", "ci");
+    }
+
+    @Test
+    void rechazaUnGrupoDeBaremoInvalidoOUnaEdadFueraDeRango() {
+        var opened = service.open(userId, "weil-form-a", 1, null);
+        var answers = Collections.nCopies(60, 2);
+
+        assertThatThrownBy(() -> service.submit(userId, opened.id(), opened.leaseToken(), opened.version(), answers, 18, "XX"))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> service.submit(userId, opened.id(), opened.leaseToken(), opened.version(), answers, 30, "7-16"))
+                .isInstanceOf(IllegalArgumentException.class);
     }
 }

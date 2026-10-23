@@ -87,7 +87,8 @@ public class AssessmentService {
 
     @Transactional
     public AttemptView submit(Long userId, Long attemptId, String leaseToken, long expectedVersion,
-                              List<Integer> submittedAnswers) {
+                              List<Integer> submittedAnswers, Integer age, String normGroup) {
+        validateProfile(age, normGroup);
         AssessmentAttempt attempt = writableAttempt(userId, attemptId, leaseToken, expectedVersion);
         if (submittedAnswers == null || submittedAnswers.size() != WEIL_ITEMS) {
             throw new AssessmentConflictException("El intento todavía tiene respuestas pendientes.");
@@ -106,7 +107,7 @@ public class AssessmentService {
             throw new AssessmentConflictException("El intento todavía tiene respuestas pendientes.");
         }
         int directScore = scoreWeil(submittedAnswers).stream().mapToInt(Integer::intValue).sum();
-        attempt.submit(directScore);
+        attempt.submit(directScore, age, normGroup);
         flushOptimistically(attempt);
         return detail(attempt, true);
     }
@@ -140,12 +141,31 @@ public class AssessmentService {
         }
     }
 
+    /** Vista del propio aspirante: nunca incluye puntaje, percentil ni CI (eso es solo para el personal). */
     private AttemptView detail(AssessmentAttempt attempt, boolean exposeLease) {
         List<ResponseView> answerList = responses.findByAttemptIdOrderByItemIndex(attempt.getId()).stream()
                 .map(ResponseView::from).toList();
-        List<Integer> orderedAnswers = answerList.stream().map(ResponseView::selectedOption).toList();
-        List<Integer> pageScores = orderedAnswers.size() == WEIL_ITEMS ? scoreWeil(orderedAnswers) : List.of();
-        return AttemptView.from(attempt, answerList, pageScores, exposeLease);
+        return AttemptView.from(attempt, answerList, exposeLease);
+    }
+
+    /** Intentos entregados con su puntaje, para el personal autorizado. */
+    @Transactional(readOnly = true)
+    public List<StaffAttemptView> listSubmitted(String testId) {
+        List<AssessmentAttempt> submitted = attempts.findByTestIdAndStatusOrderBySubmittedAtDesc(
+                testId, AttemptStatus.SUBMITTED);
+        if (submitted.isEmpty()) {
+            return List.of();
+        }
+        var byAttempt = new java.util.HashMap<Long, List<Integer>>();
+        for (AssessmentResponse response : responses.findForAttempts(submitted.stream().map(AssessmentAttempt::getId).toList())) {
+            byAttempt.computeIfAbsent(response.ownerAttemptId(), id -> new java.util.ArrayList<>())
+                    .add(response.getSelectedOption());
+        }
+        return submitted.stream().map(attempt -> {
+            List<Integer> answers = byAttempt.getOrDefault(attempt.getId(), List.of());
+            List<Integer> pageScores = answers.size() == WEIL_ITEMS ? scoreWeil(answers) : List.of();
+            return StaffAttemptView.from(attempt, pageScores);
+        }).toList();
     }
 
     private static List<Integer> scoreWeil(List<Integer> answers) {
@@ -160,6 +180,17 @@ public class AssessmentService {
     private static void validateDefinition(String testId, int testVersion) {
         if (!WEIL_TEST_ID.equals(testId) || testVersion != WEIL_VERSION) {
             throw new IllegalArgumentException("La versión del test no está publicada.");
+        }
+    }
+
+    private static final java.util.Set<String> NORM_GROUPS = java.util.Set.of("7-16", "AN", "AD", "UN");
+
+    private static void validateProfile(Integer age, String normGroup) {
+        if (normGroup != null && !NORM_GROUPS.contains(normGroup)) {
+            throw new IllegalArgumentException("El grupo de baremo no es válido.");
+        }
+        if ("7-16".equals(normGroup) && (age == null || age < 7 || age > 16)) {
+            throw new IllegalArgumentException("La edad debe estar entre 7 y 16 años para ese grupo.");
         }
     }
 
@@ -191,13 +222,27 @@ public class AssessmentService {
     public record AttemptView(Long id, String testId, int testVersion, AttemptStatus status,
                               long version, String leaseToken, Instant leaseExpiresAt,
                               Instant startedAt, Instant updatedAt, Instant submittedAt,
-                              Integer directScore, List<Integer> pageScores, List<ResponseView> responses) {
-        static AttemptView from(AssessmentAttempt attempt, List<ResponseView> responses,
-                                List<Integer> pageScores, boolean exposeLease) {
+                              List<ResponseView> responses) {
+        static AttemptView from(AssessmentAttempt attempt, List<ResponseView> responses, boolean exposeLease) {
             return new AttemptView(attempt.getId(), attempt.getTestId(), attempt.getTestVersion(),
                     attempt.getStatus(), attempt.getVersion(), exposeLease ? attempt.getLeaseToken() : null,
                     exposeLease ? attempt.getLeaseExpiresAt() : null, attempt.getStartedAt(), attempt.getUpdatedAt(),
-                    attempt.getSubmittedAt(), attempt.getDirectScore(), pageScores, responses);
+                    attempt.getSubmittedAt(), responses);
+        }
+    }
+
+    /** Fila del listado del personal: quien rindio, cuanto obtuvo y con que baremo comparar. */
+    public record StaffAttemptView(Long id, String fullName, String email, String career, String testId,
+                                   Instant startedAt, Instant submittedAt, long durationSeconds,
+                                   Integer directScore, List<Integer> pageScores,
+                                   Integer age, String normGroup) {
+        static StaffAttemptView from(AssessmentAttempt attempt, List<Integer> pageScores) {
+            var user = attempt.getUser();
+            long seconds = attempt.getSubmittedAt() == null ? 0
+                    : Math.max(0, Duration.between(attempt.getStartedAt(), attempt.getSubmittedAt()).getSeconds());
+            return new StaffAttemptView(attempt.getId(), user.getFullName(), user.getEmail(), user.getCareer(),
+                    attempt.getTestId(), attempt.getStartedAt(), attempt.getSubmittedAt(), seconds,
+                    attempt.getDirectScore(), pageScores, attempt.getParticipantAge(), attempt.getNormGroup());
         }
     }
 }
