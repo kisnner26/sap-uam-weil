@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CampusFood UAM · Crear cuenta</title>
+    <title>SAP-UAM · Crear cuenta</title>
     <style>
         :root { --teal: #4498A6; --ink: #1f2a2e; --bg: #f6f4ef; --err: #b3261e; }
         * { box-sizing: border-box; }
@@ -77,8 +77,8 @@
                 });
                 const data = await res.json().catch(() => ({}));
                 if (res.ok) {
-                    sessionStorage.setItem("cf_token", data.token);
-                    sessionStorage.setItem("cf_user", JSON.stringify(data.user));
+                    sessionStorage.setItem("sap_uam_token", data.token);
+                    sessionStorage.setItem("sap_uam_user", JSON.stringify(data.user));
                     window.location.href = "./home.html";
                     return;
                 }

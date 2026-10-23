@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CampusFood UAM · Ingresar</title>
+    <title>SAP-UAM · Ingresar</title>
     <style>
         :root { --teal: #4498A6; --ink: #1f2a2e; --bg: #f6f4ef; --err: #b3261e; }
         * { box-sizing: border-box; }
@@ -87,8 +87,8 @@
                     // Guardamos la sesión propia (JWT). Para mayor seguridad, el
                     // backend podría emitirla como cookie httpOnly; aquí usamos
                     // almacenamiento del navegador para el ejemplo.
-                    sessionStorage.setItem("cf_token", data.token);
-                    sessionStorage.setItem("cf_user", JSON.stringify(data.user));
+                    sessionStorage.setItem("sap_uam_token", data.token);
+                    sessionStorage.setItem("sap_uam_user", JSON.stringify(data.user));
                     msg.className = "msg ok";
                     msg.textContent = `Bienvenido/a, ${data.user.fullName}. Redirigiendo…`;
                     window.location.href = "./home.html";

@@ -1,5 +1,5 @@
 -- ============================================================================
--- SAP-UAM Weill — tabla de usuarios
+-- SAP-UAM — identidad compartida de la plataforma de evaluaciones
 -- Ejecutar en la BD Postgres antes de arrancar con el perfil prod
 -- (que usa ddl-auto: validate y no crea tablas).
 -- ============================================================================

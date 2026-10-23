@@ -14,7 +14,7 @@ import java.util.Date;
 
 /**
  * Genera y valida el JWT propio de la app. Este token representa la sesion
- * del usuario en SAP-UAM Weill; es independiente del token de Moodle, que nunca
+ * del usuario en SAP-UAM; es independiente del token de Moodle, que nunca
  * se persiste ni se reutiliza.
  */
 @Service

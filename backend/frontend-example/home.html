@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CampusFood UAM · Inicio</title>
+    <title>SAP-UAM · Inicio</title>
     <style>
         :root { --teal: #4498A6; --ink: #1f2a2e; --bg: #f6f4ef; }
         * { box-sizing: border-box; }
@@ -49,8 +49,8 @@
 
     <script>
         const API_BASE = "http://localhost:8080";
-        const token = sessionStorage.getItem("cf_token");
-        const user = JSON.parse(sessionStorage.getItem("cf_user") || "null");
+        const token = sessionStorage.getItem("sap_uam_token");
+        const user = JSON.parse(sessionStorage.getItem("sap_uam_user") || "null");
 
         if (!token || !user) {
             window.location.href = "./login.html";

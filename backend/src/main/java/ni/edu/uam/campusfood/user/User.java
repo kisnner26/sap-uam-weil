@@ -15,7 +15,7 @@ import jakarta.persistence.UniqueConstraint;
 import java.time.Instant;
 
 /**
- * Usuario del sistema de aplicacion Weill.
+ * Usuario compartido de la plataforma de evaluaciones SAP-UAM.
  *
  * Reglas de seguridad importantes:
  * - Para usuarios MOODLE NUNCA se guarda la contrasena institucional:

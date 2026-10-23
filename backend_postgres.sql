@@ -1,5 +1,5 @@
 -- ================================================================
---  SAP-UAM · Test de Inteligencia de Weil
+--  SAP-UAM · Plataforma de evaluaciones
 --  Script de base de datos — PostgreSQL 14+
 --  Grupo: Kisnner Obando, Fernando Reyes, Jimmy Galo,
 --         Samuel Chavarria, Adrián Vallecidos

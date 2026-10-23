@@ -1,6 +1,6 @@
 spring:
   application:
-    name: sap-uam-weill-backend
+    name: sap-uam-backend
   # Perfil por defecto: desarrollo con H2 en memoria.
   profiles:
     active: dev

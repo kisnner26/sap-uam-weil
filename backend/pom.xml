@@ -12,10 +12,10 @@
     </parent>
 
     <groupId>ni.edu.uam</groupId>
-    <artifactId>campusfood-backend</artifactId>
+    <artifactId>sap-uam-backend</artifactId>
     <version>0.1.0</version>
-    <name>campusfood-backend</name>
-    <description>Backend de pedidos de comida en el campus UAM Managua con login Moodle</description>
+    <name>sap-uam-backend</name>
+    <description>Backend modular para la plataforma de evaluaciones SAP-UAM</description>
 
     <properties>
         <java.version>17</java.version>

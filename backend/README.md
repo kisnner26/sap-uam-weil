@@ -1,14 +1,14 @@
-# CampusFood UAM — Backend
+# SAP-UAM — Backend
 
-Backend en **Spring Boot 3.3 / Java 17** para la web de pedidos de comida del campus
-UAM Managua. Implementa un único login con dos métodos que conviven:
+Backend en **Spring Boot 3.3 / Java 17** para la plataforma de evaluaciones de la
+UAM. Implementa una identidad compartida con dos métodos de acceso:
 
 1. **Login con cuenta UAM (Moodle)** — valida CIF + contraseña contra la API de
    Moodle de la UAM, server-to-server (sin CORS).
 2. **Registro/login manual** — para externos (no estudiantes), con correo + contraseña.
 
 En ambos casos el backend emite **su propio JWT** de sesión (no reutiliza el token
-de Moodle) y lo entrega también como cookie **httpOnly** `campusfood_session`.
+de Moodle) y lo entrega también como cookie **httpOnly** `sap_uam_session`.
 
 ## Stack
 
@@ -27,7 +27,7 @@ mvn spring-boot:run
 ```
 
 Arranca en `http://localhost:8080`. Consola H2 en `/h2-console`
-(JDBC URL `jdbc:h2:mem:campusfood`, usuario `sa`, sin contraseña).
+(JDBC URL `jdbc:h2:mem:sapweill`, usuario `sa`, sin contraseña).
 
 ### Tests
 
@@ -77,7 +77,7 @@ SPRING_PROFILES_ACTIVE=prod APP_JWT_SECRET=... DB_URL=... mvn spring-boot:run
   }
 }
 ```
-También setea `Set-Cookie: campusfood_session=<jwt>; HttpOnly; SameSite=Lax`.
+También setea `Set-Cookie: sap_uam_session=<jwt>; HttpOnly; SameSite=Lax`.
 Errores: **401** credenciales inválidas · **503** `"Plataforma UAM en mantenimiento,
 intenta mas tarde"` (Moodle devolvió HTML o no responde).
 
@@ -93,7 +93,7 @@ intenta mas tarde"` (Moodle devolvió HTML o no responde).
 ```
 
 ### `GET /api/auth/me` — perfil del usuario autenticado
-Lee la cookie httpOnly `campusfood_session` o el header `Authorization: Bearer <jwt>`.
+Lee la cookie httpOnly `sap_uam_session` o el header `Authorization: Bearer <jwt>`.
 **401** si falta o es inválido.
 
 ### `POST /api/auth/logout`
