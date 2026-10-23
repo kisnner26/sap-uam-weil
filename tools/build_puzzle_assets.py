@@ -180,6 +180,104 @@ def find_patch_by_ring(ink, frame, cells):
     return (x + 3, y + 3, cw - 6, ch - 6)
 
 
+def true_options_top(ink, cells):
+    """Fila del borde superior de las opciones, buscada en la imagen (la cuadricula ajustada puede errar unos pixeles)."""
+    estimate = min(c[1] for c in cells)
+    x0 = min(c[0] for c in cells)
+    x1 = max(c[0] + c[2] for c in cells)
+    width = x1 - x0
+    for y in range(max(0, estimate - 12), estimate + 8):
+        if ink[y, x0:x1].sum() > 0.3 * width:
+            return y
+    return estimate
+
+
+def _edge(profile, target, lo, hi, threshold, outward, ceiling=None, nearest=False):
+    """Borde de celda dentro de la ventana [lo, hi].
+
+    Los bordes laterales de una celda son ondulados, asi que nunca llenan toda la altura: las columnas que
+    superan `ceiling` son una linea solida (el marco de la lamina) y se ignoran. Para los bordes laterales se
+    toma el trazo mas exterior (el contenido queda adentro); para arriba y abajo, el mas cercano a lo esperado,
+    porque ahi la fila vecina esta a pocos pixeles.
+    """
+    lo, hi = max(0, lo), min(len(profile) - 1, hi)
+    hits = [i for i in range(lo, hi + 1) if profile[i] >= threshold and (ceiling is None or profile[i] < ceiling)]
+    if not hits:
+        return target
+    if nearest:
+        edge = min(hits, key=lambda i: abs(i - target))
+    else:
+        edge = max(hits) if outward > 0 else min(hits)
+    for _ in range(3):  # el borde ocupa unas lineas contiguas
+        nxt = edge + outward
+        if 0 <= nxt < len(profile) and profile[nxt] >= threshold and (ceiling is None or profile[nxt] < ceiling) and lo <= nxt <= hi + 3:
+            edge = nxt
+    return edge
+
+
+def refine_cell(ink, box):
+    """Ajusta una celda de la cuadricula a su contorno real."""
+    x, y, w, h = [int(v) for v in box]
+    cols = ink[y + 3:y + h - 3, :].sum(axis=0).astype(float)
+    rows = ink[:, x + 3:x + w - 3].sum(axis=1).astype(float)
+    solid = 0.88 * (h - 6)
+    left = _edge(cols, x, x - 4, x + 14, 0.25 * (h - 6), -1, ceiling=solid)
+    right = _edge(cols, x + w - 1, x + w - 15, x + w + 4, 0.25 * (h - 6), 1, ceiling=solid)
+    top = _edge(rows, y, y - 3, y + 10, 0.45 * (w - 6), -1, nearest=True)
+    bottom = _edge(rows, y + h - 1, y + h - 11, y + h + 3, 0.45 * (w - 6), 1, nearest=True)
+    if right - left < 0.7 * w or bottom - top < 0.7 * h:
+        return (x, y, w, h)
+    return (left, top, right - left + 1, bottom - top + 1)
+
+
+def repair_borders(piece, band=7, weak=0.2, strong=0.3):
+    """Si un lado quedo sin borde (se fundia con el marco en el escaneo), lo reconstruye con el opuesto espejado."""
+    out = piece.copy()
+    ink = out < INK
+    h, w = ink.shape
+    if min(h, w) < 4 * band:
+        return out
+    left, right = ink[:, :band].mean(), ink[:, -band:].mean()
+    top, bottom = ink[:band, :].mean(), ink[-band:, :].mean()
+    if right < weak and left > strong:
+        out[:, -band:] = out[:, :band][:, ::-1]
+    elif left < weak and right > strong:
+        out[:, :band] = out[:, -band:][:, ::-1]
+    if bottom < weak and top > strong:
+        out[-band:, :] = out[:band, :][::-1, :]
+    elif top < weak and bottom > strong:
+        out[:band, :] = out[-band:, :][::-1, :]
+    return out
+
+
+def strip_frame_edges(piece, max_width=10, solid=0.45):
+    """Borra las barras solidas pegadas a un borde del recorte (restos del marco de la lamina).
+
+    La celda propia no se toca: su borde queda 2 px adentro del recorte y es ondulado, asi que
+    nunca es una barra continua que empiece justo en el borde.
+    """
+    out = piece.copy()
+    ink = out < INK
+    h, w = ink.shape
+    for index in range(min(max_width, w)):
+        if ink[:, index].mean() < solid:
+            break
+        out[:, index] = 255
+    for index in range(min(max_width, w)):
+        if ink[:, w - 1 - index].mean() < solid:
+            break
+        out[:, w - 1 - index] = 255
+    for index in range(min(max_width, h)):
+        if ink[index, :].mean() < solid:
+            break
+        out[index, :] = 255
+    for index in range(min(max_width, h)):
+        if ink[h - 1 - index, :].mean() < solid:
+            break
+        out[h - 1 - index, :] = 255
+    return out
+
+
 def enhance(gray):
     """Amplia y refuerza el trazo para que la linea se vea nitida."""
     big = cv2.resize(gray, None, fx=SCALE, fy=SCALE, interpolation=cv2.INTER_CUBIC)
@@ -199,8 +297,8 @@ def process(page, frame_box, name, debug_dir=None, borrowed_cells=None):
     patch = find_patch(ink, frame, cells)
 
     fx, fy, fw, fh = frame
-    options_top = min(c[1] for c in cells)
-    inset = 4
+    options_top = true_options_top(ink, cells)
+    inset = 8  # el marco de la lamina mide unos 5 px: la figura queda limpia por dentro
     px, py, pw, ph = patch
     margin_patch = 6  # cubre el borde grueso y ondulado del hueco, que queda por fuera de la region blanca
     base_x0 = fx + inset
@@ -209,15 +307,16 @@ def process(page, frame_box, name, debug_dir=None, borrowed_cells=None):
     base_x1 = min(gray.shape[1], max(fx + fw - inset, px + pw + margin_patch + 2))
     base_y0 = fy + inset
     base_y1 = options_top - 5
-    base = gray[base_y0:base_y1, base_x0:base_x1]
+    base = strip_frame_edges(gray[base_y0:base_y1, base_x0:base_x1], max_width=16, solid=0.5)
 
     zx, zy = px - margin_patch - base_x0, py - margin_patch - base_y0
     zone = (zx, zy, min(pw + 2 * margin_patch, base.shape[1] - zx), min(ph + 2 * margin_patch, base.shape[0] - zy))
 
     pieces = []
-    for x, y, cw, ch in cells:
+    for cell in cells:
+        x, y, cw, ch = refine_cell(ink, cell)
         m = 2
-        pieces.append(gray[max(0, y - m):y + ch + m, max(0, x - m):x + cw + m])
+        pieces.append(repair_borders(strip_frame_edges(gray[max(0, y - m):y + ch + m, max(0, x - m):x + cw + m])))
 
     if debug_dir:
         vis = cv2.cvtColor(gray, cv2.COLOR_GRAY2BGR)

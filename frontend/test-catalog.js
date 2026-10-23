@@ -107,8 +107,8 @@
           const item = String((itemIndex % 12) + 1).padStart(2, '0');
           const stem = `assets/weill-puzzle/l${section}i${item}`;
           return {
-            base: `${stem}-base.png?v=2`,
-            pieces: Array.from({ length: 8 }, (_, i) => `${stem}-p${i + 1}.png?v=2`),
+            base: `${stem}-base.png?v=3`,
+            pieces: Array.from({ length: 8 }, (_, i) => `${stem}-p${i + 1}.png?v=3`),
             width: data.w,
             height: data.h,
             patch: data.patch
