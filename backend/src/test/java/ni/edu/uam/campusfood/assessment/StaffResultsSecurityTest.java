@@ -28,6 +28,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class StaffResultsSecurityTest {
     @Autowired TestRestTemplate http;
     @Autowired UserRepository users;
+    @Autowired ni.edu.uam.campusfood.AdmissionFixtures fixtures;
     @Autowired AssessmentAttemptRepository attempts;
     @Autowired AssessmentResponseRepository responses;
     @Autowired AssessmentEventRepository events;
@@ -40,11 +41,9 @@ class StaffResultsSecurityTest {
 
     @BeforeEach
     void prepare() {
-        events.deleteAll();
-        responses.deleteAll();
-        attempts.deleteAll();
-        users.deleteAll();
+        fixtures.clean();
         User aspirante = users.save(User.manual("Ana López", "ana@example.com", "hash", "001"));
+        fixtures.enable(aspirante, fixtures.openSession(aspirante.getId()), 0, "UN", 19);
         User staff = users.save(User.manual("Sofía Evaluadora", "sofia@example.com", "hash", "002"));
         User admin = users.save(User.manual("Raúl Admin", "raul@example.com", "hash", "003"));
         jdbc.update("update users set role = 'STAFF' where id = ?", staff.getId());

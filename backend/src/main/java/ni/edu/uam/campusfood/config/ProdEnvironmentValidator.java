@@ -28,6 +28,9 @@ public class ProdEnvironmentValidator implements EnvironmentPostProcessor, Order
         required.put("spring.datasource.url", "DB_URL");
         required.put("spring.datasource.username", "DB_USER");
         required.put("spring.datasource.password", "DB_PASSWORD");
+        required.put("app.public-url", "APP_PUBLIC_URL");
+        required.put("app.mail.from", "APP_MAIL_FROM");
+        required.put("spring.mail.host", "MAIL_HOST");
         return required;
     }
 

@@ -1,5 +1,6 @@
 package ni.edu.uam.campusfood.web;
 
+import ni.edu.uam.campusfood.admission.AdmissionException;
 import ni.edu.uam.campusfood.auth.AuthException;
 import ni.edu.uam.campusfood.assessment.AssessmentConflictException;
 import ni.edu.uam.campusfood.moodle.MoodleException;
@@ -44,6 +45,13 @@ public class GlobalExceptionHandler {
                 .map(fe -> fe.getField() + ": " + fe.getDefaultMessage())
                 .collect(Collectors.joining("; "));
         return build(HttpStatus.BAD_REQUEST, msg.isBlank() ? "Datos invalidos" : msg);
+    }
+
+    /** Una regla del flujo de admision impide la operacion; el codigo deja a la interfaz decidir que mostrar. */
+    @ExceptionHandler(AdmissionException.class)
+    public ResponseEntity<ApiError> handleAdmission(AdmissionException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ApiError.of(HttpStatus.CONFLICT.value(), HttpStatus.CONFLICT.getReasonPhrase(), ex.getMessage(), ex.getCode()));
     }
 
     @ExceptionHandler(AssessmentConflictException.class)

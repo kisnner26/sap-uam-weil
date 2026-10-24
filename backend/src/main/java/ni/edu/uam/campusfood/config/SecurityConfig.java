@@ -66,6 +66,7 @@ public class SecurityConfig {
                             "/api/auth/register",
                             "/api/auth/mfa/verify",
                             "/api/auth/logout",
+                            "/api/privacy/notice",
                             "/actuator/health"
                     ).permitAll();
                     if (devProfile) {

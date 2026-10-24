@@ -19,16 +19,16 @@ class AssessmentLockIntegrationTest {
     @Autowired AssessmentAttemptRepository attempts;
     @Autowired AssessmentEventRepository events;
     @Autowired UserRepository users;
+    @Autowired ni.edu.uam.campusfood.AdmissionFixtures fixtures;
 
     private Long userId;
 
     @BeforeEach
     void prepare() {
-        events.deleteAll();
-        responses.deleteAll();
-        attempts.deleteAll();
-        users.deleteAll();
-        userId = users.save(User.manual("Ana López", "ana@example.com", "hash", "001")).getId();
+        fixtures.clean();
+        User ana = users.save(User.manual("Ana López", "ana@example.com", "hash", "001"));
+        userId = ana.getId();
+        fixtures.enable(ana, fixtures.openSession(ana.getId()), 0, "UN", 18);
     }
 
     @Test

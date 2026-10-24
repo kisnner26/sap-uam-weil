@@ -21,7 +21,8 @@ import java.util.Set;
 public class AuthRateLimitFilter extends OncePerRequestFilter {
 
     private static final Set<String> PROTECTED_PATHS = Set.of(
-            "/api/auth/login", "/api/auth/moodle-login", "/api/auth/register", "/api/auth/mfa/verify");
+            "/api/auth/login", "/api/auth/moodle-login", "/api/auth/register", "/api/auth/mfa/verify",
+            "/api/applicant/claim");
 
     private static final String BODY = """
             {"status":429,"error":"Too Many Requests","message":"Demasiados intentos. Espera unos minutos antes de volver a intentar."}""";

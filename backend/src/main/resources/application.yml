@@ -18,6 +18,20 @@ server:
 # Configuracion propia de la app
 # ----------------------------------------------------------------------------
 app:
+  # URL publica del frontend: va dentro de los correos de invitacion.
+  public-url: ${APP_PUBLIC_URL:http://localhost:8765}
+  mail:
+    # log: no envia nada, deja el texto visible para el administrador (solo desarrollo).
+    # smtp: envia por el servidor configurado en spring.mail.* (obligatorio en produccion).
+    mode: ${APP_MAIL_MODE:log}
+    from: ${APP_MAIL_FROM:admision@uam.edu.ni}
+  privacy:
+    version: 1
+    contact-email: ${APP_PRIVACY_EMAIL:privacidad@uam.edu.ni}
+  retention:
+    # Meses que se conservan los datos identificables despues de la evaluacion; luego se anonimizan.
+    months: ${APP_RETENTION_MONTHS:24}
+    enabled: ${APP_RETENTION_ENABLED:false}
   bootstrap-admin:
     email: ${APP_BOOTSTRAP_ADMIN_EMAIL:}
     password: ${APP_BOOTSTRAP_ADMIN_PASSWORD:}
@@ -74,6 +88,14 @@ spring:
 ---
 # ========================= PERFIL PROD (Postgres) ===========================
 spring:
+  mail:
+    host: ${MAIL_HOST}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USER:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail.smtp.auth: ${MAIL_AUTH:true}
+      mail.smtp.starttls.enable: ${MAIL_STARTTLS:true}
   config:
     activate:
       on-profile: prod
@@ -94,6 +116,12 @@ spring:
 # En produccion estos valores son obligatorios y no tienen valor por defecto:
 # si falta alguno, la aplicacion no arranca (en vez de usar una clave conocida).
 app:
+  public-url: ${APP_PUBLIC_URL}
+  mail:
+    mode: smtp
+    from: ${APP_MAIL_FROM}
+  retention:
+    enabled: ${APP_RETENTION_ENABLED:true}
   session-cookie:
     secure: true
   mfa:

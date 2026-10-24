@@ -1,9 +1,13 @@
 package ni.edu.uam.campusfood.assessment;
 
+import ni.edu.uam.campusfood.admission.AdmissionService;
+import ni.edu.uam.campusfood.admission.ExamEnrollment;
+import ni.edu.uam.campusfood.notification.NotificationService;
 import ni.edu.uam.campusfood.user.User;
 import ni.edu.uam.campusfood.user.UserRepository;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,20 +29,23 @@ public class AssessmentService {
     private final UserRepository users;
     private final AssessmentEventRepository events;
     private final WeilScoringStrategy scoring;
-    private final Duration testDuration;
+    private final AdmissionService admission;
+    private final NotificationService notifications;
 
     public AssessmentService(AssessmentAttemptRepository attempts,
                              AssessmentResponseRepository responses,
                              UserRepository users,
                              AssessmentEventRepository events,
                              WeilScoringStrategy scoring,
-                             @Value("${app.assessment.weil-duration-seconds:1200}") long durationSeconds) {
+                             AdmissionService admission,
+                             NotificationService notifications) {
         this.attempts = attempts;
         this.responses = responses;
         this.users = users;
         this.events = events;
         this.scoring = scoring;
-        this.testDuration = Duration.ofSeconds(durationSeconds);
+        this.admission = admission;
+        this.notifications = notifications;
     }
 
     @Transactional
@@ -58,9 +65,11 @@ public class AssessmentService {
             attempt.renewLease(newLeaseToken(), now.plus(LEASE_DURATION));
             return detail(attempt, true);
         }
-        AssessmentAttempt created = attempts.save(new AssessmentAttempt(
-                user, testId, testVersion, newLeaseToken(), now.plus(LEASE_DURATION), now.plus(testDuration)));
-        return detail(created, true);
+        ExamEnrollment enrollment = admission.reserveFor(userId, testId, now);
+        AssessmentAttempt created = new AssessmentAttempt(user, testId, testVersion, newLeaseToken(),
+                now.plus(LEASE_DURATION), now.plus(Duration.ofMinutes(admission.minutesFor(enrollment))));
+        created.attachEnrollment(enrollment);
+        return detail(attempts.save(created), true);
     }
 
     @Transactional(readOnly = true)
@@ -159,9 +168,45 @@ public class AssessmentService {
             throw new AssessmentConflictException("El intento todavía tiene respuestas pendientes.");
         }
         WeilScoringStrategy.Score score = scoring.score(submittedAnswers);
-        attempt.submit(score.directScore(), age, normGroup);
+        ExamEnrollment enrollment = attempt.getEnrollment();
+        // El grupo de baremo y la edad los fija Admision al habilitar: lo que mande el navegador se ignora.
+        attempt.submit(score.directScore(), enrollment != null ? enrollment.getParticipantAge() : age,
+                enrollment != null ? enrollment.getNormGroup() : normGroup);
         flushOptimistically(attempt);
+        queueReceipt(attempt);
         return detail(attempt, true);
+    }
+
+    /**
+     * Cierra los intentos cuyo tiempo vencio sin que el aspirante los entregara, calificando lo que alcanzo
+     * a responder (lo no respondido cuenta como incorrecto). Sin esto quedarian abiertos para siempre.
+     */
+    @Scheduled(fixedDelayString = "${app.assessment.sweep-ms:60000}", initialDelayString = "${app.assessment.sweep-ms:60000}")
+    @Transactional
+    public int closeExpired() {
+        Instant now = Instant.now();
+        int closed = 0;
+        for (AssessmentAttempt attempt : attempts.findByStatusAndDeadlineAtBefore(AttemptStatus.IN_PROGRESS, now.minusSeconds(5))) {
+            List<Integer> answers = new java.util.ArrayList<>(java.util.Collections.nCopies(WEIL_ITEMS, 0));
+            for (AssessmentResponse response : responses.findByAttemptIdOrderByItemIndex(attempt.getId())) {
+                answers.set(response.getItemIndex(), response.getSelectedOption());
+            }
+            ExamEnrollment enrollment = attempt.getEnrollment();
+            attempt.autoClose(scoring.score(answers).directScore(),
+                    enrollment == null ? null : enrollment.getParticipantAge(),
+                    enrollment == null ? null : enrollment.getNormGroup());
+            attempts.save(attempt);
+            queueReceipt(attempt);
+            closed += 1;
+        }
+        return closed;
+    }
+
+    private void queueReceipt(AssessmentAttempt attempt) {
+        User user = attempt.getUser();
+        if (user.getEmail() != null) {
+            notifications.receipt(user.getEmail(), user.getFullName(), attempt.getId(), attempt.getSubmittedAt());
+        }
     }
 
     private AssessmentAttempt writableAttempt(Long userId, Long attemptId, String leaseToken, long expectedVersion) {
@@ -204,8 +249,22 @@ public class AssessmentService {
     /** Intentos entregados con su puntaje, para el personal autorizado. */
     @Transactional(readOnly = true)
     public List<StaffAttemptView> listSubmitted(String testId) {
-        List<AssessmentAttempt> submitted = attempts.findByTestIdAndStatusOrderBySubmittedAtDesc(
-                testId, AttemptStatus.SUBMITTED);
+        return listSubmitted(testId, null, null, null);
+    }
+
+    /**
+     * @param sessionId filtra por convocatoria (opcional)
+     * @param query     texto que debe aparecer en el nombre o el correo (opcional)
+     * @param status    "valid" o "invalid" (opcional: todos)
+     */
+    @Transactional(readOnly = true)
+    public List<StaffAttemptView> listSubmitted(String testId, Long sessionId, String query, String status) {
+        String needle = query == null ? "" : query.strip().toLowerCase();
+        List<AssessmentAttempt> submitted = attempts.findSubmitted(testId, sessionId).stream()
+                .filter(a -> needle.isEmpty() || contains(a.getUser().getFullName(), needle) || contains(a.getUser().getEmail(), needle))
+                .filter(a -> status == null || status.isBlank() || "all".equals(status)
+                        || ("invalid".equals(status) == a.isInvalidated()))
+                .toList();
         if (submitted.isEmpty()) {
             return List.of();
         }
@@ -228,6 +287,10 @@ public class AssessmentService {
             return StaffAttemptView.from(attempt, score == null ? List.of() : score.pageScores(), interpretation,
                     eventsByAttempt.getOrDefault(attempt.getId(), List.of()));
         }).toList();
+    }
+
+    private static boolean contains(String value, String needle) {
+        return value != null && value.toLowerCase().contains(needle);
     }
 
     public List<java.util.Map<String, Integer>> norms() {
@@ -309,20 +372,29 @@ public class AssessmentService {
                                    Integer directScore, List<Integer> pageScores,
                                    Integer age, String normGroup, String normColumn,
                                    Integer percentile, Integer ci, String classification,
-                                   List<SecurityEventView> securityEvents) {
+                                   List<SecurityEventView> securityEvents,
+                                   Long sessionId, String sessionName, int extraMinutes, boolean autoSubmitted,
+                                   boolean invalidated, String invalidReason, Instant invalidatedAt,
+                                   boolean reviewed, Instant reviewedAt) {
         static StaffAttemptView from(AssessmentAttempt attempt, List<Integer> pageScores,
                                      WeilScoringStrategy.Interpretation interpretation,
                                      List<SecurityEventView> securityEvents) {
             var user = attempt.getUser();
             long seconds = attempt.getSubmittedAt() == null ? 0
                     : Math.max(0, Duration.between(attempt.getStartedAt(), attempt.getSubmittedAt()).getSeconds());
+            ExamEnrollment enrollment = attempt.getEnrollment();
             return new StaffAttemptView(attempt.getId(), user.getFullName(), user.getEmail(), user.getCareer(),
                     attempt.getTestId(), attempt.getStartedAt(), attempt.getSubmittedAt(), seconds,
                     attempt.getDirectScore(), pageScores, attempt.getParticipantAge(), attempt.getNormGroup(),
                     interpretation == null ? null : interpretation.normColumn(),
                     interpretation == null ? null : interpretation.percentile(),
                     interpretation == null ? null : interpretation.ci(),
-                    interpretation == null ? null : interpretation.classification(), securityEvents);
+                    interpretation == null ? null : interpretation.classification(), securityEvents,
+                    enrollment == null ? null : enrollment.getSession().getId(),
+                    enrollment == null ? null : enrollment.getSession().getName(),
+                    enrollment == null ? 0 : enrollment.getExtraMinutes(), attempt.isAutoSubmitted(),
+                    attempt.isInvalidated(), attempt.getInvalidReason(), attempt.getInvalidatedAt(),
+                    attempt.getReviewedAt() != null, attempt.getReviewedAt());
         }
     }
 }

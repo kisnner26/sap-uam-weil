@@ -10,6 +10,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
+import ni.edu.uam.campusfood.admission.ExamEnrollment;
 import ni.edu.uam.campusfood.user.User;
 
 import java.time.Instant;
@@ -64,6 +65,30 @@ public class AssessmentAttempt {
     @Column(name = "norm_group", length = 8)
     private String normGroup;
 
+    /** Habilitacion con la que se abrio el intento (convocatoria, minutos extra, grupo de baremo). */
+    @jakarta.persistence.ManyToOne(fetch = jakarta.persistence.FetchType.LAZY)
+    @jakarta.persistence.JoinColumn(name = "enrollment_id")
+    private ExamEnrollment enrollment;
+
+    /** El intento se cerro solo porque vencio el tiempo, sin que el aspirante lo entregara. */
+    @Column(name = "auto_submitted", nullable = false)
+    private boolean autoSubmitted;
+
+    @Column(name = "invalidated_at")
+    private Instant invalidatedAt;
+
+    @Column(name = "invalidated_by")
+    private Long invalidatedBy;
+
+    @Column(name = "invalid_reason", length = 500)
+    private String invalidReason;
+
+    @Column(name = "reviewed_at")
+    private Instant reviewedAt;
+
+    @Column(name = "reviewed_by")
+    private Long reviewedBy;
+
     @Version
     @Column(nullable = false)
     private long version;
@@ -111,6 +136,32 @@ public class AssessmentAttempt {
         updatedAt = Instant.now();
     }
 
+    public void attachEnrollment(ExamEnrollment enrollment) {
+        this.enrollment = enrollment;
+    }
+
+    /** Cierre por vencimiento del tiempo: se califica lo que alcanzo a responder. */
+    public void autoClose(int score, Integer age, String group) {
+        submit(score, age, group);
+        this.autoSubmitted = true;
+        this.submittedAt = deadlineAt;
+    }
+
+    public void invalidate(Long actorId, String reason) {
+        this.invalidatedAt = Instant.now();
+        this.invalidatedBy = actorId;
+        this.invalidReason = reason;
+    }
+
+    public void markReviewed(Long actorId) {
+        this.reviewedAt = Instant.now();
+        this.reviewedBy = actorId;
+    }
+
+    public boolean isInvalidated() {
+        return invalidatedAt != null;
+    }
+
     public void submit(int score, Integer age, String group) {
         status = AttemptStatus.SUBMITTED;
         directScore = score;
@@ -133,6 +184,13 @@ public class AssessmentAttempt {
     public Instant getUpdatedAt() { return updatedAt; }
     public Instant getSubmittedAt() { return submittedAt; }
     public Integer getDirectScore() { return directScore; }
+    public ExamEnrollment getEnrollment() { return enrollment; }
+    public boolean isAutoSubmitted() { return autoSubmitted; }
+    public Instant getInvalidatedAt() { return invalidatedAt; }
+    public Long getInvalidatedBy() { return invalidatedBy; }
+    public String getInvalidReason() { return invalidReason; }
+    public Instant getReviewedAt() { return reviewedAt; }
+    public Long getReviewedBy() { return reviewedBy; }
     public Integer getParticipantAge() { return participantAge; }
     public String getNormGroup() { return normGroup; }
     public long getVersion() { return version; }

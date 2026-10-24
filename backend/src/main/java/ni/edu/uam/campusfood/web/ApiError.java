@@ -7,9 +7,14 @@ public record ApiError(
         Instant timestamp,
         int status,
         String error,
-        String message
+        String message,
+        String code
 ) {
     public static ApiError of(int status, String error, String message) {
-        return new ApiError(Instant.now(), status, error, message);
+        return new ApiError(Instant.now(), status, error, message, null);
+    }
+
+    public static ApiError of(int status, String error, String message, String code) {
+        return new ApiError(Instant.now(), status, error, message, code);
     }
 }

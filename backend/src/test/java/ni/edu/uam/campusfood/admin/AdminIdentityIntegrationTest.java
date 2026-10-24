@@ -30,6 +30,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class AdminIdentityIntegrationTest {
     @Autowired TestRestTemplate http;
     @Autowired UserRepository users;
+    @Autowired ni.edu.uam.campusfood.AdmissionFixtures fixtures;
     @Autowired AuditEventRepository audit;
     @Autowired PasswordEncoder passwords;
     @Autowired JwtService jwt;
@@ -43,7 +44,7 @@ class AdminIdentityIntegrationTest {
     @BeforeEach
     void prepare() {
         audit.deleteAll();
-        users.deleteAll();
+        fixtures.clean();
         User admin = User.staff("Administradora UAM", "admin@uam.edu.ni", passwords.encode("clave-admin-segura"), Role.ADMIN);
         admin.enableMfa();
         admin = users.save(admin);

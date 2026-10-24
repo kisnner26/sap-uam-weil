@@ -65,12 +65,14 @@ class MoodleLoginIntegrationTest {
     @Autowired
     UserRepository users;
 
+    @Autowired ni.edu.uam.campusfood.AdmissionFixtures fixtures;
+
     @Autowired
     ObjectMapper mapper;
 
     @BeforeEach
     void cleanDb() {
-        users.deleteAll();
+        fixtures.clean();
     }
 
     @AfterEach
