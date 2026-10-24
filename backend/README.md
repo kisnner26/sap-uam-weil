@@ -51,6 +51,7 @@ intento activo y que una versión desactualizada no sobrescriba cambios reciente
 | `DB_URL`, `DB_USER`, `DB_PASSWORD` | **Obligatorias.** Conexión Postgres.       |
 | `APP_JWT_EXPIRATION_MS`| Vigencia del token (ms). Default 24h.                    |
 | `MOODLE_BASE_URL`      | Base de Moodle. Default `https://uamvirtual.uam.edu.ni/grado`. |
+| `WEIL_DURATION_SECONDS`| Duración oficial del intento. Default 1200 segundos.           |
 
 Con el perfil `prod` las variables obligatorias **no tienen valor por defecto**: si falta
 alguna, la aplicación se niega a arrancar y nombra cuál falta (en vez de iniciar con una
@@ -134,10 +135,16 @@ Todos requieren una sesión autenticada:
 - `GET /api/attempts/{id}`: carga el detalle y las respuestas cuando se solicitan.
 - `POST /api/attempts/{id}/lease`: renueva el arrendamiento exclusivo.
 - `PUT /api/attempts/{id}/responses/{itemIndex}`: sincronización idempotente opcional.
+- `DELETE /api/attempts/{id}/responses/{itemIndex}`: elimina una respuesta guardada.
+- `GET /api/attempts/{id}/material/{itemIndex}/{asset}`: entrega la figura actual o siguiente.
+- `POST /api/attempts/{id}/events`: registra una incidencia del modo examen.
 - `POST /api/attempts/{id}/submit`: valida y guarda las 60 respuestas en una transacción.
 
 Las escrituras envían `leaseToken` y `expectedVersion`. Un arrendamiento ajeno,
 vencido o una versión desactualizada responde **409 Conflict**.
+
+El plazo se fija al crear el intento. Reabrir, recargar o perder conexión conserva la hora límite y
+las respuestas ya guardadas. Al vencer, el servidor rechaza renovaciones, cambios y entregas tardías.
 
 ## Flujo Moodle (2 llamadas, desde el backend)
 

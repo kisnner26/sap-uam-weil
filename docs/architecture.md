@@ -33,7 +33,8 @@ testDefinition
 └── scoringStrategy: weil-v1
 ```
 
-la primera implementación está en `frontend/test-catalog.js`. la interfaz consume el contrato y ya no construye directamente las rutas de imágenes ni los tamaños del test.
+la parte pública de la primera implementación está en `frontend/test-catalog.js`. contiene metadatos y geometría,
+pero nunca claves, baremos, puntajes ni rutas públicas al material protegido.
 
 ## modelo de datos objetivo
 
@@ -51,7 +52,7 @@ invariantes:
 3. solo puede existir un intento activo por asignación.
 4. la entrega es transaccional y solo ocurre cuando están completas las respuestas obligatorias.
 5. el resultado no se recalcula silenciosamente si cambia un baremo; se crea una nueva versión.
-6. las claves y baremos de producción se calculan en el backend. el modo estático de github pages es únicamente una demostración local.
+6. las claves y baremos se calculan únicamente en el backend. el modo estático de github pages no muestra material real ni califica.
 
 ## api objetivo
 
@@ -103,6 +104,8 @@ las pantallas de acceso, inicio, perfil y resultados pertenecen a la plataforma.
 ### lazy load
 
 - el visor inserta únicamente la imagen del ítem actual y precarga solo la siguiente.
+- las imágenes salen por `/api/attempts/{id}/material/{item}/{asset}` después de validar propietario,
+  vigencia y avance; los escaneos no viven en el frontend público.
 - la imagen define sus dimensiones y presenta estados de carga y error para evitar saltos visuales.
 - el índice local de resultados contiene solo resúmenes; respuestas, incidencias y desglose se leen desde una clave de detalle cuando se abre un reporte.
 - `GET /api/attempts` devuelve resúmenes y `GET /api/attempts/{id}` carga las respuestas bajo demanda.
@@ -120,18 +123,15 @@ las pantallas de acceso, inicio, perfil y resultados pertenecen a la plataforma.
 
 ### client session state
 
-`frontend/client-session.js` guarda en el dispositivo únicamente respuestas, posición, hora de inicio e incidencias. no persiste puntaje, percentil, ci, clasificación ni claves dentro del borrador. los datos locales permiten recuperación, pero no son autoridad para una entrega de producción; el backend vuelve a validar versión, propiedad, sesión exclusiva y respuestas completas.
+`frontend/client-session.js` guarda en el dispositivo únicamente respuestas, posición, hora de inicio e incidencias. no persiste puntaje, percentil, ci, clasificación ni claves dentro del borrador. cada respuesta también se guarda inmediatamente en el servidor. al reconectar, el servidor reemplaza el borrador local y mantiene el plazo original: recargar o perder conexión no reinicia ni pausa los 20 minutos.
 
-al entregar, el backend recalcula el puntaje directo y el desglose por lámina con la clave versionada. el frontend usa ese valor en producción; el cálculo local queda limitado a la demostración estática de github pages.
+al entregar, el backend recalcula el puntaje directo y el desglose por lámina con la clave versionada. el aspirante solo recibe una constancia; el resultado y el baremo se entregan exclusivamente a `staff` y `admin`.
 
 ## Limitaciones conocidas
 
-- **La clave de respuestas del Weil también viaja en `frontend/test-catalog.js`.** Con backend, la
-  calificación oficial se calcula en el servidor (`AssessmentService`), pero el modo demo
-  (GitHub Pages, sin backend) y la revisión de respuestas necesitan la clave en el navegador, así
-  que cualquiera puede leerla antes de rendir el test. Para evaluaciones reales, la clave debe
-  salir del frontend: el servidor devolvería las respuestas correctas solo después de entregar,
-  y el modo demo quedaría sin calificación local.
+- **El plazo actual es global.** El servidor aplica 20 minutos desde la creación del intento y no lo
+  pausa por desconexión. La ampliación individual para adecuaciones se implementará con las sesiones
+  y asignaciones de la fase 3.
 - **El límite de intentos de acceso es por instancia** (contador en memoria). Con varias réplicas
   del backend habría que moverlo a un almacén compartido.
 - **El modo demo** guarda sus cuentas en `localStorage` del navegador (con contraseña protegida
@@ -141,7 +141,8 @@ al entregar, el backend recalcula el puntaje directo y el desglose por lámina c
 
 - `tools/build_puzzle_assets.py` corta cada ítem de las láminas completas: localiza los 12 marcos de la
   página, ajusta la cuadrícula de 2×4 opciones y el hueco, y guarda la figura base y 8 piezas
-  (`frontend/assets/weill-puzzle`, ~540 archivos) más `frontend/puzzle-data.js` con el tamaño y el hueco.
+  (`backend/src/main/resources/test-material/weil-form-a/puzzle`, ~540 archivos) más
+  `frontend/puzzle-data.js` con únicamente el tamaño y el hueco.
 - Se corta desde las láminas y no desde `weill-items`, porque varios recortes de esa carpeta están
   desplazados y les faltan partes (sobre todo en la lámina 4).
 - `frontend/puzzle-view.js` maneja el arrastre con eventos de puntero, no con el arrastre nativo del
