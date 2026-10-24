@@ -6,6 +6,7 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -54,6 +55,20 @@ public class AssessmentController {
                 request.leaseToken(), request.expectedVersion());
     }
 
+    @DeleteMapping("/{attemptId}/responses/{itemIndex}")
+    public AssessmentService.AttemptView clearAnswer(Authentication authentication, @PathVariable Long attemptId,
+                                                     @PathVariable int itemIndex,
+                                                     @Valid @RequestBody LeaseRequest request) {
+        return service.clearAnswer(userId(authentication), attemptId, itemIndex,
+                request.leaseToken(), request.expectedVersion());
+    }
+
+    @PostMapping("/{attemptId}/events")
+    public void event(Authentication authentication, @PathVariable Long attemptId,
+                      @Valid @RequestBody SecurityEventRequest request) {
+        service.recordEvent(userId(authentication), attemptId, request.leaseToken(), request.type(), request.detail());
+    }
+
     @PostMapping("/{attemptId}/submit")
     public AssessmentService.AttemptView submit(Authentication authentication, @PathVariable Long attemptId,
                                                 @Valid @RequestBody SubmitRequest request) {
@@ -69,6 +84,9 @@ public class AssessmentController {
     public record LeaseRequest(@NotBlank String leaseToken, @Min(0) long expectedVersion) {}
     public record AnswerRequest(@Min(1) @Max(8) int option, @NotBlank String leaseToken,
                                 @Min(0) long expectedVersion) {}
+    public record SecurityEventRequest(@NotBlank String leaseToken,
+                                       @NotBlank @jakarta.validation.constraints.Size(max = 48) String type,
+                                       @jakarta.validation.constraints.Size(max = 240) String detail) {}
     public record SubmitRequest(@NotBlank String leaseToken, @Min(0) long expectedVersion,
                                 @jakarta.validation.constraints.Size(min = 60, max = 60)
                                 List<@jakarta.validation.constraints.NotNull @Min(1) @Max(8) Integer> answers,

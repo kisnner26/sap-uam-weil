@@ -38,6 +38,7 @@ CREATE TABLE IF NOT EXISTS assessment_attempts (
     lease_token      VARCHAR(64)  NOT NULL,
     lease_expires_at TIMESTAMPTZ  NOT NULL,
     started_at       TIMESTAMPTZ  NOT NULL,
+    deadline_at      TIMESTAMPTZ  NOT NULL,
     updated_at       TIMESTAMPTZ  NOT NULL,
     submitted_at     TIMESTAMPTZ,
     direct_score     INTEGER,
@@ -50,6 +51,9 @@ CREATE TABLE IF NOT EXISTS assessment_attempts (
 -- Bases creadas antes de guardar la edad y el grupo de baremo del aspirante:
 ALTER TABLE assessment_attempts ADD COLUMN IF NOT EXISTS participant_age INTEGER;
 ALTER TABLE assessment_attempts ADD COLUMN IF NOT EXISTS norm_group VARCHAR(8);
+ALTER TABLE assessment_attempts ADD COLUMN IF NOT EXISTS deadline_at TIMESTAMPTZ;
+UPDATE assessment_attempts SET deadline_at = started_at + INTERVAL '20 minutes' WHERE deadline_at IS NULL;
+ALTER TABLE assessment_attempts ALTER COLUMN deadline_at SET NOT NULL;
 
 CREATE INDEX IF NOT EXISTS ix_attempt_user_test
     ON assessment_attempts (user_id, test_id, status, started_at DESC);
@@ -67,3 +71,13 @@ CREATE TABLE IF NOT EXISTS assessment_responses (
     CONSTRAINT ck_response_item CHECK (item_index >= 0),
     CONSTRAINT ck_response_option CHECK (selected_option > 0)
 );
+
+CREATE TABLE IF NOT EXISTS assessment_events (
+    id          BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    attempt_id  BIGINT      NOT NULL REFERENCES assessment_attempts(id) ON DELETE CASCADE,
+    type        VARCHAR(48) NOT NULL,
+    detail      VARCHAR(240),
+    occurred_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS ix_event_attempt_time ON assessment_events (attempt_id, occurred_at);

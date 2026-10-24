@@ -30,6 +30,7 @@ class StaffResultsSecurityTest {
     @Autowired UserRepository users;
     @Autowired AssessmentAttemptRepository attempts;
     @Autowired AssessmentResponseRepository responses;
+    @Autowired AssessmentEventRepository events;
     @Autowired JwtService jwt;
     @Autowired JdbcTemplate jdbc;
 
@@ -39,6 +40,7 @@ class StaffResultsSecurityTest {
 
     @BeforeEach
     void prepare() {
+        events.deleteAll();
         responses.deleteAll();
         attempts.deleteAll();
         users.deleteAll();
@@ -66,6 +68,13 @@ class StaffResultsSecurityTest {
                 request(aspiranteToken, Map.of("testId", "weil-form-a", "testVersion", 1)), Map.class).getBody();
         Number attemptId = (Number) opened.get("id");
 
+        var event = http.exchange("/api/attempts/" + attemptId + "/events", HttpMethod.POST,
+                request(aspiranteToken, Map.of(
+                        "leaseToken", opened.get("leaseToken"),
+                        "type", "visibility-hidden",
+                        "detail", "La pestaña dejó de estar visible.")), Void.class);
+        assertThat(event.getStatusCode().is2xxSuccessful()).isTrue();
+
         var submitted = http.exchange("/api/attempts/" + attemptId + "/submit", HttpMethod.POST,
                 request(aspiranteToken, Map.of(
                         "leaseToken", opened.get("leaseToken"),
@@ -83,8 +92,29 @@ class StaffResultsSecurityTest {
         for (String token : new String[] {staffToken, adminToken}) {
             var listing = http.exchange("/api/staff/attempts", HttpMethod.GET, request(token, null), String.class);
             assertThat(listing.getStatusCode()).isEqualTo(HttpStatus.OK);
-            assertThat(listing.getBody()).contains("Ana López", "\"directScore\":10", "\"normGroup\":\"UN\"", "\"age\":19");
+            assertThat(listing.getBody()).contains("Ana López", "\"directScore\":10", "\"normGroup\":\"UN\"", "\"age\":19",
+                    "visibility-hidden", "La pestaña dejó de estar visible.");
         }
+    }
+
+    @Test
+    void elMaterialSoloSeEntregaAutenticadoYDeFormaProgresiva() {
+        var opened = http.exchange("/api/attempts", HttpMethod.POST,
+                request(aspiranteToken, Map.of("testId", "weil-form-a", "testVersion", 1)), Map.class).getBody();
+        Number attemptId = (Number) opened.get("id");
+
+        var anonymous = http.exchange("/api/attempts/" + attemptId + "/material/0/base",
+                HttpMethod.GET, request(null, null), byte[].class);
+        var current = http.exchange("/api/attempts/" + attemptId + "/material/0/base",
+                HttpMethod.GET, request(aspiranteToken, null), byte[].class);
+        var future = http.exchange("/api/attempts/" + attemptId + "/material/2/base",
+                HttpMethod.GET, request(aspiranteToken, null), String.class);
+
+        assertThat(anonymous.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        assertThat(current.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(current.getHeaders().getCacheControl()).contains("no-store");
+        assertThat(current.getBody()).isNotEmpty();
+        assertThat(future.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
     }
 
     @Test
@@ -94,5 +124,9 @@ class StaffResultsSecurityTest {
 
         assertThat(anonymous.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
         assertThat(aspirante.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+
+        var norms = http.exchange("/api/staff/attempts/norms", HttpMethod.GET, request(staffToken, null), String.class);
+        assertThat(norms.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(norms.getBody()).contains("\"p\":90", "\"UN\":57");
     }
 }

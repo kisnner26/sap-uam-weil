@@ -12,6 +12,7 @@ public interface AssessmentResponseRepository extends JpaRepository<AssessmentRe
     Optional<AssessmentResponse> findByAttemptIdAndItemIndex(Long attemptId, int itemIndex);
     List<AssessmentResponse> findByAttemptIdOrderByItemIndex(Long attemptId);
     long countByAttemptId(Long attemptId);
+    void deleteByAttemptIdAndItemIndex(Long attemptId, int itemIndex);
 
     @Query("select r from AssessmentResponse r where r.attempt.id in :ids order by r.attempt.id, r.itemIndex")
     List<AssessmentResponse> findForAttempts(@Param("ids") Collection<Long> ids);

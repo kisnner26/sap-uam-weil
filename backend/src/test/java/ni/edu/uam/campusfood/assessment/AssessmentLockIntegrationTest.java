@@ -17,12 +17,14 @@ class AssessmentLockIntegrationTest {
     @Autowired AssessmentService service;
     @Autowired AssessmentResponseRepository responses;
     @Autowired AssessmentAttemptRepository attempts;
+    @Autowired AssessmentEventRepository events;
     @Autowired UserRepository users;
 
     private Long userId;
 
     @BeforeEach
     void prepare() {
+        events.deleteAll();
         responses.deleteAll();
         attempts.deleteAll();
         users.deleteAll();
@@ -32,6 +34,9 @@ class AssessmentLockIntegrationTest {
     @Test
     void unSegundoClienteNoPuedeAbrirElIntentoMientrasElLeaseEsteActivo() {
         var first = service.open(userId, "weil-form-a", 1, null);
+
+        assertThat(first.deadlineAt()).isAfter(first.startedAt());
+        assertThat(first.remainingSeconds()).isBetween(1190L, 1200L);
 
         assertThatThrownBy(() -> service.open(userId, "weil-form-a", 1, null))
                 .isInstanceOf(AssessmentConflictException.class)

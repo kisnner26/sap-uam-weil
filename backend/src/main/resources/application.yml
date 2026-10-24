@@ -18,6 +18,9 @@ server:
 # Configuracion propia de la app
 # ----------------------------------------------------------------------------
 app:
+  assessment:
+    # Provisional aprobado: el tiempo sigue corriendo durante una reconexion.
+    weil-duration-seconds: ${WEIL_DURATION_SECONDS:1200}
   jwt:
     # Secreto para firmar el JWT propio (NO el token de Moodle).
     # En produccion definir APP_JWT_SECRET como variable de entorno (>= 32 bytes).

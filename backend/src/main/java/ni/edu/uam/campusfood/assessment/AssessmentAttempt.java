@@ -45,6 +45,9 @@ public class AssessmentAttempt {
     @Column(name = "started_at", nullable = false, updatable = false)
     private Instant startedAt;
 
+    @Column(name = "deadline_at", nullable = false, updatable = false)
+    private Instant deadlineAt;
+
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
@@ -68,12 +71,14 @@ public class AssessmentAttempt {
     protected AssessmentAttempt() {
     }
 
-    public AssessmentAttempt(User user, String testId, int testVersion, String leaseToken, Instant leaseExpiresAt) {
+    public AssessmentAttempt(User user, String testId, int testVersion, String leaseToken,
+                             Instant leaseExpiresAt, Instant deadlineAt) {
         this.user = user;
         this.testId = testId;
         this.testVersion = testVersion;
         this.leaseToken = leaseToken;
         this.leaseExpiresAt = leaseExpiresAt;
+        this.deadlineAt = deadlineAt;
         this.status = AttemptStatus.IN_PROGRESS;
     }
 
@@ -90,6 +95,10 @@ public class AssessmentAttempt {
 
     public boolean leaseIsActive(Instant now) {
         return leaseExpiresAt.isAfter(now);
+    }
+
+    public boolean isWithinTime(Instant now) {
+        return now.isBefore(deadlineAt);
     }
 
     public void renewLease(String token, Instant expiresAt) {
@@ -120,6 +129,7 @@ public class AssessmentAttempt {
     public String getLeaseToken() { return leaseToken; }
     public Instant getLeaseExpiresAt() { return leaseExpiresAt; }
     public Instant getStartedAt() { return startedAt; }
+    public Instant getDeadlineAt() { return deadlineAt; }
     public Instant getUpdatedAt() { return updatedAt; }
     public Instant getSubmittedAt() { return submittedAt; }
     public Integer getDirectScore() { return directScore; }

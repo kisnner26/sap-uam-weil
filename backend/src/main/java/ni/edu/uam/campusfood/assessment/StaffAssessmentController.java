@@ -6,6 +6,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * Resultados de las evaluaciones, solo para personal (STAFF) y administracion (ADMIN).
@@ -24,5 +25,10 @@ public class StaffAssessmentController {
     public List<AssessmentService.StaffAttemptView> submitted(
             @RequestParam(defaultValue = "weil-form-a") String testId) {
         return service.listSubmitted(testId);
+    }
+
+    @GetMapping("/norms")
+    public List<Map<String, Integer>> norms() {
+        return service.norms();
     }
 }
