@@ -27,3 +27,4 @@ target/
 # Logs temporales
 /tmp/
 *.log
+.loadtest-secret

@@ -1,0 +1,59 @@
+name: CI
+on:
+  push: { branches: [master] }
+  pull_request:
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: 17, cache: maven }
+      - run: mvn -B -f backend/pom.xml test
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: npm test
+
+  # Lo que H2 no detecta: migracion Flyway, validacion del esquema y el flujo completo bajo concurrencia.
+  postgres:
+    runs-on: ubuntu-latest
+    services:
+      pg:
+        image: postgres:16
+        env: { POSTGRES_DB: sapweill, POSTGRES_USER: sapweill, POSTGRES_PASSWORD: sapweill-ci }
+        ports: ["5432:5432"]
+        options: --health-cmd "pg_isready -U sapweill" --health-interval 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: 17, cache: maven }
+      - name: Arrancar backend sobre PostgreSQL
+        env:
+          SPRING_PROFILES_ACTIVE: pg
+          DB_URL: jdbc:postgresql://localhost:5432/sapweill
+          DB_USER: sapweill
+          DB_PASSWORD: sapweill-ci
+          APP_BOOTSTRAP_ADMIN_EMAIL: admin@ci.test
+          APP_BOOTSTRAP_ADMIN_PASSWORD: clave-admin-ci-123
+        run: |
+          mvn -B -q -f backend/pom.xml -DskipTests package
+          nohup java -jar backend/target/*.jar --server.port=8081 --app.mail.poll-ms=1000 \
+            --app.security.auth-rate-limit.max-requests=1000000 > backend.log 2>&1 &
+          for i in $(seq 1 60); do curl -fs localhost:8081/actuator/health && break; sleep 2; done
+      - name: Prueba de carga (100 aspirantes, flujo completo)
+        run: python3 tools/loadtest.py --base http://localhost:8081 --admin-email admin@ci.test --admin-password clave-admin-ci-123 --users 100 --concurrency 30
+      - if: failure()
+        run: tail -n 100 backend.log
+
+  imagenes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t sapuam-backend backend
+      - run: docker build -f deploy/Dockerfile.web -t sapuam-web .
