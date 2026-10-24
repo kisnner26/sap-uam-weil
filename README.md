@@ -73,12 +73,20 @@ ni el CI (ni en pantalla ni en las respuestas del servidor). Esos datos son solo
 | `CLIENTE` (aspirante) | Constancia de entrega |
 | `STAFF` / `ADMIN` | Panel, listado de resultados con puntaje, percentil, CI y clasificación, y la tabla de baremos |
 
-Las cuentas nuevas son `CLIENTE`. Para dar acceso a una persona del personal, un administrador de la
-base de datos cambia su rol (no hay pantalla para esto a propósito):
+Las cuentas nuevas son `CLIENTE`. El personal y la administración se crean **desde el panel**, sin tocar la
+base de datos:
 
-```sql
-UPDATE users SET role = 'STAFF' WHERE email = 'persona@uam.edu.ni';
-```
+- **Primer administrador:** al arrancar con `APP_BOOTSTRAP_ADMIN_EMAIL` y `APP_BOOTSTRAP_ADMIN_PASSWORD`
+  (mínimo 12 caracteres) se crea la cuenta inicial, solo si todavía no existe ningún administrador.
+- **Personal:** un `ADMIN` crea las cuentas `STAFF` o `ADMIN` en la pestaña **Personal**, con una contraseña
+  temporal; también cambia roles, desactiva cuentas y restablece el segundo factor.
+- **Segundo factor obligatorio:** `STAFF` y `ADMIN` entran con contraseña **más** un código de 6 dígitos (TOTP,
+  como Google Authenticator o Microsoft Authenticator). En el primer acceso se muestra la clave para
+  configurarlo. Los aspirantes no usan segundo factor.
+- **Sesiones revocables:** desactivar una cuenta, cambiarle el rol, restablecer su segundo factor o cerrar
+  sesión invalida de inmediato todas sus sesiones abiertas, aunque haya varias instancias del servidor.
+- **Auditoría:** la pestaña **Auditoría** muestra quién creó cuentas, cambió accesos o consultó resultados.
+  No se puede editar desde la aplicación.
 
 El listado sale de `GET /api/staff/attempts`, que exige rol `STAFF` o `ADMIN` (403 en otro caso).
 El percentil y el CI se calculan al mostrarlos, con el baremo y con la edad y el grupo que el aspirante
