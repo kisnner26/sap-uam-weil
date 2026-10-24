@@ -49,6 +49,9 @@ intento activo y que una versión desactualizada no sobrescriba cambios reciente
 | `APP_JWT_SECRET`       | **Obligatoria.** Secreto HMAC ≥ 32 bytes para firmar el JWT propio. |
 | `APP_CORS_ORIGINS`     | **Obligatoria.** Orígenes del frontend separados por coma. |
 | `DB_URL`, `DB_USER`, `DB_PASSWORD` | **Obligatorias.** Conexión Postgres.       |
+| `APP_MFA_ENCRYPTION_KEY` | **Obligatoria en prod.** Clave de 32 bytes que cifra los secretos del segundo factor. |
+| `APP_BOOTSTRAP_ADMIN_EMAIL`, `APP_BOOTSTRAP_ADMIN_PASSWORD` | **Obligatorias en prod.** Primer administrador (contraseña ≥ 12 caracteres). Solo se usan si no hay ningún `ADMIN`. |
+| `APP_BOOTSTRAP_ADMIN_NAME` | Nombre del primer administrador. |
 | `APP_JWT_EXPIRATION_MS`| Vigencia del token (ms). Default 24h.                    |
 | `MOODLE_BASE_URL`      | Base de Moodle. Default `https://uamvirtual.uam.edu.ni/grado`. |
 | `WEIL_DURATION_SECONDS`| Duración oficial del intento. Default 1200 segundos.           |
@@ -81,7 +84,8 @@ ni CI. Los resultados se listan con `GET /api/staff/attempts?testId=weil-form-a`
 `ADMIN` (sin sesión responde 401; con otro rol, 403). Cada fila trae el aspirante, el puntaje directo, el
 puntaje por lámina, la edad y el grupo de baremo declarados al entregar.
 
-Los roles se asignan en la base de datos: `UPDATE users SET role = 'STAFF' WHERE email = '...';`.
+Los roles los administra un `ADMIN` desde el panel (`/api/admin/users`); no hace falta editar la base.
+El primer administrador se crea con `APP_BOOTSTRAP_ADMIN_EMAIL` / `APP_BOOTSTRAP_ADMIN_PASSWORD`.
 Las bases que ya existían necesitan las dos columnas nuevas del intento: están como `ALTER TABLE ... IF NOT EXISTS`
 en [`schema_postgres.sql`](src/main/resources/db/schema_postgres.sql).
 
@@ -176,3 +180,23 @@ emite JWT propio.
 [`frontend-example/login.html`](frontend-example/login.html) — formulario con input CIF
 numérico, contraseña, botón "Ingresar con cuenta UAM", estado de carga, manejo de error
 (credenciales / mantenimiento) y guardado de la sesión propia.
+
+## Identidad, segundo factor y administración
+
+| Método | Endpoint | Quién | Descripción |
+|--------|----------|-------|-------------|
+| POST | `/api/auth/login` | público | Aspirantes: sesión directa. `STAFF`/`ADMIN`: responde `202` con un reto de segundo factor |
+| POST | `/api/auth/mfa/verify` | público (con reto) | Valida el código TOTP de 6 dígitos y abre la sesión |
+| POST | `/api/auth/refresh` | sesión | Renueva el token |
+| POST | `/api/auth/logout` | sesión | Cierra la sesión **y la invalida en el servidor** |
+| GET | `/api/admin/users` | `ADMIN` | Lista del personal |
+| POST | `/api/admin/users` | `ADMIN` | Crea una cuenta `STAFF`/`ADMIN` con contraseña temporal |
+| PATCH | `/api/admin/users/{id}` | `ADMIN` | Cambia rol o estado (cierra sus sesiones). No se puede quitar el propio acceso |
+| POST | `/api/admin/users/{id}/mfa-reset` | `ADMIN` | Obliga a configurar de nuevo el segundo factor |
+| GET | `/api/admin/audit` | `ADMIN` | Registro de auditoría (últimos 200 eventos) |
+
+Cada petición vuelve a leer al usuario en la base: una cuenta desactivada, un rol cambiado o una sesión
+revocada dejan de servir al instante. El límite de intentos de acceso se guarda en la base de datos
+(por IP y por cuenta, con bloqueo progresivo), por lo que vale para varias instancias del servidor.
+
+Prueba de punta a punta contra un backend en marcha: `python3 tools/e2e_identity.py` (ver su encabezado).

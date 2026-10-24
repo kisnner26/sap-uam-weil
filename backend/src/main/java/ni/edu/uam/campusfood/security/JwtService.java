@@ -44,6 +44,9 @@ public class JwtService {
                 .claim("name", user.getFullName())
                 .claim("role", user.getRole().name())
                 .claim("provider", user.getAuthProvider().value())
+                .claim("sessionVersion", user.getSessionVersion())
+                .claim("tokenType", "session")
+                .claim("mfa", user.getRole() == ni.edu.uam.campusfood.user.Role.CLIENTE || user.isMfaEnabled())
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(exp))
                 .signWith(key)
@@ -53,7 +56,38 @@ public class JwtService {
     }
 
     /** Valida la firma/vigencia y devuelve los claims, o lanza JwtException. */
-    public Claims parse(String token) throws JwtException {
+    public Claims parseSession(String token) throws JwtException {
+        Claims claims = parse(token);
+        if (!"session".equals(claims.get("tokenType", String.class))) {
+            throw new JwtException("Tipo de token invalido");
+        }
+        return claims;
+    }
+
+    public IssuedToken issueMfaChallenge(User user) {
+        Instant now = Instant.now();
+        Instant exp = now.plusSeconds(300);
+        String token = Jwts.builder()
+                .issuer(props.getIssuer())
+                .subject(String.valueOf(user.getId()))
+                .claim("sessionVersion", user.getSessionVersion())
+                .claim("tokenType", "mfa_challenge")
+                .issuedAt(Date.from(now))
+                .expiration(Date.from(exp))
+                .signWith(key)
+                .compact();
+        return new IssuedToken(token, exp, 300);
+    }
+
+    public Claims parseMfaChallenge(String token) throws JwtException {
+        Claims claims = parse(token);
+        if (!"mfa_challenge".equals(claims.get("tokenType", String.class))) {
+            throw new JwtException("Desafio MFA invalido");
+        }
+        return claims;
+    }
+
+    private Claims parse(String token) throws JwtException {
         return Jwts.parser()
                 .verifyWith(key)
                 .requireIssuer(props.getIssuer())

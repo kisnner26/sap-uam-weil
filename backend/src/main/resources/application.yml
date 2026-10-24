@@ -18,6 +18,15 @@ server:
 # Configuracion propia de la app
 # ----------------------------------------------------------------------------
 app:
+  bootstrap-admin:
+    email: ${APP_BOOTSTRAP_ADMIN_EMAIL:}
+    password: ${APP_BOOTSTRAP_ADMIN_PASSWORD:}
+    name: ${APP_BOOTSTRAP_ADMIN_NAME:Administrador SAP-UAM}
+  session-cookie:
+    secure: false
+  mfa:
+    # Clave AES de desarrollo. En produccion se exige una distinta de 32 bytes.
+    encryption-key: ${APP_MFA_ENCRYPTION_KEY:dev-mfa-key-32-bytes-change-now!}
   assessment:
     # Provisional aprobado: el tiempo sigue corriendo durante una reconexion.
     weil-duration-seconds: ${WEIL_DURATION_SECONDS:1200}
@@ -85,6 +94,10 @@ spring:
 # En produccion estos valores son obligatorios y no tienen valor por defecto:
 # si falta alguno, la aplicacion no arranca (en vez de usar una clave conocida).
 app:
+  session-cookie:
+    secure: true
+  mfa:
+    encryption-key: ${APP_MFA_ENCRYPTION_KEY}
   jwt:
     secret: ${APP_JWT_SECRET}
   cors:

@@ -49,9 +49,15 @@ class StaffResultsSecurityTest {
         User admin = users.save(User.manual("Raúl Admin", "raul@example.com", "hash", "003"));
         jdbc.update("update users set role = 'STAFF' where id = ?", staff.getId());
         jdbc.update("update users set role = 'ADMIN' where id = ?", admin.getId());
+        staff = users.findById(staff.getId()).orElseThrow();
+        admin = users.findById(admin.getId()).orElseThrow();
+        staff.enableMfa();
+        admin.enableMfa();
+        users.save(staff);
+        users.save(admin);
         aspiranteToken = jwt.issue(users.findById(aspirante.getId()).orElseThrow()).token();
-        staffToken = jwt.issue(users.findById(staff.getId()).orElseThrow()).token();
-        adminToken = jwt.issue(users.findById(admin.getId()).orElseThrow()).token();
+        staffToken = jwt.issue(staff).token();
+        adminToken = jwt.issue(admin).token();
     }
 
     private HttpEntity<Object> request(String token, Object body) {

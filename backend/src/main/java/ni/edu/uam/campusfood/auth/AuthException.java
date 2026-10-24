@@ -5,6 +5,8 @@ public class AuthException extends RuntimeException {
 
     public enum Kind {
         BAD_CREDENTIALS, // 401
+        DISABLED,        // 403
+        MFA_INVALID,     // 401
         EMAIL_TAKEN      // 409
     }
 

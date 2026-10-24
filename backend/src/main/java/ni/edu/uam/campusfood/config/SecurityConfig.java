@@ -2,7 +2,7 @@ package ni.edu.uam.campusfood.config;
 
 import ni.edu.uam.campusfood.security.AuthRateLimitFilter;
 import ni.edu.uam.campusfood.security.JwtAuthFilter;
-import ni.edu.uam.campusfood.security.RequestRateLimiter;
+import ni.edu.uam.campusfood.security.DatabaseLoginThrottleService;
 import ni.edu.uam.campusfood.security.RestAccessDeniedHandler;
 import ni.edu.uam.campusfood.security.RestAuthEntryPoint;
 import org.springframework.context.annotation.Bean;
@@ -18,7 +18,6 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
 
@@ -34,26 +33,21 @@ public class SecurityConfig {
     private final RestAccessDeniedHandler accessDeniedHandler;
     private final String allowedOrigins;
     private final Environment env;
-    private final int authMaxRequests;
-    private final long authWindowSeconds;
+    private final DatabaseLoginThrottleService loginThrottle;
 
     public SecurityConfig(JwtAuthFilter jwtAuthFilter,
                           RestAuthEntryPoint authEntryPoint,
                           RestAccessDeniedHandler accessDeniedHandler,
+                          DatabaseLoginThrottleService loginThrottle,
                           Environment env,
                           @org.springframework.beans.factory.annotation.Value("${app.cors.allowed-origins:}")
-                          String allowedOrigins,
-                          @org.springframework.beans.factory.annotation.Value("${app.security.auth-rate-limit.max-requests:20}")
-                          int authMaxRequests,
-                          @org.springframework.beans.factory.annotation.Value("${app.security.auth-rate-limit.window-seconds:300}")
-                          long authWindowSeconds) {
+                          String allowedOrigins) {
         this.jwtAuthFilter = jwtAuthFilter;
         this.authEntryPoint = authEntryPoint;
         this.accessDeniedHandler = accessDeniedHandler;
+        this.loginThrottle = loginThrottle;
         this.allowedOrigins = allowedOrigins;
         this.env = env;
-        this.authMaxRequests = authMaxRequests;
-        this.authWindowSeconds = authWindowSeconds;
     }
 
     @Bean
@@ -70,6 +64,7 @@ public class SecurityConfig {
                             "/api/auth/moodle-login",
                             "/api/auth/login",
                             "/api/auth/register",
+                            "/api/auth/mfa/verify",
                             "/api/auth/logout",
                             "/actuator/health"
                     ).permitAll();
@@ -79,6 +74,7 @@ public class SecurityConfig {
                     }
                     // Resultados con puntaje: solo personal y administracion.
                     auth.requestMatchers("/api/staff/**").hasAnyRole("STAFF", "ADMIN");
+                    auth.requestMatchers("/api/admin/**").hasRole("ADMIN");
                     auth.anyRequest().authenticated();
                 })
                 .addFilterBefore(authRateLimitFilter(), UsernamePasswordAuthenticationFilter.class)
@@ -94,7 +90,7 @@ public class SecurityConfig {
 
     /** No es un bean: asi Spring Boot no lo registra tambien como filtro de servlet. */
     private AuthRateLimitFilter authRateLimitFilter() {
-        return new AuthRateLimitFilter(new RequestRateLimiter(authMaxRequests, Duration.ofSeconds(authWindowSeconds)));
+        return new AuthRateLimitFilter(loginThrottle);
     }
 
     @Bean

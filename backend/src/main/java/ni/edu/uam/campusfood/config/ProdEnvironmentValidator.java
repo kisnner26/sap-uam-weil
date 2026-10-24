@@ -21,6 +21,9 @@ public class ProdEnvironmentValidator implements EnvironmentPostProcessor, Order
     private static Map<String, String> requiredProperties() {
         Map<String, String> required = new LinkedHashMap<>();
         required.put("app.jwt.secret", "APP_JWT_SECRET");
+        required.put("app.mfa.encryption-key", "APP_MFA_ENCRYPTION_KEY");
+        required.put("app.bootstrap-admin.email", "APP_BOOTSTRAP_ADMIN_EMAIL");
+        required.put("app.bootstrap-admin.password", "APP_BOOTSTRAP_ADMIN_PASSWORD");
         required.put("app.cors.allowed-origins", "APP_CORS_ORIGINS");
         required.put("spring.datasource.url", "DB_URL");
         required.put("spring.datasource.username", "DB_USER");

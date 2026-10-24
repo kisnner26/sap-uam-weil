@@ -53,6 +53,13 @@ const NAV = {
     ['aspirantes', 'Aspirantes'],
     ['baremo', 'Baremo'],
     ['ajustes', 'Ajustes']
+  ],
+  admin: [
+    ['panel', 'Panel'],
+    ['aspirantes', 'Aspirantes'],
+    ['usuarios', 'Personal'],
+    ['auditoria', 'Auditoría'],
+    ['baremo', 'Baremo']
   ]
 };
 
@@ -61,6 +68,7 @@ const stateStore = window.SAP_UAM_STATE.create({
   authMode: null,
   manualRegistering: false,
   authBusy: false,
+  mfaChallenge: null,
   startBusy: false,
   submitBusy: false,
   sessionUser: null,
@@ -80,6 +88,10 @@ const stateStore = window.SAP_UAM_STATE.create({
   staffNormsLoading: false,
   staffError: '',
   staffNormsError: '',
+  adminUsers: null,
+  adminAudit: null,
+  adminLoading: false,
+  adminError: '',
   settings: loadSettings()
 });
 const appState = stateStore.state;
@@ -472,12 +484,81 @@ async function submitUnifiedLogin() {
     } else {
       response = await apiRequest('/api/auth/login', { email: id, password });
     }
-    handleAuthSuccess(response, { loginId: id });
+    if (response?.mfaRequired) {
+      showMfaChallenge(response);
+    } else {
+      handleAuthSuccess(response, { loginId: id });
+    }
   } catch (error) {
     playSound('error');
     toast(error.message || 'No se pudo iniciar sesión.', 'err');
   } finally {
     setAuthBusy(false);
+  }
+}
+
+function showMfaChallenge(response) {
+  appState.mfaChallenge = response;
+  $('#form-unified')?.classList.add('app-hidden');
+  $('#form-mfa')?.classList.remove('app-hidden');
+  const enrollment = !!response.mfaEnrollmentRequired;
+  $('#mfa-enrollment')?.classList.toggle('app-hidden', !enrollment);
+  const help = $('#mfa-help');
+  if (help) help.textContent = enrollment
+    ? 'Configurá primero una cuenta en tu aplicación de autenticación y luego ingresá el código actual.'
+    : 'Abrí tu aplicación de autenticación e ingresá el código actual.';
+  const secret = $('#mfa-secret');
+  if (secret) secret.textContent = enrollment ? response.enrollmentSecret || '' : '';
+  const openApp = $('#mfa-open-app');
+  if (openApp) {
+    openApp.classList.toggle('app-hidden', !enrollment || !response.otpauthUri);
+    openApp.href = response.otpauthUri || '#';
+  }
+  const input = $('#mfa-code');
+  if (input) {
+    input.value = '';
+    input.setAttribute('aria-invalid', 'false');
+    requestAnimationFrame(() => input.focus());
+  }
+  validateMfa();
+}
+
+function cancelMfa() {
+  appState.mfaChallenge = null;
+  $('#form-mfa')?.classList.add('app-hidden');
+  $('#form-unified')?.classList.remove('app-hidden');
+  $('#unified-pass')?.focus();
+}
+
+function validateMfa() {
+  const input = $('#mfa-code');
+  const valid = /^\d{6}$/.test(input?.value || '');
+  const button = $('#btn-mfa');
+  if (button) button.disabled = !valid || appState.authBusy;
+  if (input) input.setAttribute('aria-invalid', input.value && !valid ? 'true' : 'false');
+  return valid;
+}
+
+async function submitMfa() {
+  if (!validateMfa() || !appState.mfaChallenge?.challengeToken) return;
+  appState.authBusy = true;
+  validateMfa();
+  try {
+    const response = await apiRequest('/api/auth/mfa/verify', {
+      challengeToken: appState.mfaChallenge.challengeToken,
+      code: $('#mfa-code').value
+    });
+    appState.mfaChallenge = null;
+    handleAuthSuccess(response);
+  } catch (error) {
+    const input = $('#mfa-code');
+    input?.setAttribute('aria-invalid', 'true');
+    const message = $('#mfa-code-msg');
+    if (message) message.textContent = error.message || 'El código no es válido.';
+    input?.focus();
+  } finally {
+    appState.authBusy = false;
+    validateMfa();
   }
 }
 
@@ -728,9 +809,79 @@ function enterStaff(user = null) {
   appState.role = 'staff';
   appState.route = 'panel';
   appState.profile = { username: user?.fullName || user?.email || ($('#unified-id')?.value || '').trim() || 'Personal' };
+  appState.sessionUser = user || appState.sessionUser;
   appState.staffAttempts = null;
   appState.staffError = '';
   showApp();
+}
+
+async function loadAdminData(kind, force = false) {
+  if (STATIC_PAGES_MODE || appState.sessionUser?.role !== 'ADMIN' || appState.adminLoading) return;
+  const current = kind === 'users' ? appState.adminUsers : appState.adminAudit;
+  if (current && !force) return;
+  appState.adminLoading = true;
+  appState.adminError = '';
+  try {
+    const rows = await apiRequest(kind === 'users' ? '/api/admin/users' : '/api/admin/audit');
+    if (kind === 'users') appState.adminUsers = Array.isArray(rows) ? rows : [];
+    else appState.adminAudit = Array.isArray(rows) ? rows : [];
+  } catch (error) {
+    appState.adminError = error.message || 'No se pudo cargar la administración.';
+  } finally {
+    appState.adminLoading = false;
+    if (appState.role === 'staff') render();
+  }
+}
+
+async function createStaffAccount(form) {
+  const data = new FormData(form);
+  const error = $('#admin-form-error');
+  if (error) error.textContent = '';
+  form.setAttribute('aria-busy', 'true');
+  try {
+    await apiRequest('/api/admin/users', {
+      fullName: String(data.get('fullName') || '').trim(),
+      email: String(data.get('email') || '').trim(),
+      temporaryPassword: String(data.get('temporaryPassword') || ''),
+      role: String(data.get('role') || 'STAFF')
+    });
+    form.reset();
+    appState.adminUsers = null;
+    await loadAdminData('users', true);
+    toast('Cuenta de personal creada.', 'ok');
+  } catch (requestError) {
+    if (error) error.textContent = requestError.message || 'No se pudo crear la cuenta.';
+  } finally {
+    form.setAttribute('aria-busy', 'false');
+  }
+}
+
+async function updateStaffAccount(userId, active) {
+  const role = $(`[data-admin-role="${userId}"]`)?.value || 'STAFF';
+  const current = (appState.adminUsers || []).find(user => user.id === userId);
+  const activeChanged = !current || current.active !== active;
+  if (current && !active && activeChanged
+    && !window.confirm(`¿Desactivar la cuenta de ${current.fullName}? Sus sesiones abiertas se cierran de inmediato.`)) return;
+  try {
+    await apiRequest(`/api/admin/users/${userId}`, { role, active }, { method: 'PATCH' });
+    appState.adminUsers = null;
+    await loadAdminData('users', true);
+    toast(!activeChanged ? 'Rol guardado. Sus sesiones abiertas se cerraron.' : active ? 'Cuenta activada.' : 'Cuenta desactivada.', 'ok');
+  } catch (error) {
+    toast(error.message || 'No se pudo cambiar el acceso.', 'err');
+  }
+}
+
+async function resetStaffMfa(userId) {
+  if (!window.confirm('¿Restablecer el segundo factor? La persona tendrá que configurarlo de nuevo.')) return;
+  try {
+    await apiRequest(`/api/admin/users/${userId}/mfa-reset`, {}, { method: 'POST' });
+    appState.adminUsers = null;
+    await loadAdminData('users', true);
+    toast('Segundo factor restablecido.', 'ok');
+  } catch (error) {
+    toast(error.message || 'No se pudo restablecer el segundo factor.', 'err');
+  }
 }
 
 async function loadStaffAttempts(force = false) {
@@ -770,7 +921,7 @@ function showApp() {
   render();
 }
 
-function logout() {
+async function logout() {
   if (isExamLocked()) {
     playSound('error');
     toast('La prueba ya inició. Finalizala para poder salir.', 'err');
@@ -778,7 +929,9 @@ function logout() {
     return;
   }
   saveDraft();
-  apiRequest('/api/auth/logout', {}, { method: 'POST' }).catch(() => {});
+  try {
+    await apiRequest('/api/auth/logout', {}, { method: 'POST' });
+  } catch {}
   localStorage.removeItem(STORAGE.sessionUser);
   localStorage.removeItem(STORAGE.legacy.sessionUser);
   appState.sessionUser = null;
@@ -789,13 +942,27 @@ function logout() {
   toast('Sesión cerrada.', 'info');
 }
 
+async function refreshBackendSession() {
+  if (STATIC_PAGES_MODE || !appState.sessionUser) return;
+  try {
+    const response = await apiRequest('/api/auth/refresh', {}, { method: 'POST' });
+    if (response?.user) {
+      appState.sessionUser = response.user;
+      localStorage.setItem(STORAGE.sessionUser, JSON.stringify(response.user));
+    }
+  } catch {
+    if (!isExamLocked()) logout();
+  }
+}
+
 // Las cuentas externas no tienen CIF: se dice asi en lugar de mostrar el numero interno de usuario.
 function identityLabel(profile) {
   return appState.sessionUser?.authProvider === 'manual' ? 'Cuenta externa' : `CIF ${profile?.cif ?? ''}`;
 }
 
 function renderShell() {
-  const nav = (NAV[appState.role] || []).filter(([route]) => route !== 'test' || testRouteAvailable());
+  const navKey = appState.role === 'staff' && appState.sessionUser?.role === 'ADMIN' ? 'admin' : appState.role;
+  const nav = (NAV[navKey] || []).filter(([route]) => route !== 'test' || testRouteAvailable());
   const locked = isExamLocked();
   $('#main-nav').innerHTML = nav.map(([route, label]) => {
     const isLocked = locked && route !== 'test';
@@ -803,8 +970,9 @@ function renderShell() {
   }).join('');
   const sessionLabel = $('#session-label');
   if (appState.role === 'staff') {
-    sessionLabel.innerHTML = `<b>${esc(appState.profile?.username)}</b><small>Personal</small>`;
-    sessionLabel.title = `Personal · ${appState.profile?.username || ''}`;
+    const roleLabel = appState.sessionUser?.role === 'ADMIN' ? 'Administración' : 'Personal';
+    sessionLabel.innerHTML = `<b>${esc(appState.profile?.username)}</b><small>${roleLabel}</small>`;
+    sessionLabel.title = `${roleLabel} · ${appState.profile?.username || ''}`;
   } else {
     sessionLabel.innerHTML = `<b>${esc(appState.profile?.fullName)}</b><small>${esc(identityLabel(appState.profile))}</small>`;
     sessionLabel.title = `${appState.profile?.fullName || ''} · ${identityLabel(appState.profile)}`;
@@ -1274,10 +1442,82 @@ function renderStaff() {
   if (!content) return;
   if (!STATIC_PAGES_MODE && ['panel', 'aspirantes'].includes(appState.route)) loadStaffAttempts();
   if (!STATIC_PAGES_MODE && appState.route === 'baremo') loadStaffNorms();
-  if (appState.route === 'aspirantes') content.innerHTML = renderStaffApplicants();
+  if (appState.route === 'usuarios' && appState.sessionUser?.role === 'ADMIN') {
+    loadAdminData('users');
+    content.innerHTML = renderAdminUsers();
+  } else if (appState.route === 'auditoria' && appState.sessionUser?.role === 'ADMIN') {
+    loadAdminData('audit');
+    content.innerHTML = renderAdminAudit();
+  } else if (appState.route === 'aspirantes') content.innerHTML = renderStaffApplicants();
   else if (appState.route === 'baremo') content.innerHTML = renderBaremo();
   else if (appState.route === 'ajustes') content.innerHTML = renderSettings();
   else content.innerHTML = renderStaffPanel();
+}
+
+function renderAdminUsers() {
+  const rows = appState.adminUsers;
+  return `
+    <div class="screen-title">
+      <div><p class="eyebrow">Administración</p><h2>Personal autorizado</h2><p>Creá cuentas, asigná permisos y cortá el acceso sin editar la base de datos.</p></div>
+      <button class="ghost-btn" type="button" data-action="reload-admin-users">Actualizar</button>
+    </div>
+    <div class="admin-layout">
+      <section class="panel admin-create">
+        <h3>Nueva cuenta</h3>
+        <form id="form-admin-user" class="admin-form">
+          <label><span>Nombre completo</span><input name="fullName" type="text" minlength="5" maxlength="160" autocomplete="name" required></label>
+          <label><span>Correo institucional</span><input name="email" type="email" maxlength="160" autocomplete="email" required></label>
+          <label><span>Contraseña temporal</span><input name="temporaryPassword" type="password" minlength="12" maxlength="128" autocomplete="new-password" aria-describedby="admin-password-help" required></label>
+          <small id="admin-password-help">Mínimo 12 caracteres. El segundo factor se configura en el primer acceso.</small>
+          <label><span>Rol</span><select name="role"><option value="STAFF">Personal</option><option value="ADMIN">Administración</option></select></label>
+          <p id="admin-form-error" class="form-error" role="alert"></p>
+          <button class="solid-btn" type="submit">Crear cuenta</button>
+        </form>
+      </section>
+      <section class="table-wrap admin-table-wrap">
+        ${appState.adminError ? `<div class="empty-state">${esc(appState.adminError)}</div>` : !rows ? '<div class="empty-state" role="status">Cargando personal…</div>' : renderAdminUsersTable(rows)}
+      </section>
+    </div>`;
+}
+
+function renderAdminUsersTable(rows) {
+  if (!rows.length) return '<div class="empty-state">No hay cuentas de personal.</div>';
+  return `<table class="data-table admin-table">
+    <thead><tr><th>Persona</th><th>Rol</th><th>Segundo factor</th><th>Estado</th><th>Acciones</th></tr></thead>
+    <tbody>${rows.map(user => {
+      const own = String(user.id) === String(appState.sessionUser?.id);
+      const lock = own ? 'disabled title="Es tu propia cuenta"' : '';
+      return `<tr>
+      <td><strong>${esc(user.fullName)}</strong>${own ? ' <span class="pill">Tu cuenta</span>' : ''}<br><span class="muted tiny">${esc(user.email)}</span></td>
+      <td><label class="sr-only" for="role-${user.id}">Rol de ${esc(user.fullName)}</label><select id="role-${user.id}" class="table-select" data-admin-role="${user.id}" ${lock}><option value="STAFF" ${user.role === 'STAFF' ? 'selected' : ''}>Personal</option><option value="ADMIN" ${user.role === 'ADMIN' ? 'selected' : ''}>Administración</option></select></td>
+      <td><span class="pill ${user.mfaEnabled ? 'good' : 'warn'}">${user.mfaEnabled ? 'Configurado' : 'Pendiente'}</span></td>
+      <td><span class="pill ${user.active ? 'good' : 'warn'}">${user.active ? 'Activa' : 'Desactivada'}</span></td>
+      <td><div class="row-actions">
+        <button class="ghost-btn" type="button" data-action="save-staff-access" data-user-id="${user.id}" data-next-active="${user.active}" ${lock}>Guardar rol</button>
+        <button class="${user.active ? 'danger-btn' : 'solid-btn'}" type="button" data-action="toggle-staff-access" data-user-id="${user.id}" data-next-active="${!user.active}" ${lock}>${user.active ? 'Desactivar' : 'Activar'}</button>
+        <button class="ghost-btn" type="button" data-action="reset-staff-mfa" data-user-id="${user.id}" ${lock}>Restablecer MFA</button>
+      </div></td>
+    </tr>`;
+    }).join('')}</tbody>
+  </table>`;
+}
+
+function renderAdminAudit() {
+  const rows = appState.adminAudit;
+  return `
+    <div class="screen-title">
+      <div><p class="eyebrow">Trazabilidad</p><h2>Registro de auditoría</h2><p>Últimos 200 accesos y cambios administrativos. No se pueden editar desde el sistema.</p></div>
+      <button class="ghost-btn" type="button" data-action="reload-admin-audit">Actualizar</button>
+    </div>
+    ${appState.adminError ? `<div class="empty-state">${esc(appState.adminError)}</div>` : !rows ? '<div class="empty-state" role="status">Cargando auditoría…</div>' : renderAuditTable(rows)}`;
+}
+
+function renderAuditTable(rows) {
+  if (!rows.length) return '<div class="empty-state">Todavía no hay eventos de auditoría.</div>';
+  return `<section class="table-wrap"><table class="data-table audit-table">
+    <thead><tr><th>Fecha</th><th>Responsable</th><th>Acción</th><th>Recurso</th><th>Detalle</th></tr></thead>
+    <tbody>${rows.map(event => `<tr><td>${formatDate(event.occurredAt)}</td><td>${esc(event.actorName)}</td><td><span class="pill">${esc(event.action)}</span></td><td>${esc(event.targetType)} ${esc(event.targetId || '')}</td><td>${esc(event.detail || '—')}</td></tr>`).join('')}</tbody>
+  </table></section>`;
 }
 
 function staffStatusCard() {
@@ -1695,6 +1935,10 @@ function handleDocumentClick(event) {
       validateLogin();
       return;
     }
+    if (action === 'cancel-mfa') {
+      cancelMfa();
+      return;
+    }
     if (action === 'enter-demo') {
       enterAspirante({ fullName: 'Usuario de demostración', cif: 'DEMO', edad: 18, grupo: 'UN', carrera: '' });
       return;
@@ -1707,6 +1951,12 @@ function handleDocumentClick(event) {
     if (action === 'clear-answer') clearAnswer();
     if (action === 'reload-staff') loadStaffAttempts(true);
     if (action === 'reload-norms') loadStaffNorms(true);
+    if (action === 'reload-admin-users') loadAdminData('users', true);
+    if (action === 'reload-admin-audit') loadAdminData('audit', true);
+    if (action === 'save-staff-access' || action === 'toggle-staff-access') {
+      updateStaffAccount(Number(actionTarget.dataset.userId), actionTarget.dataset.nextActive === 'true');
+    }
+    if (action === 'reset-staff-mfa') resetStaffMfa(Number(actionTarget.dataset.userId));
     if (action === 'finish-test') requestFinishTest();
     if (action === 'close-submit-dialog') closeSubmitDialog();
     if (action === 'go-first-missing') goFirstMissing(actionTarget.dataset.targetIndex);
@@ -1884,6 +2134,11 @@ $('#unified-id')?.addEventListener('input', validateLogin);
 $('#fullname')?.addEventListener('input', validateLogin);
 $('#cedula')?.addEventListener('input', validateLogin);
 $('#unified-pass')?.addEventListener('input', validateLogin);
+$('#mfa-code')?.addEventListener('input', event => {
+  event.target.value = event.target.value.replace(/\D/g, '').slice(0, 6);
+  $('#mfa-code-msg').textContent = '';
+  validateMfa();
+});
 
 window.SAP_UAM_PUZZLE_VIEW.attachDrag(document, {
   canInteract: () => appState.role === 'aspirante' && appState.route === 'test',
@@ -1922,12 +2177,24 @@ $('#form-unified')?.addEventListener('submit', event => {
   submitUnifiedLogin();
 });
 
+$('#form-mfa')?.addEventListener('submit', event => {
+  event.preventDefault();
+  submitMfa();
+});
+
+document.addEventListener('submit', event => {
+  if (event.target.id !== 'form-admin-user') return;
+  event.preventDefault();
+  createStaffAccount(event.target);
+});
+
 setInterval(() => {
   const clock = $('#test-clock');
   if (clock && appState.route === 'test') clock.textContent = elapsedLabel();
 }, 1000);
 
 setInterval(renewRemoteAttemptLease, 60000);
+setInterval(refreshBackendSession, 10 * 60 * 1000);
 
 applySettings();
 $('#demo-access')?.classList.toggle('app-hidden', !STATIC_PAGES_MODE);

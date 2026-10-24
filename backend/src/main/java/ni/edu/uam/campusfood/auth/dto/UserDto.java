@@ -11,7 +11,9 @@ public record UserDto(
         String career,
         String role,
         String authProvider,
-        Integer moodleId
+        Integer moodleId,
+        boolean active,
+        boolean mfaEnabled
 ) {
     public static UserDto from(User user) {
         return new UserDto(
@@ -22,7 +24,9 @@ public record UserDto(
                 user.getCareer(),
                 user.getRole().name(),
                 user.getAuthProvider().value(),
-                user.getMoodleId()
+                user.getMoodleId(),
+                user.isActive(),
+                user.isMfaEnabled()
         );
     }
 }

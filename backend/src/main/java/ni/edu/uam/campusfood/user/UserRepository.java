@@ -8,6 +8,7 @@ import org.springframework.data.repository.query.Param;
 import jakarta.persistence.LockModeType;
 
 import java.util.Optional;
+import java.util.List;
 
 public interface UserRepository extends JpaRepository<User, Long> {
 
@@ -16,6 +17,10 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByEmailIgnoreCase(String email);
 
     boolean existsByEmailIgnoreCase(String email);
+
+    List<User> findAllByRoleInOrderByFullNameAsc(List<Role> roles);
+
+    boolean existsByRole(Role role);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select u from User u where u.id = :id")

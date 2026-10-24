@@ -11,7 +11,6 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.time.Instant;
 import java.util.Set;
 
 /**
@@ -22,14 +21,14 @@ import java.util.Set;
 public class AuthRateLimitFilter extends OncePerRequestFilter {
 
     private static final Set<String> PROTECTED_PATHS = Set.of(
-            "/api/auth/login", "/api/auth/moodle-login", "/api/auth/register");
+            "/api/auth/login", "/api/auth/moodle-login", "/api/auth/register", "/api/auth/mfa/verify");
 
     private static final String BODY = """
             {"status":429,"error":"Too Many Requests","message":"Demasiados intentos. Espera unos minutos antes de volver a intentar."}""";
 
-    private final RequestRateLimiter limiter;
+    private final DatabaseLoginThrottleService limiter;
 
-    public AuthRateLimitFilter(RequestRateLimiter limiter) {
+    public AuthRateLimitFilter(DatabaseLoginThrottleService limiter) {
         this.limiter = limiter;
     }
 
@@ -42,11 +41,11 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
     protected void doFilterInternal(@NonNull HttpServletRequest request,
                                     @NonNull HttpServletResponse response,
                                     @NonNull FilterChain chain) throws ServletException, IOException {
-        Instant now = Instant.now();
-        String key = request.getRemoteAddr();
-        if (!limiter.tryAcquire(key, now)) {
+        try {
+            limiter.consumeIp(request.getRemoteAddr());
+        } catch (RateLimitException blocked) {
             response.setStatus(429);
-            response.setHeader("Retry-After", String.valueOf(limiter.retryAfterSeconds(key, now)));
+            response.setHeader("Retry-After", String.valueOf(blocked.getRetryAfterSeconds()));
             response.setContentType(MediaType.APPLICATION_JSON_VALUE);
             response.setCharacterEncoding(StandardCharsets.UTF_8.name());
             response.getWriter().write(BODY);

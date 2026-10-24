@@ -1,6 +1,10 @@
 package ni.edu.uam.campusfood.auth;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
+import ni.edu.uam.campusfood.security.DatabaseLoginThrottleService;
+import ni.edu.uam.campusfood.security.LoginThrottleRepository;
+import ni.edu.uam.campusfood.security.RateLimitException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
@@ -17,6 +21,11 @@ import static org.assertj.core.api.Assertions.assertThat;
         properties = {"app.security.auth-rate-limit.max-requests=3", "app.security.auth-rate-limit.window-seconds=300"})
 class AuthRateLimitIntegrationTest {
     @Autowired TestRestTemplate http;
+    @Autowired DatabaseLoginThrottleService throttles;
+    @Autowired LoginThrottleRepository rows;
+
+    @BeforeEach
+    void clean() { rows.deleteAll(); }
 
     private HttpEntity<String> badLogin() {
         HttpHeaders headers = new HttpHeaders();
@@ -36,5 +45,14 @@ class AuthRateLimitIntegrationTest {
         assertThat(blocked.getStatusCode()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS);
         assertThat(blocked.getHeaders().getFirst("Retry-After")).isNotNull();
         assertThat(blocked.getBody()).contains("Demasiados intentos");
+    }
+
+    @Test
+    void laCuentaSeBloqueaProgresivamenteAunqueCambieLaIp() {
+        String identity = "manual:objetivo@example.com";
+        for (int attempt = 0; attempt < 5; attempt++) throttles.recordFailure(identity);
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> throttles.checkAccount(identity))
+                .isInstanceOf(RateLimitException.class)
+                .hasMessageContaining("Demasiados intentos");
     }
 }

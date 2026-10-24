@@ -71,6 +71,20 @@ public class User {
     @Column(name = "role", nullable = false, length = 16)
     private Role role = Role.CLIENTE;
 
+    @Column(name = "active", nullable = false)
+    private boolean active = true;
+
+    /** Cambia al cerrar sesion o modificar permisos; invalida todos los JWT previos. */
+    @Column(name = "session_version", nullable = false)
+    private long sessionVersion = 0;
+
+    /** Secreto TOTP cifrado con una clave de aplicacion separada. */
+    @Column(name = "mfa_secret", length = 512)
+    private String mfaSecret;
+
+    @Column(name = "mfa_enabled", nullable = false)
+    private boolean mfaEnabled = false;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -105,6 +119,14 @@ public class User {
     public static User manual(String fullName, String email, String passwordHash, String cedula) {
         return new User(null, fullName, email, passwordHash, cedula, null, null, null,
                 AuthProvider.MANUAL, Role.CLIENTE);
+    }
+
+    public static User staff(String fullName, String email, String passwordHash, Role role) {
+        if (role != Role.STAFF && role != Role.ADMIN) {
+            throw new IllegalArgumentException("El personal debe tener rol STAFF o ADMIN");
+        }
+        return new User(null, fullName, email, passwordHash, null, null, null, null,
+                AuthProvider.MANUAL, role);
     }
 
     @PrePersist
@@ -164,6 +186,51 @@ public class User {
 
     public Role getRole() {
         return role;
+    }
+
+    public boolean isActive() {
+        return active;
+    }
+
+    public long getSessionVersion() {
+        return sessionVersion;
+    }
+
+    public String getMfaSecret() {
+        return mfaSecret;
+    }
+
+    public boolean isMfaEnabled() {
+        return mfaEnabled;
+    }
+
+    public void changeAccess(Role newRole, boolean enabled) {
+        this.role = newRole;
+        this.active = enabled;
+        revokeSessions();
+        this.updatedAt = Instant.now();
+    }
+
+    public void revokeSessions() {
+        this.sessionVersion += 1;
+        this.updatedAt = Instant.now();
+    }
+
+    public void prepareMfa(String encryptedSecret) {
+        this.mfaSecret = encryptedSecret;
+        this.mfaEnabled = false;
+        this.updatedAt = Instant.now();
+    }
+
+    public void enableMfa() {
+        this.mfaEnabled = true;
+        this.updatedAt = Instant.now();
+    }
+
+    public void resetMfa() {
+        this.mfaSecret = null;
+        this.mfaEnabled = false;
+        revokeSessions();
     }
 
     public Instant getCreatedAt() {

@@ -18,6 +18,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.List;
+import ni.edu.uam.campusfood.user.UserRepository;
 
 /**
  * Lee el JWT del header Authorization: Bearer ... y, si es valido, coloca la
@@ -30,9 +31,11 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     public static final String SESSION_COOKIE = "sap_uam_session";
 
     private final JwtService jwtService;
+    private final UserRepository users;
 
-    public JwtAuthFilter(JwtService jwtService) {
+    public JwtAuthFilter(JwtService jwtService, UserRepository users) {
         this.jwtService = jwtService;
+        this.users = users;
     }
 
     @Override
@@ -44,8 +47,17 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         String token = resolveToken(request);
         if (StringUtils.hasText(token)) {
             try {
-                Claims claims = jwtService.parse(token);
-                String role = claims.get("role", String.class);
+                Claims claims = jwtService.parseSession(token);
+                long sessionVersion = claims.get("sessionVersion", Number.class).longValue();
+                var user = users.findById(Long.valueOf(claims.getSubject()))
+                        .filter(candidate -> candidate.isActive()
+                                && candidate.getSessionVersion() == sessionVersion)
+                        .orElseThrow(() -> new JwtException("Sesion revocada"));
+                if (user.getRole() != ni.edu.uam.campusfood.user.Role.CLIENTE
+                        && !Boolean.TRUE.equals(claims.get("mfa", Boolean.class))) {
+                    throw new JwtException("Segundo factor requerido");
+                }
+                String role = user.getRole().name();
                 var authority = new SimpleGrantedAuthority("ROLE_" + role);
                 var authentication = new UsernamePasswordAuthenticationToken(
                         claims.getSubject(), null, List.of(authority));

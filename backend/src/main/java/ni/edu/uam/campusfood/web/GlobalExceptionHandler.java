@@ -3,6 +3,8 @@ package ni.edu.uam.campusfood.web;
 import ni.edu.uam.campusfood.auth.AuthException;
 import ni.edu.uam.campusfood.assessment.AssessmentConflictException;
 import ni.edu.uam.campusfood.moodle.MoodleException;
+import ni.edu.uam.campusfood.security.RateLimitException;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -28,7 +30,8 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(AuthException.class)
     public ResponseEntity<ApiError> handleAuth(AuthException ex) {
         HttpStatus status = switch (ex.getKind()) {
-            case BAD_CREDENTIALS -> HttpStatus.UNAUTHORIZED; // 401
+            case BAD_CREDENTIALS, MFA_INVALID -> HttpStatus.UNAUTHORIZED; // 401
+            case DISABLED -> HttpStatus.FORBIDDEN;           // 403
             case EMAIL_TAKEN -> HttpStatus.CONFLICT;         // 409
         };
         return build(status, ex.getMessage());
@@ -51,6 +54,13 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ApiError> handleIllegalArgument(IllegalArgumentException ex) {
         return build(HttpStatus.BAD_REQUEST, ex.getMessage());
+    }
+
+    @ExceptionHandler(RateLimitException.class)
+    public ResponseEntity<ApiError> handleRateLimit(RateLimitException ex) {
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .header(HttpHeaders.RETRY_AFTER, String.valueOf(ex.getRetryAfterSeconds()))
+                .body(ApiError.of(429, "Too Many Requests", ex.getMessage()));
     }
 
     private ResponseEntity<ApiError> build(HttpStatus status, String message) {

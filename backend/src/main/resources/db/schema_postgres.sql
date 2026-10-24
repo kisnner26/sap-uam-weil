@@ -15,6 +15,10 @@ CREATE TABLE IF NOT EXISTS users (
     career          VARCHAR(160),                      -- carrera si Moodle la expone; NULL si no
     auth_provider   VARCHAR(16)     NOT NULL,          -- 'manual' | 'moodle'
     role            VARCHAR(16)     NOT NULL DEFAULT 'CLIENTE',
+    active          BOOLEAN         NOT NULL DEFAULT true,
+    session_version BIGINT          NOT NULL DEFAULT 0,
+    mfa_secret      VARCHAR(512),
+    mfa_enabled     BOOLEAN         NOT NULL DEFAULT false,
     created_at      TIMESTAMPTZ     NOT NULL DEFAULT now(),
     updated_at      TIMESTAMPTZ     NOT NULL DEFAULT now(),
 
@@ -25,6 +29,11 @@ CREATE TABLE IF NOT EXISTS users (
     CONSTRAINT ck_users_moodle    CHECK (auth_provider <> 'moodle' OR moodle_id IS NOT NULL),
     CONSTRAINT ck_users_manual    CHECK (auth_provider <> 'manual' OR password_hash IS NOT NULL)
 );
+
+ALTER TABLE users ADD COLUMN IF NOT EXISTS active BOOLEAN NOT NULL DEFAULT true;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS session_version BIGINT NOT NULL DEFAULT 0;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS mfa_secret VARCHAR(512);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS mfa_enabled BOOLEAN NOT NULL DEFAULT false;
 
 CREATE INDEX IF NOT EXISTS ix_users_moodle_id ON users (moodle_id);
 CREATE INDEX IF NOT EXISTS ix_users_email     ON users (lower(email));
@@ -81,3 +90,26 @@ CREATE TABLE IF NOT EXISTS assessment_events (
 );
 
 CREATE INDEX IF NOT EXISTS ix_event_attempt_time ON assessment_events (attempt_id, occurred_at);
+
+CREATE TABLE IF NOT EXISTS audit_events (
+    id          BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    actor_id    BIGINT       NOT NULL,
+    actor_name  VARCHAR(160) NOT NULL,
+    action      VARCHAR(64)  NOT NULL,
+    target_type VARCHAR(48)  NOT NULL,
+    target_id   VARCHAR(96),
+    detail      VARCHAR(500),
+    occurred_at TIMESTAMPTZ  NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS ix_audit_time ON audit_events (occurred_at DESC);
+CREATE INDEX IF NOT EXISTS ix_audit_actor ON audit_events (actor_id, occurred_at DESC);
+
+CREATE TABLE IF NOT EXISTS login_throttles (
+    throttle_key      VARCHAR(200) PRIMARY KEY,
+    attempt_count     INTEGER     NOT NULL DEFAULT 0,
+    window_started_at TIMESTAMPTZ NOT NULL,
+    blocked_until     TIMESTAMPTZ,
+    updated_at        TIMESTAMPTZ NOT NULL,
+    version           BIGINT      NOT NULL DEFAULT 0
+);
