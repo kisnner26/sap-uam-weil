@@ -48,11 +48,8 @@
         testVersion: result.testVersion,
         testName: result.testName,
         profile: result.profile,
-        score: result.score,
         total: result.total,
-        percentile: result.percentile,
-        ci: result.ci,
-        classification: result.classification,
+        answeredCount: result.answeredCount,
         endedAt: result.endedAt
       };
     }

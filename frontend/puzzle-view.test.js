@@ -29,7 +29,7 @@ test('un toque corto no se confunde con un arrastre', () => {
   assert.ok(view.dragDistance({ x: 10, y: 10 }, { x: 40, y: 50 }) > view.DRAG_THRESHOLD);
 });
 
-test('cada item tiene figura, hueco dentro de la figura y 8 piezas en disco', () => {
+test('cada item tiene geometría y 8 piezas protegidas en el servidor', () => {
   const { SAP_UAM_PUZZLE } = load('puzzle-data.js');
   const items = SAP_UAM_PUZZLE['weil-form-a'];
   assert.equal(items.length, 60);
@@ -38,21 +38,22 @@ test('cada item tiene figura, hueco dentro de la figura y 8 piezas en disco', ()
     const [x, y, w, h] = entry.patch;
     assert.ok(x >= 0 && y >= 0 && x + w <= entry.w && y + h <= entry.h, `hueco fuera de la figura en el item ${index + 1}`);
     assert.ok(w > 60 && h > 40, `hueco demasiado pequeno en el item ${index + 1}`);
-    const stem = `${__dirname}/assets/weill-puzzle/l${Math.floor(index / 12) + 1}i${String((index % 12) + 1).padStart(2, '0')}`;
+    const stem = `${__dirname}/../backend/src/main/resources/test-material/weil-form-a/puzzle/l${Math.floor(index / 12) + 1}i${String((index % 12) + 1).padStart(2, '0')}`;
     assert.ok(fs.existsSync(`${stem}-base.png`), `falta la base del item ${index + 1}`);
     for (let n = 1; n <= 8; n += 1) assert.ok(fs.existsSync(`${stem}-p${n}.png`), `falta la pieza ${n} del item ${index + 1}`);
   });
 });
 
-test('el catalogo expone las rutas de la figura y las 8 piezas, o null sin datos', () => {
+test('el catalogo expone geometría pero nunca rutas públicas del material', () => {
   const data = load('puzzle-data.js');
   const sandbox = { SAP_UAM_PUZZLE: data.SAP_UAM_PUZZLE };
   const window = sandbox;
   vm.runInNewContext(fs.readFileSync(`${__dirname}/test-catalog.js`, 'utf8'), { window });
   const weil = window.SAP_UAM_TESTS.get('weil-form-a');
-  const puzzle = weil.media.puzzleItem(13);
-  assert.match(puzzle.base, /weill-puzzle\/l2i02-base\.png/);
-  assert.equal(puzzle.pieces.length, 8);
-  assert.match(puzzle.pieces[7], /l2i02-p8\.png/);
-  assert.equal(weil.media.puzzleItem(999), null);
+  const puzzle = weil.media.puzzleGeometry(13);
+  assert.equal(typeof puzzle.width, 'number');
+  assert.equal(Array.isArray(puzzle.patch), true);
+  assert.equal(puzzle.base, undefined);
+  assert.equal(puzzle.pieces, undefined);
+  assert.equal(weil.media.puzzleGeometry(999), null);
 });

@@ -344,7 +344,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 /* Legibilidad y objetivos tactiles de al menos ~44 px */
 .brand{min-height:44px}
 .pr__sub{font-size:.75rem}
-.exam-head__meta button.chip{min-height:36px}
+.exam-head__meta button.chip{min-height:44px}
 input[type="range"]{height:36px;cursor:pointer}
 
 /* Cabecera: el nombre del aspirante se ve completo, en dos lineas */
@@ -369,7 +369,7 @@ input[type="range"]{height:36px;cursor:pointer}
   .exam-head p:not(.eyebrow){margin-top:2px;font-size:.86rem}
   .exam-head__meta{justify-content:flex-start;gap:6px}
   .exam-head .chip{min-height:30px;padding:0 9px;font-size:.74rem}
-  .exam-head__meta button.chip{min-height:36px}
+  .exam-head__meta button.chip{min-height:44px}
   .puzzle-stage{flex:none;height:clamp(220px,calc(84dvh - 324px),560px)}
 }
 /* Tableta horizontal: figura a la izquierda y piezas a la derecha, todo sin desplazarse */

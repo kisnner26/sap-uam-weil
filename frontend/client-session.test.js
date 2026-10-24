@@ -43,18 +43,19 @@ test('el borrador guarda avance pero nunca el resultado ni el puntaje', () => {
   assert.deepEqual(Array.from(drafts.load(context).answers), [2, null]);
 });
 
-test('los listados leen resúmenes y el detalle se obtiene por separado', () => {
+test('los listados leen constancias sin resultados psicométricos', () => {
   const { SAP_UAM_SESSION } = loadModule('client-session.js');
   const storage = memoryStorage();
   const results = SAP_UAM_SESSION.createResultRepository(storage, 'results:index', 'results:detail:');
   const result = {
     id: 'r1', testId: 'weil-form-a', testVersion: 1, testName: 'Weil',
-    profile: { cif: '123', fullName: 'Ana' }, score: 40, total: 60,
-    percentile: 10, ci: 81, classification: 'Inteligencia media', endedAt: '2026-01-01',
-    answers: Array(60).fill(2), pageScores: [8, 8, 8, 8, 8]
+    profile: { cif: '123', fullName: 'Ana' }, total: 60, answeredCount: 60,
+    endedAt: '2026-01-01'
   };
   results.save(result);
   const [summary] = results.list();
   assert.equal(summary.answers, undefined);
-  assert.equal(results.get('r1').answers.length, 60);
+  assert.equal(summary.score, undefined);
+  assert.equal(summary.percentile, undefined);
+  assert.equal(results.get('r1').answeredCount, 60);
 });

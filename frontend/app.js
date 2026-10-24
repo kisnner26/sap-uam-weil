@@ -40,8 +40,6 @@ const TOTAL_PAGES = ACTIVE_TEST.sections.length;
 const ITEMS_PER_PAGE = ACTIVE_TEST.itemsPerSection;
 const TOTAL_ITEMS = TOTAL_PAGES * ITEMS_PER_PAGE;
 const SECURITY_EVENT_LIMIT = 40;
-const LAMINAS = ACTIVE_TEST.sections.map((_, index) => ACTIVE_TEST.media.sectionImage(index));
-const ITEM_IMAGES = Array.from({ length: TOTAL_ITEMS }, (_, index) => ACTIVE_TEST.media.itemImage(index));
 const NAV = {
   aspirante: [
     ['inicio', 'Inicio'],
@@ -57,7 +55,6 @@ const NAV = {
     ['ajustes', 'Ajustes']
   ]
 };
-const BAREMOS = ACTIVE_TEST.baremos;
 
 const stateStore = window.SAP_UAM_STATE.create({
   mode: null,
@@ -77,6 +74,12 @@ const stateStore = window.SAP_UAM_STATE.create({
   focusLosses: 0,
   securityEvents: [],
   remoteAttempt: null,
+  staffAttempts: null,
+  staffNorms: null,
+  staffLoading: false,
+  staffNormsLoading: false,
+  staffError: '',
+  staffNormsError: '',
   settings: loadSettings()
 });
 const appState = stateStore.state;
@@ -119,6 +122,22 @@ function storeAttemptLease(attempt) {
   }));
 }
 
+function materialUrl(itemIndex, asset) {
+  const attemptId = appState.remoteAttempt?.id;
+  if (!attemptId) return '';
+  return `${API_BASE}/api/attempts/${attemptId}/material/${itemIndex}/${asset}`;
+}
+
+function puzzleFor(itemIndex) {
+  const geometry = ACTIVE_TEST.media.puzzleGeometry?.(itemIndex);
+  if (!geometry || !appState.remoteAttempt?.id) return null;
+  return {
+    ...geometry,
+    base: materialUrl(itemIndex, 'base'),
+    pieces: Array.from({ length: ACTIVE_TEST.optionCount }, (_, index) => materialUrl(itemIndex, `p${index + 1}`))
+  };
+}
+
 async function openRemoteAttempt() {
   if (STATIC_PAGES_MODE) return null;
   const existing = readAttemptLease();
@@ -128,31 +147,65 @@ async function openRemoteAttempt() {
     leaseToken: existing?.leaseToken || null
   });
   storeAttemptLease(attempt);
-  if (Array.isArray(attempt.responses)) {
-    for (const response of attempt.responses) {
-      if (appState.answers[response.itemIndex] === null) appState.answers[response.itemIndex] = response.selectedOption;
-    }
-  }
+  appState.answers = Array(TOTAL_ITEMS).fill(null);
+  for (const response of attempt.responses || []) appState.answers[response.itemIndex] = response.selectedOption;
+  appState.startedAt = attempt.startedAt;
+  const firstPending = firstMissingIndex();
+  appState.currentIndex = firstPending < 0 ? TOTAL_ITEMS - 1 : firstPending;
   return attempt;
+}
+
+let remoteWriteQueue = Promise.resolve();
+
+function syncRemoteAnswer({ index, option }) {
+  if (STATIC_PAGES_MODE) return;
+  remoteWriteQueue = remoteWriteQueue.then(async () => {
+    const attempt = appState.remoteAttempt || readAttemptLease();
+    if (!attempt?.id || !attempt?.leaseToken) throw new Error('No existe una sesión exclusiva para guardar la respuesta.');
+    const path = `/api/attempts/${attempt.id}/responses/${index}`;
+    const body = option === null
+      ? { leaseToken: attempt.leaseToken, expectedVersion: attempt.version }
+      : { option, leaseToken: attempt.leaseToken, expectedVersion: attempt.version };
+    const updated = await apiRequest(path, body, { method: option === null ? 'DELETE' : 'PUT' });
+    storeAttemptLease(updated);
+  }).catch(async error => {
+    toast(error.message || 'No se pudo guardar la respuesta.', 'err');
+    try {
+      await openRemoteAttempt();
+      render();
+    } catch {}
+  });
+}
+
+function syncSecurityEvent(event) {
+  if (STATIC_PAGES_MODE) return;
+  const attempt = appState.remoteAttempt || readAttemptLease();
+  if (!attempt?.id || !attempt?.leaseToken) return;
+  apiRequest(`/api/attempts/${attempt.id}/events`, {
+    leaseToken: attempt.leaseToken,
+    type: event.type,
+    detail: event.detail || ''
+  }).catch(() => {});
 }
 
 async function renewRemoteAttemptLease() {
   if (STATIC_PAGES_MODE || !isExamLocked()) return;
-  const attempt = appState.remoteAttempt || readAttemptLease();
-  if (!attempt?.id || !attempt?.leaseToken) return;
-  try {
+  remoteWriteQueue = remoteWriteQueue.then(async () => {
+    const attempt = appState.remoteAttempt || readAttemptLease();
+    if (!attempt?.id || !attempt?.leaseToken) return;
     const renewed = await apiRequest(`/api/attempts/${attempt.id}/lease`, {
       leaseToken: attempt.leaseToken,
       expectedVersion: attempt.version
     });
     storeAttemptLease(renewed);
-  } catch (error) {
+  }).catch(async error => {
     try {
       await openRemoteAttempt();
     } catch {
       toast(error.message || 'No se pudo renovar la sesión exclusiva.', 'err');
     }
-  }
+  });
+  await remoteWriteQueue;
 }
 
 function normProfileForServer(profile) {
@@ -163,6 +216,7 @@ function normProfileForServer(profile) {
 
 async function submitRemoteAttempt() {
   if (STATIC_PAGES_MODE) return null;
+  await remoteWriteQueue;
   const attempt = appState.remoteAttempt || readAttemptLease();
   if (!attempt?.id || !attempt?.leaseToken) throw new Error('No existe una sesión exclusiva para este intento.');
   const submitted = await apiRequest(`/api/attempts/${attempt.id}/submit`, {
@@ -619,34 +673,6 @@ function answeredCount() {
   return appState.answers.filter(value => value !== null).length;
 }
 
-function correctAnswer(index) {
-  return ACTIVE_TEST.scoring.correctAnswer(index);
-}
-
-function pageScore(pageIndex) {
-  return ACTIVE_TEST.scoring.score(appState.answers).pageScores[pageIndex];
-}
-
-function totalScore() {
-  return ACTIVE_TEST.scoring.score(appState.answers).total;
-}
-
-function resolveNormColumn(profile) {
-  return ACTIVE_TEST.scoring.resolveNormColumn(profile);
-}
-
-function percentileFromScore(score, column) {
-  return ACTIVE_TEST.scoring.percentile(score, column);
-}
-
-function ciFromPercentile(percentile) {
-  return ACTIVE_TEST.scoring.ci(percentile);
-}
-
-function classifyCI(ci) {
-  return ACTIVE_TEST.scoring.classify(ci);
-}
-
 function formatDate(value) {
   if (!value) return 'Sin fecha';
   return new Intl.DateTimeFormat('es-NI', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value));
@@ -688,7 +714,9 @@ function enterAspirante(profileOverride = null) {
   if (appState.startedAt && !appState.result) appState.route = 'test';
   showApp();
   if (appState.startedAt && !appState.result && !STATIC_PAGES_MODE) {
-    openRemoteAttempt().catch(error => toast(error.message || 'No se pudo recuperar la sesión exclusiva.', 'err'));
+    openRemoteAttempt()
+      .then(() => render())
+      .catch(error => toast(error.message || 'No se pudo recuperar la sesión exclusiva.', 'err'));
   }
 }
 
@@ -705,26 +733,33 @@ function enterStaff(user = null) {
   showApp();
 }
 
-// Resultados de las evaluaciones: los entrega el servidor solo a personal y administracion.
-function withNorms(row) {
-  const column = resolveNormColumn({ grupo: row.normGroup, edad: row.age });
-  const percentile = percentileFromScore(row.directScore, column);
-  const ci = ciFromPercentile(percentile);
-  return { ...row, normColumn: column, percentile, ci, classification: classifyCI(ci) };
-}
-
 async function loadStaffAttempts(force = false) {
   if (STATIC_PAGES_MODE || appState.staffLoading || (appState.staffAttempts && !force)) return;
   appState.staffLoading = true;
   appState.staffError = '';
   try {
     const rows = await apiRequest(`/api/staff/attempts?testId=${encodeURIComponent(ACTIVE_TEST.id)}`);
-    appState.staffAttempts = (Array.isArray(rows) ? rows : []).map(withNorms);
+    appState.staffAttempts = Array.isArray(rows) ? rows : [];
   } catch (error) {
     appState.staffError = error.message || 'No se pudieron cargar los resultados.';
   } finally {
     appState.staffLoading = false;
     if (appState.role === 'staff') render();
+  }
+}
+
+async function loadStaffNorms(force = false) {
+  if (STATIC_PAGES_MODE || appState.staffNormsLoading || (appState.staffNorms && !force)) return;
+  appState.staffNormsLoading = true;
+  appState.staffNormsError = '';
+  try {
+    const rows = await apiRequest('/api/staff/attempts/norms');
+    appState.staffNorms = Array.isArray(rows) ? rows : [];
+  } catch (error) {
+    appState.staffNormsError = error.message || 'No se pudo cargar el baremo.';
+  } finally {
+    appState.staffNormsLoading = false;
+    if (appState.role === 'staff' && appState.route === 'baremo') render();
   }
 }
 
@@ -838,17 +873,17 @@ function renderHome() {
             <div class="hero-actions">
               ${result
                 ? '<button class="solid-btn" type="button" data-route="resultados">Ver constancia de entrega</button>'
-                : `<button class="solid-btn" type="button" data-action="start-test">${count ? 'Continuar evaluación' : 'Comenzar evaluación'}</button>`}
+                : `<button class="solid-btn" type="button" data-action="start-test">${STATIC_PAGES_MODE ? 'Material disponible solo en el sistema' : count ? 'Continuar evaluación' : 'Comenzar evaluación'}</button>`}
             </div>
           </div>
         </div>
-        <div class="hero-visual"><img src="${LAMINAS[0]}" alt="Vista parcial del material de ${esc(ACTIVE_TEST.shortName)}" loading="lazy" decoding="async"></div>
+        <div class="hero-visual"><img src="assets/weil-brand-hero.webp" alt="Identidad visual de ${esc(ACTIVE_TEST.shortName)}" loading="lazy" decoding="async"></div>
       </section>
       <aside class="status-stack">
         <section class="panel next-step-panel">
           <p class="eyebrow">Siguiente paso</p>
-          <h3>${result ? 'Tu resultado está listo' : count ? `Continuá desde el ítem ${appState.currentIndex + 1}` : 'Prepará tu espacio'}</h3>
-          <p>${result ? 'Consultá el reporte y la revisión de respuestas.' : 'Buscá un lugar sin interrupciones. El progreso se guarda automáticamente.'}</p>
+          <h3>${result ? 'Tu entrega está registrada' : count ? `Continuá desde el ítem ${appState.currentIndex + 1}` : 'Prepará tu espacio'}</h3>
+          <p>${result ? 'Tu constancia confirma que el equipo recibió las respuestas.' : 'Buscá un lugar sin interrupciones. El progreso se guarda automáticamente.'}</p>
           <div class="metric-strip">
             <div><strong>${count}</strong><span>respondidos</span></div>
             <div><strong>${TOTAL_ITEMS - count}</strong><span>pendientes</span></div>
@@ -859,7 +894,7 @@ function renderHome() {
           <div class="check-list">
             <div class="check-row"><span class="check-dot">1</span><span>Leé cada figura con calma.</span></div>
             <div class="check-row"><span class="check-dot">2</span><span>Respondé todos los ítems.</span></div>
-            <div class="check-row"><span class="check-dot">3</span><span>Finalizá para generar el reporte.</span></div>
+            <div class="check-row"><span class="check-dot">3</span><span>Finalizá para registrar la entrega.</span></div>
           </div>
         </section>
       </aside>
@@ -871,11 +906,16 @@ function pageAnswered(pageIndex) {
 }
 
 function isExamLocked() {
-  return appState.role === 'aspirante' && !!appState.startedAt && !appState.result;
+  return appState.role === 'aspirante' && !!appState.startedAt && !appState.result && !attemptExpired();
 }
 
 function testRouteAvailable() {
-  return appState.role === 'aspirante' && !!appState.startedAt && !appState.result;
+  return appState.role === 'aspirante' && !!appState.startedAt && !appState.result && !attemptExpired();
+}
+
+function attemptExpired() {
+  const deadline = appState.remoteAttempt?.deadlineAt;
+  return !!deadline && Date.now() >= new Date(deadline).getTime();
 }
 
 function applyExamSecurityUi() {
@@ -948,6 +988,12 @@ function missingIndexes() {
     .filter(index => index !== null);
 }
 
+function canAccessItem(index) {
+  const firstPending = firstMissingIndex();
+  const exposedThrough = firstPending < 0 ? TOTAL_ITEMS - 1 : Math.min(TOTAL_ITEMS - 1, firstPending + 1);
+  return appState.answers[index] !== null || index <= exposedThrough;
+}
+
 function canNavigateTo(route) {
   if (appState.role === 'aspirante' && route === 'test' && !testRouteAvailable()) return false;
   return !isExamLocked() || route === 'test';
@@ -958,7 +1004,7 @@ function renderTest() {
   const page = Math.floor(index / ITEMS_PER_PAGE);
   const local = index % ITEMS_PER_PAGE;
   const selected = appState.answers[index];
-  const puzzle = ACTIVE_TEST.media.puzzleItem?.(index) || null;
+  const puzzle = puzzleFor(index);
   const progress = Math.round((answeredCount() / TOTAL_ITEMS) * 100);
   const securityEvents = appState.securityEvents.length;
   return `
@@ -983,15 +1029,13 @@ function renderTest() {
             <strong>${esc(ACTIVE_TEST.sections[page].label)}</strong>
             <span>${pageAnswered(page)} de ${ITEMS_PER_PAGE} respondidos</span>
           </div>
-          <div class="page-progress" aria-label="Cambiar lámina">${LAMINAS.map((_, i) => `<button type="button" class="page-dot ${i === page ? 'is-active' : ''} ${pageAnswered(i) === ITEMS_PER_PAGE ? 'is-complete' : ''}" data-page="${i}" aria-label="Lámina ${i + 1}">${i + 1}</button>`).join('')}</div>
+          <div class="page-progress" aria-label="Cambiar lámina">${ACTIVE_TEST.sections.map((_, i) => `<button type="button" class="page-dot ${i === page ? 'is-active' : ''} ${pageAnswered(i) === ITEMS_PER_PAGE ? 'is-complete' : ''}" data-page="${i}" aria-label="Lámina ${i + 1}" ${canAccessItem(i * ITEMS_PER_PAGE) ? '' : 'disabled'}>${i + 1}</button>`).join('')}</div>
         </div>
-        ${puzzle ? renderPuzzle(puzzle, index, local, page, selected) : `<figure class="question-figure">
-          <img src="${ITEM_IMAGES[index]}" alt="Ejercicio ${local + 1} de ${esc(ACTIVE_TEST.sections[page].label)}" width="1200" height="900" decoding="async" fetchpriority="high">
-        </figure>`}
+        ${puzzle ? renderPuzzle(puzzle, index, local, page, selected) : '<div class="empty-state">No se pudo cargar el material de este ítem.</div>'}
         <div class="item-rail" aria-label="Ítems de la lámina">${Array.from({ length: ITEMS_PER_PAGE }, (_, i) => {
           const absolute = page * ITEMS_PER_PAGE + i;
           const answered = appState.answers[absolute] !== null;
-          return `<button type="button" class="rail-btn ${absolute === index ? 'is-active' : ''} ${answered ? 'is-answered' : ''}" data-item="${absolute}" aria-label="Ítem ${i + 1}${answered ? ', respondido' : ''}">${i + 1}</button>`;
+          return `<button type="button" class="rail-btn ${absolute === index ? 'is-active' : ''} ${answered ? 'is-answered' : ''}" data-item="${absolute}" aria-label="Ítem ${i + 1}${answered ? ', respondido' : ''}" ${canAccessItem(absolute) ? '' : 'disabled'}>${i + 1}</button>`;
         }).join('')}</div>
       </section>
 
@@ -1081,6 +1125,7 @@ function syncPuzzleView() {
 
 function clearAnswer() {
   if (appState.role !== 'aspirante' || appState.route !== 'test') return;
+  if (attemptExpired()) return toast('El tiempo de la prueba terminó.', 'err');
   if (appState.answers[appState.currentIndex] === null) return;
   appState.answers[appState.currentIndex] = null;
   playSound('tap');
@@ -1105,9 +1150,9 @@ function prepareCurrentItemMedia() {
     currentImage.addEventListener('error', () => currentImage.closest('.question-figure')?.classList.add('is-error'), { once: true });
   }
   const nextIndex = appState.currentIndex + 1;
-  if (nextIndex < ITEM_IMAGES.length) {
-    const nextPuzzle = ACTIVE_TEST.media.puzzleItem?.(nextIndex);
-    (nextPuzzle ? [nextPuzzle.base, ...nextPuzzle.pieces] : [ITEM_IMAGES[nextIndex]]).forEach(src => {
+  if (nextIndex < TOTAL_ITEMS) {
+    const nextPuzzle = puzzleFor(nextIndex);
+    (nextPuzzle ? [nextPuzzle.base, ...nextPuzzle.pieces] : []).forEach(src => {
       const nextImage = new Image();
       nextImage.decoding = 'async';
       nextImage.src = src;
@@ -1140,8 +1185,10 @@ function updateTestViewAfterAnswer() {
 }
 
 function elapsedLabel() {
-  if (!appState.startedAt) return '0:00';
-  return formatDuration((Date.now() - new Date(appState.startedAt).getTime()) / 1000);
+  const deadline = appState.remoteAttempt?.deadlineAt;
+  if (!deadline) return 'Tiempo no disponible';
+  const remaining = Math.max(0, (new Date(deadline).getTime() - Date.now()) / 1000);
+  return `Restan ${formatDuration(remaining)}`;
 }
 
 function renderResults() {
@@ -1150,7 +1197,7 @@ function renderResults() {
     return `<div class="screen-title"><div><p class="eyebrow">Entrega</p><h2>Prueba pendiente</h2><p>Todavía no entregaste la prueba.</p></div><button class="solid-btn" type="button" data-action="start-test">Ir a la prueba</button></div><div class="empty-state">Cuando entregues la prueba, aquí verás la constancia de entrega.</div>`;
   }
   const receipt = appState.remoteAttempt?.id ? `N.º ${String(appState.remoteAttempt.id).padStart(6, '0')}` : '';
-  const answered = (result.answers || []).filter(value => value !== null).length || result.total;
+  const answered = result.answeredCount ?? result.total;
   return `
     <div class="screen-title">
       <div><p class="eyebrow">Entrega</p><h2>Prueba entregada</h2><p>Gracias, ${esc(String(result.profile.fullName).split(' ')[0])}.</p></div>
@@ -1210,8 +1257,8 @@ function renderSettings() {
         ${settingSwitch('sound', 'Sonidos de interfaz', 'Activa señales breves al responder, avanzar y finalizar.')}
         ${settingSwitch('autoAdvance', 'Avance automático', 'Pasa al siguiente ítem al responder.')}
       </div></section>
-      <section class="panel"><h3>Tiempo</h3>
-        <div class="setting-row"><div><strong>Segundos por lámina</strong><small>${appState.settings.secondsPerPage}s sugeridos</small></div><input class="range" type="range" min="40" max="420" step="20" value="${appState.settings.secondsPerPage}" data-setting-range="secondsPerPage"></div>
+      <section class="panel"><h3>Sesión de evaluación</h3>
+        <p class="muted">El tiempo oficial lo controla el servidor y continúa aunque recargués la página.</p>
         <div class="divider"></div>
         <button class="danger-btn" type="button" data-action="reset-test">Reiniciar respuestas del aspirante</button>
       </section>
@@ -1226,6 +1273,7 @@ function renderStaff() {
   const content = $('#app-content');
   if (!content) return;
   if (!STATIC_PAGES_MODE && ['panel', 'aspirantes'].includes(appState.route)) loadStaffAttempts();
+  if (!STATIC_PAGES_MODE && appState.route === 'baremo') loadStaffNorms();
   if (appState.route === 'aspirantes') content.innerHTML = renderStaffApplicants();
   else if (appState.route === 'baremo') content.innerHTML = renderBaremo();
   else if (appState.route === 'ajustes') content.innerHTML = renderSettings();
@@ -1241,17 +1289,7 @@ function staffStatusCard() {
 
 function renderStaffPanel() {
   if (STATIC_PAGES_MODE) {
-    const list = records();
-    const avg = list.length ? Math.round(list.reduce((sum, item) => sum + item.score, 0) / list.length) : '--';
-    const top = list.length ? Math.max(...list.map(item => item.score)) : '--';
-    return `
-    <div class="screen-title"><div><p class="eyebrow">Personal</p><h2>Panel de aplicaciones</h2><p>${esc(appState.profile.username)}</p></div><button class="solid-btn" type="button" data-route="aspirantes">Ver aspirantes</button></div>
-    <div class="staff-grid">
-      <div class="metric"><strong>${list.length}</strong><span>reportes guardados</span></div>
-      <div class="metric"><strong>${avg}</strong><span>promedio directo</span></div>
-      <div class="metric"><strong>${top}</strong><span>mejor puntaje</span></div>
-    </div>
-    ${renderRecordsTable(list.slice(0, 8))}`;
+    return '<div class="empty-state">El panel del personal requiere conexión segura con el servidor.</div>';
   }
   const rows = appState.staffAttempts;
   const avg = rows?.length ? Math.round(rows.reduce((sum, item) => sum + item.directScore, 0) / rows.length) : '--';
@@ -1268,10 +1306,7 @@ function renderStaffPanel() {
 
 function renderStaffApplicants() {
   if (STATIC_PAGES_MODE) {
-    const list = records();
-    return `
-    <div class="screen-title"><div><p class="eyebrow">Aspirantes</p><h2>Resultados locales</h2><p>${list.length} registros en este navegador.</p></div><button class="danger-btn" type="button" data-action="clear-records">Limpiar registros</button></div>
-    ${renderRecordsTable(list)}`;
+    return '<div class="empty-state">Los resultados solo están disponibles desde el servidor institucional.</div>';
   }
   const rows = appState.staffAttempts;
   return `
@@ -1281,19 +1316,21 @@ function renderStaffApplicants() {
 
 function renderStaffAttemptsTable(rows) {
   if (!rows.length) return '<div class="empty-state">Todavía no hay pruebas entregadas.</div>';
-  return `<section class="table-wrap"><table class="data-table"><thead><tr><th>Aspirante</th><th>Carrera</th><th>Puntaje</th><th>Percentil</th><th>CI</th><th>Clasificación</th><th>Entregada</th><th>Tiempo</th></tr></thead><tbody>${rows.map(item => `<tr><td><strong>${esc(item.fullName)}</strong><br><span class="muted tiny">${esc(item.email || '')}</span></td><td>${esc(normalizeCareer(item.career))}</td><td>${item.directScore}/${TOTAL_ITEMS}</td><td>${item.percentile}</td><td>${item.ci}</td><td>${esc(item.classification)}</td><td>${formatDate(item.submittedAt)}</td><td>${formatDuration(item.durationSeconds)}</td></tr>`).join('')}</tbody></table></section>`;
+  return `<section class="table-wrap"><table class="data-table"><thead><tr><th>Aspirante</th><th>Carrera</th><th>Puntaje</th><th>Percentil</th><th>CI</th><th>Clasificación</th><th>Incidencias</th><th>Entregada</th><th>Tiempo</th></tr></thead><tbody>${rows.map(item => `<tr><td><strong>${esc(item.fullName)}</strong><br><span class="muted tiny">${esc(item.email || '')}</span></td><td>${esc(normalizeCareer(item.career))}</td><td>${item.directScore}/${TOTAL_ITEMS}</td><td>${item.percentile}</td><td>${item.ci}</td><td>${esc(item.classification)}</td><td>${renderSecurityEvents(item.securityEvents)}</td><td>${formatDate(item.submittedAt)}</td><td>${formatDuration(item.durationSeconds)}</td></tr>`).join('')}</tbody></table></section>`;
 }
 
-function renderRecordsTable(list) {
-  if (!list.length) return '<div class="empty-state">Todavía no hay aplicaciones finalizadas.</div>';
-  return `<section class="table-wrap"><table class="data-table"><thead><tr><th>Aspirante</th><th>Evaluación</th><th>Carrera</th><th>Puntaje</th><th>Percentil</th><th>CI</th><th>Fecha</th></tr></thead><tbody>${list.map(item => `<tr><td><strong>${esc(item.profile.fullName)}</strong><br><span class="muted tiny">CIF ${esc(item.profile.cif)}</span></td><td>${esc(item.testName || ACTIVE_TEST.shortName)}</td><td>${esc(normalizeCareer(item.profile.carrera))}</td><td>${item.score}/${item.total}</td><td>${item.percentile}</td><td>${item.ci}</td><td>${formatDate(item.endedAt)}</td></tr>`).join('')}</tbody></table></section>`;
+function renderSecurityEvents(events = []) {
+  if (!events.length) return '0';
+  return `<details><summary>${events.length}</summary>${events.map(event => `<p class="tiny"><strong>${esc(event.type)}</strong><br>${esc(event.detail || 'Sin detalle')}<br>${formatDate(event.occurredAt)}</p>`).join('')}</details>`;
 }
 
 function renderBaremo() {
   const columns = ['7','8','9','10','11','12','13','14','15','16','AN','AD','UN'];
+  if (appState.staffNormsError) return `<div class="empty-state">${esc(appState.staffNormsError)}<br><button class="ghost-btn" type="button" data-action="reload-norms">Reintentar</button></div>`;
+  if (!appState.staffNorms) return '<div class="empty-state">Cargando baremo…</div>';
   return `
-    <div class="screen-title"><div><p class="eyebrow">Baremo</p><h2>Tabla de calificación</h2><p>Valores cargados desde la tabla de Weill.</p></div></div>
-    <div class="baremo-table-wrap"><table class="data-table baremo-table"><thead><tr><th>Percentil</th>${columns.map(col => `<th>${col}</th>`).join('')}</tr></thead><tbody>${BAREMOS.map(row => `<tr><td>${row.p}</td>${columns.map(col => `<td>${row[col]}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+    <div class="screen-title"><div><p class="eyebrow">Baremo</p><h2>Tabla de calificación</h2><p>Valores servidos exclusivamente al personal autorizado.</p></div></div>
+    <div class="baremo-table-wrap"><table class="data-table baremo-table"><thead><tr><th>Percentil</th>${columns.map(col => `<th>${col}</th>`).join('')}</tr></thead><tbody>${appState.staffNorms.map(row => `<tr><td>${row.p}</td>${columns.map(col => `<td>${row[col]}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
 }
 
 function downloadResultPdf(result = appState.result) {
@@ -1321,9 +1358,7 @@ function safeFileName(value) {
 }
 
 function buildResultPdf(result) {
-  const pageOne = buildPdfSummaryPage(result);
-  const pageTwo = buildPdfAnswersPage(result);
-  return createPdfDocument([pageOne, pageTwo]);
+  return createPdfDocument([buildPdfSummaryPage(result)]);
 }
 
 function pdfHex(text) {
@@ -1357,8 +1392,8 @@ function buildPdfSummaryPage(result) {
   out += pdfText(42, 810, 16, 'SAP-UAM', 'F2', [1, 1, 1]);
   out += pdfText(42, 790, 10, 'Test de Inteligencia No Verbal de Weil - Forma A', 'F1', [0.87, 0.95, 0.96]);
   out += pdfText(404, 810, 10, `Reporte generado: ${formatDate(result.endedAt)}`, 'F1', [1, 1, 1]);
-  out += pdfText(42, 734, 24, 'Reporte psicometrico', 'F2');
-  out += pdfText(42, 712, 10, 'Aplicacion digital con calificacion local por baremo.', 'F1', [0.39, 0.43, 0.46]);
+  out += pdfText(42, 734, 24, 'Constancia de entrega', 'F2');
+  out += pdfText(42, 712, 10, 'Comprobante de recepcion de respuestas. No contiene resultados psicometricos.', 'F1', [0.39, 0.43, 0.46]);
   out += pdfRect(42, 628, 511, 62, [1, 1, 1], [0.82, 0.85, 0.86]);
   out += pdfText(58, 670, 9, 'Aspirante', 'F2', [0, 0.39, 0.43]);
   out += pdfText(58, 650, 13, result.profile.fullName, 'F2');
@@ -1366,12 +1401,12 @@ function buildPdfSummaryPage(result) {
   out += pdfText(304, 650, 12, result.profile.cif, 'F1');
   out += pdfText(398, 670, 9, 'Carrera', 'F2', [0, 0.39, 0.43]);
   out += pdfText(398, 650, 10, normalizeCareer(result.profile.carrera), 'F1');
-  out += pdfText(42, 594, 12, 'Resumen de calificacion', 'F2');
+  out += pdfText(42, 594, 12, 'Resumen de la entrega', 'F2');
   const cards = [
-    ['Puntaje directo', `${result.score}/${result.total}`],
-    ['Percentil', result.percentile],
-    ['CI estimado', result.ci],
-    ['Baremo', result.normColumn]
+    ['Estado', 'Entregada'],
+    ['Respondidos', `${result.answeredCount}/${result.total}`],
+    ['Duracion', formatDuration(result.durationSec)],
+    ['Fecha', formatDate(result.endedAt)]
   ];
   cards.forEach((card, i) => {
     const x = 42 + i * 128;
@@ -1380,60 +1415,20 @@ function buildPdfSummaryPage(result) {
     out += pdfText(x + 10, 532, 18, card[1], 'F2', i === 0 ? [1, 1, 1] : [0.07, 0.08, 0.09]);
   });
   out += pdfRect(42, 458, 511, 38, [1, 1, 1], [0.82, 0.85, 0.86]);
-  out += pdfText(58, 482, 9, 'Interpretacion', 'F2', [0, 0.39, 0.43]);
-  out += pdfText(58, 466, 12, result.classification, 'F2');
-  out += pdfText(358, 482, 9, 'Modo examen', 'F2', [0, 0.39, 0.43]);
-  out += pdfText(358, 466, 12, `${(result.securityEvents || []).length} incidencias`, 'F2');
-  out += pdfText(42, 424, 12, 'Desempeno por lamina', 'F2');
-  out += pdfRect(42, 392, 511, 24, [0.93, 0.95, 0.95], [0.82, 0.85, 0.86]);
-  out += pdfText(58, 400, 9, 'Lamina', 'F2');
-  out += pdfText(178, 400, 9, 'Aciertos', 'F2');
-  out += pdfText(288, 400, 9, 'Respondidos', 'F2');
-  out += pdfText(420, 400, 9, 'Estado', 'F2');
-  result.pageScores.forEach((score, i) => {
-    const y = 368 - i * 28;
-    out += pdfRect(42, y, 511, 28, [1, 1, 1], [0.88, 0.90, 0.91]);
-    out += pdfText(58, y + 10, 9, `Lamina ${i + 1}`, 'F1');
-    out += pdfText(178, y + 10, 9, `${score}/12`, 'F2');
-    out += pdfText(288, y + 10, 9, `${result.answers.slice(i * ITEMS_PER_PAGE, (i + 1) * ITEMS_PER_PAGE).filter(value => value !== null).length}/12`, 'F1');
-    out += pdfText(420, y + 10, 9, score >= 8 ? 'Fuerte' : 'Revisar', 'F1');
-  });
+  out += pdfText(58, 482, 9, 'Evaluacion', 'F2', [0, 0.39, 0.43]);
+  out += pdfText(58, 466, 12, result.testName || ACTIVE_TEST.shortName, 'F2');
+  out += pdfText(42, 424, 12, 'Siguiente paso', 'F2');
+  out += pdfText(42, 400, 9, 'El equipo de Admision revisara la evaluacion y comunicara los resultados por los medios oficiales.', 'F1', [0.39, 0.43, 0.46]);
   out += pdfText(42, 188, 9, 'Nota tecnica', 'F2', [0, 0.39, 0.43]);
-  out += pdfText(42, 170, 8, 'Este reporte resume la aplicacion digital del Test No Verbal de Weil. La interpretacion final debe ser revisada por personal autorizado.', 'F1', [0.39, 0.43, 0.46]);
+  out += pdfText(42, 170, 8, 'Esta constancia confirma la entrega. No presenta puntajes, claves ni interpretaciones.', 'F1', [0.39, 0.43, 0.46]);
   out += pdfLine(42, 54, 553, 54);
   out += pdfText(42, 36, 8, 'Universidad Americana - Sistema Digital de Aplicacion', 'F1', [0.39, 0.43, 0.46]);
-  out += pdfText(516, 36, 8, 'Pagina 1/2', 'F1', [0.39, 0.43, 0.46]);
+  out += pdfText(516, 36, 8, 'Pagina 1/1', 'F1', [0.39, 0.43, 0.46]);
   return out;
 }
 
 function buildPdfAnswersPage(result) {
-  let out = '';
-  out += pdfRect(0, 0, 595, 842, [0.98, 0.97, 0.94]);
-  out += pdfText(42, 800, 18, 'Detalle de respuestas', 'F2');
-  out += pdfText(42, 780, 9, `${result.profile.fullName} - CIF ${result.profile.cif}`, 'F1', [0.39, 0.43, 0.46]);
-  out += pdfRect(42, 742, 511, 24, [0.93, 0.95, 0.95], [0.82, 0.85, 0.86]);
-  out += pdfText(56, 750, 9, 'Item', 'F2');
-  out += pdfText(118, 750, 9, 'Resp.', 'F2');
-  out += pdfText(174, 750, 9, 'Clave', 'F2');
-  out += pdfText(236, 750, 9, 'Estado', 'F2');
-  const cols = 3;
-  const blockW = 164;
-  result.answers.forEach((answer, index) => {
-    const col = index % cols;
-    const row = Math.floor(index / cols);
-    const x = 42 + col * (blockW + 9);
-    const y = 714 - row * 29;
-    const ok = answer === correctAnswer(index);
-    out += pdfRect(x, y, blockW, 24, [1, 1, 1], [0.88, 0.90, 0.91]);
-    out += pdfText(x + 10, y + 8, 8, `${index + 1}`, 'F2');
-    out += pdfText(x + 50, y + 8, 8, `${answer}`, 'F1');
-    out += pdfText(x + 88, y + 8, 8, `${correctAnswer(index)}`, 'F1');
-    out += pdfText(x + 124, y + 8, 8, ok ? 'OK' : 'Error', 'F2', ok ? [0.15, 0.45, 0.27] : [0.72, 0.23, 0.19]);
-  });
-  out += pdfLine(42, 54, 553, 54);
-  out += pdfText(42, 36, 8, 'Documento generado localmente desde SAP-UAM.', 'F1', [0.39, 0.43, 0.46]);
-  out += pdfText(516, 36, 8, 'Pagina 2/2', 'F1', [0.39, 0.43, 0.46]);
-  return out;
+  return buildPdfSummaryPage(result);
 }
 
 function createPdfDocument(pageContents) {
@@ -1467,6 +1462,10 @@ function createPdfDocument(pageContents) {
 }
 
 async function startTest() {
+  if (STATIC_PAGES_MODE) {
+    toast('La demostración pública no contiene material real ni calificación.', 'info');
+    return;
+  }
   if (appState.result) {
     routeTo('resultados');
     return;
@@ -1491,11 +1490,8 @@ async function startTest() {
       startButton.textContent = answeredCount() ? 'Continuar evaluación' : 'Comenzar evaluación';
     }
   }
-  if (!appState.startedAt) {
-    appState.startedAt = new Date().toISOString();
-    appState.focusLosses = 0;
-    appState.securityEvents = [];
-  }
+  appState.focusLosses = 0;
+  appState.securityEvents = [];
   playSound('start');
   routeTo('test');
   if (isExamLocked()) startSecureExamMode();
@@ -1504,18 +1500,23 @@ async function startTest() {
 
 function selectAnswer(option) {
   if (appState.role !== 'aspirante' || appState.route !== 'test') return;
+  if (attemptExpired()) return toast('El tiempo de la prueba terminó.', 'err');
   if (!Number.isInteger(option) || option < 1 || option > ACTIVE_TEST.optionCount) return;
-  appState.answers[appState.currentIndex] = option;
+  const index = appState.currentIndex;
+  appState.answers[index] = option;
   playSound('tap');
+  stateStore.publish('answer', { index, option });
   if (appState.settings.autoAdvance && appState.currentIndex < TOTAL_ITEMS - 1) {
     appState.currentIndex += 1;
     stateStore.publish('assessment-navigation', { reason: 'auto-advance' });
-    return;
   }
-  stateStore.publish('answer', { index: appState.currentIndex, option });
 }
 
 function requestFinishTest() {
+  if (attemptExpired()) {
+    toast('El tiempo de la prueba terminó. No se aceptaron más cambios.', 'err');
+    return;
+  }
   const missing = missingIndexes();
   if (missing.length) {
     showSubmitDialog({
@@ -1564,7 +1565,7 @@ function showSubmitDialog({ status, missing, title, message }) {
         </div>` : `
         <div class="submit-dialog__ready">
           <strong>Listo para entregar</strong>
-          <span>La sesión quedará cerrada y podrás descargar el PDF desde Resultados.</span>
+          <span>La sesión quedará cerrada y se mostrará tu constancia de entrega.</span>
         </div>`}
       <div class="submit-dialog__actions">
         <button class="ghost-btn" type="button" data-action="close-submit-dialog">Seguir revisando</button>
@@ -1630,13 +1631,7 @@ async function completeTest() {
       submitButton.textContent = 'Entregar prueba';
     }
   }
-  // Con servidor, el puntaje, el percentil y el CI son solo del personal: el aspirante no los recibe ni se calculan aqui.
-  const scored = STATIC_PAGES_MODE;
-  const score = scored ? totalScore() : null;
-  const normColumn = resolveNormColumn(appState.profile);
-  const percentile = scored ? percentileFromScore(score, normColumn) : null;
-  const ci = scored ? ciFromPercentile(percentile) : null;
-  const endedAt = new Date().toISOString();
+  const endedAt = remoteSubmission?.submittedAt || new Date().toISOString();
   const durationSec = appState.startedAt ? (new Date(endedAt).getTime() - new Date(appState.startedAt).getTime()) / 1000 : 0;
   const result = {
     id: `${appState.profile.cif}-${Date.now()}`,
@@ -1644,14 +1639,8 @@ async function completeTest() {
     testVersion: ACTIVE_TEST.version,
     testName: ACTIVE_TEST.shortName,
     profile: appState.profile,
-    answers: [...appState.answers],
-    score,
+    answeredCount: answeredCount(),
     total: TOTAL_ITEMS,
-    pageScores: scored ? Array.from({ length: TOTAL_PAGES }, (_, page) => pageScore(page)) : [],
-    percentile,
-    ci,
-    normColumn,
-    classification: scored ? classifyCI(ci) : '',
     startedAt: appState.startedAt,
     endedAt,
     durationSec,
@@ -1671,9 +1660,12 @@ async function completeTest() {
 function resetTest() {
   if (!window.confirm('¿Reiniciar las respuestas de esta sesión?')) return;
   const keepLocked = isExamLocked();
+  const answeredIndexes = appState.answers
+    .map((answer, index) => answer === null ? null : index)
+    .filter(index => index !== null);
   appState.answers = Array(TOTAL_ITEMS).fill(null);
   appState.currentIndex = 0;
-  appState.startedAt = keepLocked ? new Date().toISOString() : null;
+  appState.startedAt = keepLocked ? appState.startedAt : null;
   appState.result = null;
   if (!keepLocked) {
     appState.focusLosses = 0;
@@ -1682,6 +1674,7 @@ function resetTest() {
   if (appState.profile?.cif) {
     draftRepository.remove(sessionContext());
   }
+  if (keepLocked) answeredIndexes.forEach(index => syncRemoteAnswer({ index, option: null }));
   if (keepLocked) recordSecurityEvent('reset', 'El aspirante reinicio respuestas durante la prueba.');
   playSound('nav');
   toast('Respuestas reiniciadas.', 'info');
@@ -1713,12 +1706,12 @@ function handleDocumentClick(event) {
     if (action === 'next-item') { appState.currentIndex = Math.min(TOTAL_ITEMS - 1, appState.currentIndex + 1); playSound('nav'); stateStore.publish('assessment-navigation', { reason: 'next' }); }
     if (action === 'clear-answer') clearAnswer();
     if (action === 'reload-staff') loadStaffAttempts(true);
+    if (action === 'reload-norms') loadStaffNorms(true);
     if (action === 'finish-test') requestFinishTest();
     if (action === 'close-submit-dialog') closeSubmitDialog();
     if (action === 'go-first-missing') goFirstMissing(actionTarget.dataset.targetIndex);
     if (action === 'confirm-submit-test') completeTest();
     if (action === 'restore-fullscreen') enterFullscreen();
-    if (action === 'download-pdf') downloadResultPdf();
     if (action === 'reset-test') resetTest();
     if (action === 'clear-records' && window.confirm('¿Eliminar todos los reportes locales?')) {
       resultRepository.clear();
@@ -1742,13 +1735,17 @@ function handleDocumentClick(event) {
     return;
   }
   if (itemTarget) {
-    appState.currentIndex = Number(itemTarget.dataset.item);
+    const target = Number(itemTarget.dataset.item);
+    if (!canAccessItem(target)) return;
+    appState.currentIndex = target;
     playSound('nav');
     stateStore.publish('assessment-navigation', { reason: 'item' });
     return;
   }
   if (pageTarget) {
-    appState.currentIndex = Number(pageTarget.dataset.page) * ITEMS_PER_PAGE;
+    const target = Number(pageTarget.dataset.page) * ITEMS_PER_PAGE;
+    if (!canAccessItem(target)) return;
+    appState.currentIndex = target;
     playSound('nav');
     stateStore.publish('assessment-navigation', { reason: 'section' });
   }
@@ -1878,6 +1875,8 @@ stateStore.subscribe('*', event => {
   if (persistedAssessmentEvents.has(event.type)) saveDraft();
 });
 stateStore.subscribe('answer', updateTestViewAfterAnswer);
+stateStore.subscribe('answer', event => syncRemoteAnswer(event.detail));
+stateStore.subscribe('security', event => syncSecurityEvent(event.detail.securityEvent));
 stateStore.subscribe('assessment-navigation', render);
 stateStore.subscribe('assessment-reset', render);
 

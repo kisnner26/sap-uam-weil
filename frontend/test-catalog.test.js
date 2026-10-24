@@ -6,61 +6,45 @@ const vm = require('node:vm');
 
 function loadCatalog() {
   const source = fs.readFileSync(path.join(__dirname, 'test-catalog.js'), 'utf8');
-  const context = { window: {} };
+  const context = { window: { SAP_UAM_PUZZLE: { 'weil-form-a': { 0: { w: 10, h: 20, patch: [1, 2, 3, 4] } } } } };
   vm.runInNewContext(source, context);
   return context.window.SAP_UAM_TESTS;
 }
 
-test('registra weil como definición versionada y completa', () => {
-  const catalog = loadCatalog();
-  const definition = catalog.get('weil-form-a');
-
-  assert.equal(catalog.defaultTestId, 'weil-form-a');
+test('registra la definición pública sin datos de calificación', () => {
+  const definition = loadCatalog().get('weil-form-a');
   assert.equal(definition.version, 1);
   assert.equal(definition.sections.length * definition.itemsPerSection, 60);
   assert.equal(definition.optionCount, 8);
-  assert.equal(definition.media.itemImage(12), 'assets/weill-items/lamina-2-item-01.png?v=2');
+  assert.equal(definition.scoring, undefined);
+  assert.equal(definition.answerPattern, undefined);
+  assert.equal(definition.baremos, undefined);
+  assert.equal(definition.ciEquivalences, undefined);
 });
 
-test('conserva la regla de puntaje por lámina y total', () => {
-  const definition = loadCatalog().get('weil-form-a');
-  const perfectAnswers = Array.from({ length: 60 }, (_, index) => definition.scoring.correctAnswer(index));
-  const perfect = definition.scoring.score(perfectAnswers);
-
-  assert.equal(perfect.total, 60);
-  assert.deepEqual(Array.from(perfect.pageScores), [12, 12, 12, 12, 12]);
-
-  perfectAnswers[0] = 1;
-  const oneError = definition.scoring.score(perfectAnswers);
-  assert.equal(oneError.total, 59);
-  assert.deepEqual(Array.from(oneError.pageScores), [11, 12, 12, 12, 12]);
-});
-
-test('mantiene la selección de baremo y clasificación existentes', () => {
-  const scoring = loadCatalog().get('weil-form-a').scoring;
-
-  assert.equal(scoring.resolveNormColumn({ grupo: '7-16', edad: 12 }), '12');
-  assert.equal(scoring.resolveNormColumn({ grupo: 'AD', edad: 25 }), 'AD');
-  assert.equal(scoring.resolveNormColumn({ grupo: 'UN', edad: 18 }), 'UN');
-  assert.equal(scoring.percentile(57, 'UN'), 90);
-  assert.equal(scoring.ci(90), 119);
-  assert.equal(scoring.classify(119), 'Buena inteligencia');
+test('expone solo geometría, nunca rutas públicas del material', () => {
+  const media = loadCatalog().get('weil-form-a').media;
+  assert.deepEqual(Array.from(media.puzzleGeometry(0).patch), [1, 2, 3, 4]);
+  assert.equal(media.puzzleGeometry(1), null);
+  assert.equal(media.itemImage, undefined);
+  assert.equal(media.sectionImage, undefined);
 });
 
 test('rechaza identificadores de test no registrados', () => {
-  const catalog = loadCatalog();
-  assert.throws(() => catalog.get('inexistente'), /Test no registrado/);
+  assert.throws(() => loadCatalog().get('inexistente'), /Test no registrado/);
 });
 
-test('el personal obtiene percentil y CI con la edad y el grupo que guarda el servidor', () => {
-  const scoring = loadCatalog().get('weil-form-a').scoring;
-  // Fila del listado del personal: 30 aciertos de un aspirante de 12 anos (grupo 7-16)
-  const column = scoring.resolveNormColumn({ grupo: '7-16', edad: 12 });
-  const percentile = scoring.percentile(30, column);
-  const ci = scoring.ci(percentile);
+test('mantiene inmutable la definición publicada', () => {
+  const definition = loadCatalog().get('weil-form-a');
+  assert.equal(Object.isFrozen(definition), true);
+  assert.equal(Object.isFrozen(definition.sections), true);
+  assert.equal(Object.isFrozen(definition.media), true);
+});
 
-  assert.equal(column, '12');
-  assert.equal(percentile, 20);
-  assert.equal(ci, 87);
-  assert.equal(scoring.classify(ci), 'Inteligencia media');
+test('los archivos ejecutables del aspirante no contienen lógica de calificación', () => {
+  const publicSource = ['test-catalog.js', 'app.js']
+    .map(file => fs.readFileSync(path.join(__dirname, file), 'utf8'))
+    .join('\n');
+  assert.doesNotMatch(publicSource, /answerPattern|ciEquivalences|correctAnswer\s*\(|\.scoring\b/);
+  assert.doesNotMatch(publicSource, /assets\/weill-(?:items|pages|puzzle)/);
 });
