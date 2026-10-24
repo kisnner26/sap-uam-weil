@@ -116,6 +116,14 @@ public class ExamEnrollment {
         this.reminderSentAt = null;
     }
 
+    /** Borra el correo y el nombre (anonimizacion) y deja la habilitacion inutilizable. */
+    public void scrub() {
+        this.email = "anonimo-" + id + "@anonimizado.invalid";
+        this.fullName = null;
+        this.note = null;
+        this.status = EnrollmentStatus.REVOKED;
+    }
+
     public void revoke() {
         this.status = EnrollmentStatus.REVOKED;
     }

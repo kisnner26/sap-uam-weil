@@ -16,6 +16,11 @@ public interface ExamEnrollmentRepository extends JpaRepository<ExamEnrollment, 
 
     List<ExamEnrollment> findBySessionIdIn(Collection<Long> sessionIds);
 
+    @EntityGraph(attributePaths = {"session"})
+    List<ExamEnrollment> findByUserId(Long userId);
+
+    List<ExamEnrollment> findByUserIsNullAndCreatedAtBefore(Instant cutoff);
+
     @EntityGraph(attributePaths = {"session", "user"})
     Optional<ExamEnrollment> findByAccessCodeHash(String accessCodeHash);
 

@@ -74,6 +74,10 @@ public class User {
     @Column(name = "active", nullable = false)
     private boolean active = true;
 
+    /** Cuando se borraron sus datos identificables (por solicitud suya o por vencer el plazo de retencion). */
+    @Column(name = "anonymized_at")
+    private Instant anonymizedAt;
+
     /** Cambia al cerrar sesion o modificar permisos; invalida todos los JWT previos. */
     @Column(name = "session_version", nullable = false)
     private long sessionVersion = 0;
@@ -209,6 +213,33 @@ public class User {
         this.active = enabled;
         revokeSessions();
         this.updatedAt = Instant.now();
+    }
+
+    /**
+     * Elimina lo que identifica a la persona y conserva lo necesario para estadisticas (puntajes y tiempos).
+     * La cuenta queda desactivada y sin forma de iniciar sesion.
+     */
+    public void anonymize() {
+        this.fullName = "Persona anonimizada " + id;
+        this.email = "anonimo-" + id + "@anonimizado.invalid";
+        this.cedula = null;
+        this.pictureUrl = null;
+        this.career = null;
+        this.passwordHash = authProvider == AuthProvider.MANUAL ? "{anonimizado}" : null;
+        this.moodleId = authProvider == AuthProvider.MOODLE ? Integer.valueOf((int) -id) : null;
+        this.mfaSecret = null;
+        this.mfaEnabled = false;
+        this.active = false;
+        this.anonymizedAt = Instant.now();
+        revokeSessions();
+    }
+
+    public boolean isAnonymized() {
+        return anonymizedAt != null;
+    }
+
+    public Instant getAnonymizedAt() {
+        return anonymizedAt;
     }
 
     public void revokeSessions() {

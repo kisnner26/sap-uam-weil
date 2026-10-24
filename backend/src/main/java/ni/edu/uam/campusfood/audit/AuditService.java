@@ -23,6 +23,13 @@ public class AuditService {
                 targetId == null ? null : String.valueOf(targetId), clean(detail)));
     }
 
+    /** Acciones automaticas (por ejemplo, la retencion de datos): no tienen una persona como responsable. */
+    @Transactional
+    public void recordSystem(String action, String targetType, Object targetId, String detail) {
+        events.save(new AuditEvent(0L, "Sistema", action, targetType,
+                targetId == null ? null : String.valueOf(targetId), clean(detail)));
+    }
+
     @Transactional(readOnly = true)
     public List<AuditView> recent() {
         return events.findTop200ByOrderByOccurredAtDesc().stream().map(AuditView::from).toList();

@@ -12,4 +12,6 @@ public interface NotificationOutboxRepository extends JpaRepository<Notification
     List<NotificationOutbox> findTop100ByOrderByCreatedAtDesc();
 
     long deleteByCreatedAtBefore(Instant cutoff);
+
+    List<NotificationOutbox> findByToEmailIgnoreCase(String toEmail);
 }
