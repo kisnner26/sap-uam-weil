@@ -111,9 +111,23 @@ python3 tools/build_puzzle_assets.py --dry-run --debug /tmp/debug   # solo detec
 El frontend público solo conserva la geometría del hueco. Las figuras y piezas se entregan, sin caché,
 por el endpoint autenticado del intento actual.
 
+## Flujo de admisión
+
+1. **Convocatorias** (personal): ventana de fechas, minutos y indicaciones. Se pueden editar y cancelar.
+2. **Habilitación**: el personal pega los correos (con adecuaciones de tiempo opcionales); cada aspirante recibe un código de un solo uso por correo.
+3. **Aspirante**: se registra, canjea el código, lee y acepta el aviso de privacidad y rinde dentro de la ventana. El servidor cierra solo los intentos vencidos.
+4. **Resultados** (personal): filtros por convocatoria, búsqueda, exportación CSV, marcar revisada, **invalidar** (con justificación) y **reaplicar** (nuevo código). El aspirante solo ve una constancia de entrega.
+5. **Avisos**: invitación, recordatorio, constancia e invalidación por correo; ningún correo contiene puntajes ni el motivo de una invalidación.
+6. **Datos personales**: aviso versionado con consentimiento registrado, retención configurable con anonimización y exportación de datos de un titular (administración).
+
+Variables nuevas: `APP_PUBLIC_URL`, `APP_MAIL_MODE` (`log` | `smtp`), `APP_MAIL_FROM`, `MAIL_HOST/PORT/USER/PASSWORD`, `APP_PRIVACY_EMAIL`,
+`APP_RETENTION_MONTHS`, `APP_RETENTION_ENABLED`. Despliegue, respaldos, prueba de carga y estado de lo probado: [docs/despliegue-y-operacion.md](docs/despliegue-y-operacion.md).
+El texto del aviso de privacidad es un **borrador** pendiente de revisión legal.
+
 ## Tests
 
 ```bash
 cd backend && mvn test      # backend
 npm test                    # frontend (desde la raíz del repositorio)
+# esquema y concurrencia sobre PostgreSQL: ver docs/despliegue-y-operacion.md y ops/dev-postgres.sh
 ```

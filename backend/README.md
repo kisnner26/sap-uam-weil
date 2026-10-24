@@ -72,10 +72,13 @@ SPRING_PROFILES_ACTIVE=prod APP_JWT_SECRET=... APP_CORS_ORIGINS=... \
 `/api/auth/login`, `/api/auth/moodle-login` y `/api/auth/register` aceptan, por IP, 20
 peticiones cada 5 minutos; pasado el límite responden `429` con `Retry-After`. Se ajusta con
 `app.security.auth-rate-limit.max-requests` y `app.security.auth-rate-limit.window-seconds`.
-El contador vive en memoria: con varias instancias del backend cada una lleva el suyo.
+El contador vive en la base de datos, así que se comparte entre instancias.
 
-> Con el perfil `prod`, JPA usa `ddl-auto: validate`: creá la tabla antes con
-> [`src/main/resources/db/schema_postgres.sql`](src/main/resources/db/schema_postgres.sql).
+## Migraciones
+
+Con los perfiles `pg` y `prod`, Flyway aplica `src/main/resources/db/migration/V*.sql` y JPA solo valida (`ddl-auto: validate`).
+Un cambio de esquema es un archivo nuevo (`V2__...sql`); nunca se edita uno ya aplicado. Con el perfil `dev` (H2) Hibernate crea las tablas.
+Para probar contra PostgreSQL local sin instalarlo en el sistema: `ops/dev-postgres.sh start` y arrancar con `SPRING_PROFILES_ACTIVE=pg`.
 
 ## Resultados solo para el personal
 
@@ -86,8 +89,7 @@ puntaje por lámina, la edad y el grupo de baremo declarados al entregar.
 
 Los roles los administra un `ADMIN` desde el panel (`/api/admin/users`); no hace falta editar la base.
 El primer administrador se crea con `APP_BOOTSTRAP_ADMIN_EMAIL` / `APP_BOOTSTRAP_ADMIN_PASSWORD`.
-Las bases que ya existían necesitan las dos columnas nuevas del intento: están como `ALTER TABLE ... IF NOT EXISTS`
-en [`schema_postgres.sql`](src/main/resources/db/schema_postgres.sql).
+Una base creada antes de Flyway debe respaldarse y migrarse a mano: la `V1` crea el esquema completo y no sirve sobre tablas existentes.
 
 ## Endpoints
 

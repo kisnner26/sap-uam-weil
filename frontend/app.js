@@ -50,13 +50,15 @@ const NAV = {
   ],
   staff: [
     ['panel', 'Panel'],
-    ['aspirantes', 'Aspirantes'],
+    ['convocatorias', 'Convocatorias'],
+    ['aspirantes', 'Resultados'],
     ['baremo', 'Baremo'],
     ['ajustes', 'Ajustes']
   ],
   admin: [
     ['panel', 'Panel'],
-    ['aspirantes', 'Aspirantes'],
+    ['convocatorias', 'Convocatorias'],
+    ['aspirantes', 'Resultados'],
     ['usuarios', 'Personal'],
     ['auditoria', 'Auditoría'],
     ['baremo', 'Baremo']
@@ -82,6 +84,14 @@ const stateStore = window.SAP_UAM_STATE.create({
   focusLosses: 0,
   securityEvents: [],
   remoteAttempt: null,
+  availability: null,
+  availabilityError: '',
+  privacyNotice: null,
+  consentBusy: false,
+  sessions: null,
+  sessionsError: '',
+  sessionDetail: null,
+  resultsFilters: { sessionId: '', status: '', q: '' },
   staffAttempts: null,
   staffNorms: null,
   staffLoading: false,
@@ -380,9 +390,33 @@ async function apiRequest(path, body = null, options = {}) {
   const data = text ? safeJson(text) : null;
   if (!response.ok) {
     const message = data?.message || data?.error || 'No se pudo completar la solicitud.';
-    throw new Error(message);
+    const failure = new Error(message);
+    failure.code = data?.code || null;
+    failure.status = response.status;
+    throw failure;
   }
   return data;
+}
+
+async function apiJson(method, path, body = null) {
+  return apiRequest(path, body === null ? undefined : body, { method });
+}
+
+async function downloadFromApi(path, fallbackName) {
+  const response = await fetch(`${API_BASE}${path}`, { credentials: 'include', headers: { Accept: 'text/csv' } });
+  if (!response.ok) {
+    const data = safeJson(await response.text());
+    throw new Error(data?.message || 'No se pudo generar el archivo.');
+  }
+  const name = /filename="?([^";]+)"?/i.exec(response.headers.get('Content-Disposition') || '')?.[1] || fallbackName;
+  const url = URL.createObjectURL(await response.blob());
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = name;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
 }
 
 const demoCredentials = window.SAP_UAM_DEMO_CREDENTIALS.createVerifier(window.crypto);
@@ -793,7 +827,11 @@ function enterAspirante(profileOverride = null) {
     appState.result = latest ? resultRepository.get(latest.id) : null;
   }
   if (appState.startedAt && !appState.result) appState.route = 'test';
+  appState.availability = null;
+  appState.availabilityError = '';
+  appState.privacyNotice = null;
   showApp();
+  loadAvailability();
   if (appState.startedAt && !appState.result && !STATIC_PAGES_MODE) {
     openRemoteAttempt()
       .then(() => render())
@@ -812,6 +850,9 @@ function enterStaff(user = null) {
   appState.sessionUser = user || appState.sessionUser;
   appState.staffAttempts = null;
   appState.staffError = '';
+  appState.sessions = null;
+  appState.sessionDetail = null;
+  appState.resultsFilters = { sessionId: '', status: '', q: '' };
   showApp();
 }
 
@@ -889,7 +930,7 @@ async function loadStaffAttempts(force = false) {
   appState.staffLoading = true;
   appState.staffError = '';
   try {
-    const rows = await apiRequest(`/api/staff/attempts?testId=${encodeURIComponent(ACTIVE_TEST.id)}`);
+    const rows = await apiRequest(`/api/staff/attempts?${resultsQuery()}`);
     appState.staffAttempts = Array.isArray(rows) ? rows : [];
   } catch (error) {
     appState.staffError = error.message || 'No se pudieron cargar los resultados.';
@@ -911,6 +952,271 @@ async function loadStaffNorms(force = false) {
   } finally {
     appState.staffNormsLoading = false;
     if (appState.role === 'staff' && appState.route === 'baremo') render();
+  }
+}
+
+
+// ---------------------------------------------------------------- flujo de admision
+const ADM = window.SAP_UAM_ADMISSION;
+
+async function loadAvailability() {
+  if (STATIC_PAGES_MODE) return;
+  appState.availabilityError = '';
+  try {
+    appState.availability = await apiRequest('/api/applicant/availability');
+  } catch (error) {
+    appState.availabilityError = error.message || 'No se pudo consultar tu evaluación.';
+  }
+  if (appState.role === 'aspirante' && ['inicio', 'privacidad'].includes(appState.route)) render();
+}
+
+async function claimAccessCode(form) {
+  const errorBox = $('#claim-error');
+  if (errorBox) errorBox.textContent = '';
+  const code = String(new FormData(form).get('code') || '').trim();
+  if (!code) return;
+  form.setAttribute('aria-busy', 'true');
+  try {
+    await apiRequest('/api/applicant/claim', { code });
+    toast('Código canjeado. Ya estás habilitado.', 'ok');
+    await loadAvailability();
+  } catch (error) {
+    if (errorBox) errorBox.textContent = error.message || 'No se pudo canjear el código.';
+  } finally {
+    form.setAttribute('aria-busy', 'false');
+  }
+}
+
+async function openConsent() {
+  appState.route = 'privacidad';
+  renderShell();
+  render();
+  if (appState.privacyNotice) return;
+  try {
+    appState.privacyNotice = await apiRequest('/api/privacy/notice');
+  } catch (error) {
+    toast(error.message || 'No se pudo cargar el aviso de privacidad.', 'err');
+    appState.route = 'inicio';
+    renderShell();
+  }
+  render();
+}
+
+async function acceptConsent() {
+  const notice = appState.privacyNotice;
+  if (!notice || appState.consentBusy) return;
+  appState.consentBusy = true;
+  const errorBox = $('#consent-error');
+  try {
+    await apiRequest('/api/privacy/consent', { version: notice.version });
+    await loadAvailability();
+    toast('Consentimiento registrado.', 'ok');
+    routeTo('inicio');
+  } catch (error) {
+    if (errorBox) errorBox.textContent = error.message || 'No se pudo registrar el consentimiento.';
+  } finally {
+    appState.consentBusy = false;
+  }
+}
+
+async function loadSessions(force = false) {
+  if (STATIC_PAGES_MODE || (appState.sessions && !force)) return;
+  appState.sessionsError = '';
+  try {
+    const rows = await apiRequest('/api/staff/sessions');
+    appState.sessions = Array.isArray(rows) ? rows : [];
+  } catch (error) {
+    appState.sessionsError = error.message || 'No se pudieron cargar las convocatorias.';
+  }
+  if (appState.role === 'staff' && ['convocatorias', 'aspirantes'].includes(appState.route)) render();
+}
+
+async function openSessionDetail(sessionId) {
+  const session = (appState.sessions || []).find(item => item.id === sessionId);
+  appState.sessionDetail = { session, rows: null, lastResult: null, error: '' };
+  routeTo('convocatoria');
+  await reloadSessionDetail();
+}
+
+async function reloadSessionDetail() {
+  const detail = appState.sessionDetail;
+  if (!detail?.session) return;
+  try {
+    detail.rows = await apiRequest(`/api/staff/sessions/${detail.session.id}/enrollments`);
+    detail.error = '';
+  } catch (error) {
+    detail.error = error.message || 'No se pudieron cargar los aspirantes.';
+  }
+  if (appState.role === 'staff' && appState.route === 'convocatoria') render();
+}
+
+function showStaffDialog(title, bodyHtml) {
+  closeStaffDialog();
+  const root = document.createElement('div');
+  root.id = 'staff-dialog-root';
+  root.innerHTML = ADM.dialogHtml(title, bodyHtml);
+  document.body.appendChild(root);
+  root.querySelector('input,select,textarea,button')?.focus();
+}
+
+function closeStaffDialog() {
+  $('#staff-dialog-root')?.remove();
+}
+
+function dialogError(message) {
+  const box = $('#dialog-error');
+  if (box) box.textContent = message;
+}
+
+async function submitSessionForm(form) {
+  const data = new FormData(form);
+  const id = form.dataset.sessionId;
+  const minutes = String(data.get('timeLimitMinutes') || '').trim();
+  const body = {
+    name: String(data.get('name') || '').trim(),
+    opensAt: ADM.fromLocalInput(data.get('opensAt')),
+    closesAt: ADM.fromLocalInput(data.get('closesAt')),
+    timeLimitMinutes: minutes ? Number(minutes) : null,
+    instructions: String(data.get('instructions') || '').trim() || null
+  };
+  if (!body.opensAt || !body.closesAt) return dialogError('Revisá las fechas.');
+  try {
+    await apiJson(id ? 'PUT' : 'POST', id ? `/api/staff/sessions/${id}` : '/api/staff/sessions', body);
+    closeStaffDialog();
+    toast(id ? 'Convocatoria actualizada.' : 'Convocatoria creada.', 'ok');
+    await loadSessions(true);
+  } catch (error) {
+    dialogError(error.message);
+  }
+}
+
+async function cancelSession(sessionId) {
+  const session = (appState.sessions || []).find(item => item.id === sessionId);
+  if (!session || !window.confirm(`¿Cancelar "${session.name}"? Los aspirantes habilitados dejarán de poder rendir.`)) return;
+  try {
+    await apiJson('POST', `/api/staff/sessions/${sessionId}/cancel`, {});
+    toast('Convocatoria cancelada.', 'ok');
+    await loadSessions(true);
+  } catch (error) {
+    toast(error.message, 'err');
+  }
+}
+
+async function submitEnroll(form) {
+  const detail = appState.sessionDetail;
+  const { applicants, invalid } = ADM.parseApplicants(new FormData(form).get('applicants'));
+  const errorBox = $('#enroll-error');
+  if (errorBox) errorBox.textContent = invalid.length ? `Correo inválido en: ${invalid.slice(0, 3).join(' | ')}` : '';
+  if (invalid.length || !applicants.length) return;
+  form.setAttribute('aria-busy', 'true');
+  try {
+    detail.lastResult = await apiRequest(`/api/staff/sessions/${detail.session.id}/enrollments`, { applicants });
+    await loadSessions(true);
+    detail.session = (appState.sessions || []).find(item => item.id === detail.session.id) || detail.session;
+    await reloadSessionDetail();
+    toast('Invitaciones enviadas.', 'ok');
+  } catch (error) {
+    if (errorBox) errorBox.textContent = error.message;
+  } finally {
+    form.setAttribute('aria-busy', 'false');
+  }
+}
+
+async function enrollmentAction(kind, enrollmentId) {
+  const row = appState.sessionDetail?.rows?.find(item => item.id === enrollmentId);
+  if (!row) return;
+  if (kind === 'adjust') { showStaffDialog('Ajustar habilitación', ADM.adjustFormHtml(row)); return; }
+  if (kind === 'revoke' && !window.confirm(`¿Revocar la habilitación de ${row.fullName || row.email}?`)) return;
+  try {
+    if (kind === 'resend') await apiJson('POST', `/api/staff/enrollments/${enrollmentId}/resend`, {});
+    else await apiJson('DELETE', `/api/staff/enrollments/${enrollmentId}`);
+    toast(kind === 'resend' ? 'Código nuevo enviado.' : 'Habilitación revocada.', 'ok');
+    await reloadSessionDetail();
+  } catch (error) {
+    toast(error.message, 'err');
+  }
+}
+
+async function submitAdjust(form) {
+  const data = new FormData(form);
+  const age = String(data.get('age') || '').trim();
+  try {
+    await apiJson('PATCH', `/api/staff/enrollments/${form.dataset.enrollmentId}`, {
+      extraMinutes: Number(data.get('extraMinutes') || 0),
+      age: age ? Number(age) : null,
+      normGroup: String(data.get('normGroup') || 'UN'),
+      note: String(data.get('note') || '').trim() || null
+    });
+    closeStaffDialog();
+    toast('Habilitación actualizada.', 'ok');
+    await reloadSessionDetail();
+  } catch (error) {
+    dialogError(error.message);
+  }
+}
+
+function resultsQuery() {
+  const f = appState.resultsFilters;
+  const params = new URLSearchParams({ testId: ACTIVE_TEST.id });
+  if (f.sessionId) params.set('sessionId', f.sessionId);
+  if (f.status) params.set('status', f.status);
+  if (f.q.trim()) params.set('q', f.q.trim());
+  return params.toString();
+}
+
+async function exportResults() {
+  try {
+    await downloadFromApi(`/api/staff/attempts/export?${resultsQuery()}`, 'resultados.csv');
+    toast('Archivo generado. Contiene datos personales: guardalo con cuidado.', 'info');
+  } catch (error) {
+    toast(error.message, 'err');
+  }
+}
+
+async function attemptAction(kind, attemptId) {
+  const row = appState.staffAttempts?.find(item => item.id === attemptId);
+  if (!row) return;
+  if (kind === 'invalidate') { showStaffDialog('Invalidar prueba', ADM.invalidateFormHtml(row)); return; }
+  if (kind === 'reapply') {
+    await loadSessions();
+    showStaffDialog('Reaplicar prueba', ADM.reapplyFormHtml(row, appState.sessions));
+    return;
+  }
+  try {
+    await apiJson('POST', `/api/staff/attempts/${attemptId}/review`, {});
+    toast('Marcada como revisada.', 'ok');
+    await loadStaffAttempts(true);
+  } catch (error) {
+    toast(error.message, 'err');
+  }
+}
+
+async function submitInvalidate(form) {
+  const reason = String(new FormData(form).get('reason') || '').trim();
+  if (reason.length < 10) return dialogError('Escribí al menos 10 caracteres.');
+  try {
+    await apiJson('POST', `/api/staff/attempts/${form.dataset.attemptId}/invalidate`, { reason });
+    closeStaffDialog();
+    toast('Prueba invalidada. El aspirante recibió un aviso sin el motivo.', 'ok');
+    await loadStaffAttempts(true);
+  } catch (error) {
+    dialogError(error.message);
+  }
+}
+
+async function submitReapply(form) {
+  const data = new FormData(form);
+  try {
+    await apiJson('POST', `/api/staff/attempts/${form.dataset.attemptId}/reapply`, {
+      sessionId: Number(data.get('sessionId')),
+      extraMinutes: Number(data.get('extraMinutes') || 0)
+    });
+    closeStaffDialog();
+    toast('Reaplicación habilitada. Se envió un código nuevo.', 'ok');
+    await loadStaffAttempts(true);
+    await loadSessions(true);
+  } catch (error) {
+    dialogError(error.message);
   }
 }
 
@@ -1007,6 +1313,7 @@ function renderAspirante() {
   const content = $('#app-content');
   if (!content) return;
   if (appState.route === 'test') content.innerHTML = renderTest();
+  else if (appState.route === 'privacidad') content.innerHTML = ADM.consentView(appState.privacyNotice, appState.consentBusy);
   else if (appState.route === 'resultados') content.innerHTML = renderResults();
   else if (appState.route === 'perfil') content.innerHTML = renderProfile();
   else if (appState.route === 'ajustes') content.innerHTML = renderSettings();
@@ -1017,6 +1324,7 @@ function renderHome() {
   const count = answeredCount();
   const progress = Math.round((count / TOTAL_ITEMS) * 100);
   const result = appState.result;
+  const home = STATIC_PAGES_MODE ? null : ADM.aspirantHome(appState.availability, { count, hasResult: Boolean(result), error: appState.availabilityError });
   const profileLine = [appState.profile.fullName, normalizeCareer(appState.profile.carrera)].filter(Boolean).join(' · ');
   return `
     <div class="screen-title">
@@ -1026,20 +1334,20 @@ function renderHome() {
       <section class="hero-band assessment-card">
         <div class="hero-copy">
           <div>
-            <div class="assessment-card__top"><p class="eyebrow">${esc(ACTIVE_TEST.shortName)}</p><span class="status-badge">${result ? 'Entregada' : count ? 'En progreso' : 'Asignada'}</span></div>
+            <div class="assessment-card__top"><p class="eyebrow">${esc(ACTIVE_TEST.shortName)}</p><span class="status-badge">${home ? esc(home.badge) : result ? 'Entregada' : count ? 'En progreso' : 'Asignada'}</span></div>
             <h2>${esc(ACTIVE_TEST.name)}</h2>
             <p>${esc(ACTIVE_TEST.description)}</p>
             <dl class="assessment-meta">
               <div><dt>Ítems</dt><dd>${TOTAL_ITEMS}</dd></div>
               <div><dt>Secciones</dt><dd>${TOTAL_PAGES}</dd></div>
-              <div><dt>Tiempo estimado</dt><dd>${ACTIVE_TEST.estimatedMinutes} min</dd></div>
+              <div><dt>${!STATIC_PAGES_MODE && appState.availability?.minutes ? 'Tiempo disponible' : 'Tiempo estimado'}</dt><dd>${(!STATIC_PAGES_MODE && appState.availability?.minutes) || ACTIVE_TEST.estimatedMinutes} min</dd></div>
             </dl>
           </div>
           <div>
             <div class="progress-label"><span>Progreso</span><strong>${progress}%</strong></div>
             <div class="progress-shell" role="progressbar" aria-label="Progreso de ${esc(ACTIVE_TEST.shortName)}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${progress}"><div class="progress-bar" style="width:${progress}%"></div></div>
             <div class="hero-actions">
-              ${result
+              ${home ? home.action : result
                 ? '<button class="solid-btn" type="button" data-route="resultados">Ver constancia de entrega</button>'
                 : `<button class="solid-btn" type="button" data-action="start-test">${STATIC_PAGES_MODE ? 'Material disponible solo en el sistema' : count ? 'Continuar evaluación' : 'Comenzar evaluación'}</button>`}
             </div>
@@ -1050,8 +1358,8 @@ function renderHome() {
       <aside class="status-stack">
         <section class="panel next-step-panel">
           <p class="eyebrow">Siguiente paso</p>
-          <h3>${result ? 'Tu entrega está registrada' : count ? `Continuá desde el ítem ${appState.currentIndex + 1}` : 'Prepará tu espacio'}</h3>
-          <p>${result ? 'Tu constancia confirma que el equipo recibió las respuestas.' : 'Buscá un lugar sin interrupciones. El progreso se guarda automáticamente.'}</p>
+          <h3>${home ? esc(home.title) : result ? 'Tu entrega está registrada' : count ? `Continuá desde el ítem ${appState.currentIndex + 1}` : 'Prepará tu espacio'}</h3>
+          <p>${home ? esc(home.text) : result ? 'Tu constancia confirma que el equipo recibió las respuestas.' : 'Buscá un lugar sin interrupciones. El progreso se guarda automáticamente.'}</p>
           <div class="metric-strip">
             <div><strong>${count}</strong><span>respondidos</span></div>
             <div><strong>${TOTAL_ITEMS - count}</strong><span>pendientes</span></div>
@@ -1441,6 +1749,7 @@ function renderStaff() {
   const content = $('#app-content');
   if (!content) return;
   if (!STATIC_PAGES_MODE && ['panel', 'aspirantes'].includes(appState.route)) loadStaffAttempts();
+  if (!STATIC_PAGES_MODE && ['convocatorias', 'aspirantes'].includes(appState.route)) loadSessions();
   if (!STATIC_PAGES_MODE && appState.route === 'baremo') loadStaffNorms();
   if (appState.route === 'usuarios' && appState.sessionUser?.role === 'ADMIN') {
     loadAdminData('users');
@@ -1448,7 +1757,9 @@ function renderStaff() {
   } else if (appState.route === 'auditoria' && appState.sessionUser?.role === 'ADMIN') {
     loadAdminData('audit');
     content.innerHTML = renderAdminAudit();
-  } else if (appState.route === 'aspirantes') content.innerHTML = renderStaffApplicants();
+  } else if (appState.route === 'convocatorias') content.innerHTML = ADM.sessionsView(appState.sessions, appState.sessionsError);
+  else if (appState.route === 'convocatoria') content.innerHTML = ADM.enrollmentsView(appState.sessionDetail?.session, appState.sessionDetail?.rows, appState.sessionDetail?.lastResult, appState.sessionDetail?.error);
+  else if (appState.route === 'aspirantes') content.innerHTML = renderStaffApplicants();
   else if (appState.route === 'baremo') content.innerHTML = renderBaremo();
   else if (appState.route === 'ajustes') content.innerHTML = renderSettings();
   else content.innerHTML = renderStaffPanel();
@@ -1550,8 +1861,9 @@ function renderStaffApplicants() {
   }
   const rows = appState.staffAttempts;
   return `
-    <div class="screen-title"><div><p class="eyebrow">Aspirantes</p><h2>Resultados</h2><p>${rows ? `${rows.length} pruebas entregadas.` : 'Pruebas entregadas por los aspirantes.'}</p></div><button class="ghost-btn" type="button" data-action="reload-staff">Actualizar</button></div>
-    ${rows ? renderStaffAttemptsTable(rows) : staffStatusCard()}`;
+    <div class="screen-title"><div><p class="eyebrow">Aspirantes</p><h2>Resultados</h2><p>${rows ? `${rows.length} pruebas con los filtros actuales.` : 'Pruebas entregadas por los aspirantes.'}</p></div><button class="ghost-btn" type="button" data-action="reload-staff">Actualizar</button></div>
+    ${ADM.resultsToolbar(appState.sessions, appState.resultsFilters)}
+    ${rows ? ADM.attemptsTable(rows, TOTAL_ITEMS) : staffStatusCard()}`;
 }
 
 function renderStaffAttemptsTable(rows) {
@@ -1711,6 +2023,10 @@ async function startTest() {
     return;
   }
   if (appState.startBusy) return;
+  if (appState.availability?.needsConsent) {
+    openConsent();
+    return;
+  }
   appState.startBusy = true;
   const startButton = $('[data-action="start-test"]');
   if (startButton) {
@@ -1722,6 +2038,8 @@ async function startTest() {
   } catch (error) {
     playSound('error');
     toast(error.message || 'No se pudo reservar el intento.', 'err');
+    if (error.code) loadAvailability();
+    if (error.code === 'CONSENT_REQUIRED') openConsent();
     return;
   } finally {
     appState.startBusy = false;
@@ -1894,6 +2212,7 @@ async function completeTest() {
   saveDraft();
   playSound('success');
   toast('Prueba entregada. Gracias.', 'ok');
+  loadAvailability();
   routeTo('resultados');
 }
 
@@ -1950,6 +2269,23 @@ function handleDocumentClick(event) {
     if (action === 'next-item') { appState.currentIndex = Math.min(TOTAL_ITEMS - 1, appState.currentIndex + 1); playSound('nav'); stateStore.publish('assessment-navigation', { reason: 'next' }); }
     if (action === 'clear-answer') clearAnswer();
     if (action === 'reload-staff') loadStaffAttempts(true);
+    if (action === 'reload-availability') loadAvailability();
+    if (action === 'open-consent') openConsent();
+    if (action === 'accept-consent') acceptConsent();
+    if (action === 'reload-sessions') loadSessions(true);
+    if (action === 'new-session') showStaffDialog('Nueva convocatoria', ADM.sessionFormHtml(null));
+    if (action === 'edit-session') showStaffDialog('Editar convocatoria', ADM.sessionFormHtml((appState.sessions || []).find(item => item.id === Number(actionTarget.dataset.sessionId))));
+    if (action === 'cancel-session') cancelSession(Number(actionTarget.dataset.sessionId));
+    if (action === 'open-session') openSessionDetail(Number(actionTarget.dataset.sessionId));
+    if (action === 'reload-enrollments') reloadSessionDetail();
+    if (action === 'resend-invitation') enrollmentAction('resend', Number(actionTarget.dataset.enrollmentId));
+    if (action === 'adjust-enrollment') enrollmentAction('adjust', Number(actionTarget.dataset.enrollmentId));
+    if (action === 'revoke-enrollment') enrollmentAction('revoke', Number(actionTarget.dataset.enrollmentId));
+    if (action === 'export-results') exportResults();
+    if (action === 'review-attempt') attemptAction('review', Number(actionTarget.dataset.attemptId));
+    if (action === 'invalidate-attempt') attemptAction('invalidate', Number(actionTarget.dataset.attemptId));
+    if (action === 'reapply-attempt') attemptAction('reapply', Number(actionTarget.dataset.attemptId));
+    if (action === 'close-dialog') closeStaffDialog();
     if (action === 'reload-norms') loadStaffNorms(true);
     if (action === 'reload-admin-users') loadAdminData('users', true);
     if (action === 'reload-admin-audit') loadAdminData('audit', true);
@@ -2002,6 +2338,11 @@ function handleDocumentClick(event) {
 }
 
 function handleDocumentChange(event) {
+  if (event.target.id === 'consent-check') {
+    const accept = $('[data-action="accept-consent"]');
+    if (accept) accept.disabled = !event.target.checked;
+    return;
+  }
   const setting = event.target.closest('[data-setting]');
   const range = event.target.closest('[data-setting-range]');
   const profileField = event.target.closest('[data-profile-field]');
@@ -2183,9 +2524,28 @@ $('#form-mfa')?.addEventListener('submit', event => {
 });
 
 document.addEventListener('submit', event => {
-  if (event.target.id !== 'form-admin-user') return;
+  const handlers = {
+    'form-admin-user': createStaffAccount,
+    'form-claim': claimAccessCode,
+    'form-session': submitSessionForm,
+    'form-enroll': submitEnroll,
+    'form-adjust': submitAdjust,
+    'form-invalidate': submitInvalidate,
+    'form-reapply': submitReapply,
+    'form-results-filter': form => {
+      const data = new FormData(form);
+      appState.resultsFilters = { sessionId: String(data.get('sessionId') || ''), status: String(data.get('status') || ''), q: String(data.get('q') || '') };
+      return loadStaffAttempts(true);
+    }
+  };
+  const handler = handlers[event.target.id];
+  if (!handler) return;
   event.preventDefault();
-  createStaffAccount(event.target);
+  handler(event.target);
+});
+
+document.addEventListener('keydown', event => {
+  if (event.key === 'Escape' && $('#staff-dialog-root')) closeStaffDialog();
 });
 
 setInterval(() => {
