@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Corta cada item del Weil en una figura base (con su hueco) y 8 piezas sueltas.
 
-Lee   frontend/assets/weill-pages/lamina-L.png  (las 5 laminas completas, 12 items cada una)
-Crea  frontend/assets/weill-puzzle/l{L}i{II}-base.png y l{L}i{II}-p{1..8}.png
+Lee   backend/src/main/resources/test-material/weil-form-a/pages/lamina-L.png
+Crea  backend/src/main/resources/test-material/weil-form-a/puzzle/l{L}i{II}-base.png y l{L}i{II}-p{1..8}.png
       frontend/puzzle-data.js  (tamano de cada base y posicion del hueco)
 
 Las piezas se numeran por filas, de izquierda a derecha, igual que las opciones
@@ -20,8 +20,9 @@ import cv2
 import numpy as np
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-SRC = ROOT / "frontend" / "assets" / "weill-pages"
-OUT = ROOT / "frontend" / "assets" / "weill-puzzle"
+MATERIAL = ROOT / "backend" / "src" / "main" / "resources" / "test-material" / "weil-form-a"
+SRC = MATERIAL / "pages"
+OUT = MATERIAL / "puzzle"
 DATA = ROOT / "frontend" / "puzzle-data.js"
 SCALE = 2          # las imagenes originales son de ~390 px: se amplian para verse nitidas
 INK = 150          # por debajo de este gris es tinta
