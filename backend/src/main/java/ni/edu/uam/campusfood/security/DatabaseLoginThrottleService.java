@@ -16,7 +16,7 @@ public class DatabaseLoginThrottleService {
     private final Duration ipWindow;
 
     public DatabaseLoginThrottleService(LoginThrottleRepository repository,
-            @Value("${app.security.auth-rate-limit.max-requests:20}") int ipMax,
+            @Value("${app.security.auth-rate-limit.max-requests:300}") int ipMax,
             @Value("${app.security.auth-rate-limit.window-seconds:300}") long windowSeconds) {
         this.repository = repository;
         this.ipMax = ipMax;
@@ -33,16 +33,22 @@ public class DatabaseLoginThrottleService {
         repository.save(row);
     }
 
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Transactional
     public void checkAccount(String identity) {
         Instant now = Instant.now();
-        repository.findForUpdate("account:" + normalize(identity)).ifPresent(row -> {
+        // Lectura sin bloqueo: si tomara el candado de la fila, recordFailure (otra transaccion) esperaria por el.
+        repository.findById("account:" + normalize(identity)).ifPresent(row -> {
             if (row.getBlockedUntil() != null && now.isBefore(row.getBlockedUntil())) {
                 throw blocked(row.getBlockedUntil(), now);
             }
         });
     }
 
+    /**
+     * Los fallos se guardan aunque la transaccion del llamador se revierta, por eso usa una conexion propia.
+     * Para que dos conexiones por peticion nunca agoten el pool, Tomcat tiene menos hilos que conexiones
+     * (server.tomcat.threads.max < spring.datasource.hikari.maximum-pool-size).
+     */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void recordFailure(String identity) {
         Instant now = Instant.now();
@@ -56,7 +62,7 @@ public class DatabaseLoginThrottleService {
         repository.save(row);
     }
 
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Transactional
     public void recordSuccess(String identity) {
         repository.deleteById("account:" + normalize(identity));
     }

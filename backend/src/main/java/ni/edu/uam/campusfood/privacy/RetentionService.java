@@ -71,7 +71,7 @@ public class RetentionService {
     }
 
     /** Todo lo que el sistema guarda de una persona, para atender su solicitud de acceso. */
-    @Transactional(readOnly = true)
+    @Transactional
     public SubjectExport export(Long actorId, Long userId) {
         User user = applicant(userId);
         audit.record(actorId, "EXPORT_SUBJECT", "USER", userId, null);

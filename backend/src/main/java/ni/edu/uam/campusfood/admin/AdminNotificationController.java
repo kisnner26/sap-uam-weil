@@ -25,7 +25,7 @@ public class AdminNotificationController {
     }
 
     @GetMapping
-    @Transactional(readOnly = true)
+    @Transactional
     public List<NotificationView> recent(Authentication authentication) {
         audit.record(Long.valueOf(authentication.getName()), "VIEW_NOTIFICATIONS", "OUTBOX", null, null);
         return outbox.findTop100ByOrderByCreatedAtDesc().stream().map(NotificationView::from).toList();

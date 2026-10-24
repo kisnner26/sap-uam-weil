@@ -7,12 +7,19 @@ spring:
     name: sap-uam-backend
   jpa:
     open-in-view: false
+  datasource:
+    hikari:
+      maximum-pool-size: ${DB_POOL_SIZE:40}
   # Perfil por defecto: desarrollo con H2 en memoria.
   profiles:
     active: dev
 
 server:
   port: 8080
+  tomcat:
+    # Menos hilos que conexiones del pool: ver DatabaseLoginThrottleService.recordFailure.
+    threads:
+      max: ${SERVER_THREADS_MAX:32}
   error:
     # Nunca exponer detalles internos en las respuestas de error.
     include-stacktrace: never
