@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&family=Playfair+Display:ital,wght@0,800;1,800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css?v=30">
-<link rel="stylesheet" href="theme-v2.css?v=2">
+<link rel="stylesheet" href="theme-v2.css?v=3">
 </head>
 <body>
 <div class="toast-wrap" id="toast-wrap" aria-live="polite"></div>
@@ -29,6 +29,11 @@
           <h1>tu evaluación,<br><em>sin distracciones.</em></h1>
           <p>ingresá para consultar tu convocatoria, realizar la prueba y confirmar la entrega.</p>
         </div>
+        <div class="auth-weil-grid" aria-hidden="true">
+          <span class="shape-a"></span><span class="shape-b"></span><span class="shape-c"></span>
+          <span class="shape-c"></span><span class="shape-a"></span><span class="shape-b"></span>
+          <span class="shape-b"></span><span class="shape-c"></span><span class="shape-missing">?</span>
+        </div>
         <div class="auth-context__preview">
           <img src="assets/uam-estudiantes.webp" alt="Estudiantes de la Universidad Americana en una sesión de trabajo" loading="eager">
           <div><span>test de weil</span><strong>60 ítems · 5 láminas</strong></div>
@@ -40,6 +45,7 @@
       </div>
 
       <div class="auth-card">
+        <span class="auth-card__index" aria-hidden="true">01 / acceso</span>
         <div class="auth-card__intro">
           <p class="auth-kicker">portal de evaluaciones</p>
           <h2 id="auth-heading">iniciar sesión</h2>
