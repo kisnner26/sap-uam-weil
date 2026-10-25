@@ -1,133 +1,124 @@
-# SAP-UAM · Plataforma de evaluaciones
+# SAP-UAM · plataforma de evaluaciones
 
-![Banner](banner.png)
+plataforma web institucional para aplicar, administrar y revisar evaluaciones de admisión de la universidad americana (UAM), nicaragua. el primer módulo integrado es el test de inteligencia no verbal de weil, forma a.
 
-Plataforma web institucional de evaluaciones para la Universidad Americana (UAM), Nicaragua. La primera evaluación integrada es el **Test de Inteligencia No Verbal de Weil**. Permite acceso mediante credenciales Moodle UAM o cuenta externa y conserva las reglas de aplicación y calificación existentes.
+el sistema conserva las reglas de aplicación y calificación existentes, pero separa la plataforma compartida de la lógica específica de cada test para poder incorporar nuevas evaluaciones sin duplicar autenticación, administración ni reportes.
 
-## Stack
+![acceso de SAP-UAM](docs/screenshots/acceso.jpg)
 
-| Capa | Tecnología |
-|------|-----------|
-| Frontend | HTML, CSS y JavaScript vanilla |
-| Backend | Spring Boot 3.3.5 · Java 17 · Spring Security · JPA |
-| Base de datos | H2 (desarrollo) · PostgreSQL (producción) |
-| Autenticación | JWT propio · integración Moodle server-to-server |
+## funciones principales
 
-## Estructura
+- acceso con credenciales Moodle UAM o cuenta externa.
+- roles separados para aspirantes, psicología y administración.
+- convocatorias con ventanas de aplicación, códigos de un solo uso y adecuaciones de tiempo.
+- intento único con control de concurrencia, límite oficial y recuperación del progreso.
+- respuesta por arrastre, toque o teclado, con material protegido por el backend.
+- constancia de entrega para el aspirante, sin exponer puntajes ni baremos.
+- revisión, invalidación, reaplicación, filtros y exportación CSV para personal autorizado.
+- MFA obligatorio, sesiones revocables y auditoría para `STAFF` y `ADMIN`.
+- avisos por correo, consentimiento versionado y retención configurable de datos.
 
-```
-sap-uam-weil/
-├── frontend/
-│   ├── index.html
-│   ├── app.js
-│   ├── test-catalog.js
-│   ├── styles.css
-│   └── assets/
-└── backend/
-    ├── pom.xml
-    ├── src/main/java/ni/edu/uam/campusfood/
-    └── src/main/resources/application.yml
-```
+![inicio del aspirante en SAP-UAM](docs/screenshots/inicio.jpg)
 
-## Arquitectura
+## roles
 
-La solución evoluciona como un monolito modular: identidad, catálogo, aplicaciones, calificación y reportes tienen límites explícitos, pero comparten un único despliegue. La definición de Weil ya está separada del shell de la plataforma mediante un catálogo versionado.
+| rol | alcance |
+| --- | --- |
+| `CLIENTE` | convocatoria, consentimiento, aplicación y constancia de entrega |
+| `STAFF` | convocatorias, aspirantes, resultados y baremos |
+| `ADMIN` | funciones de `STAFF`, gestión de personal y auditoría |
 
-Ver [docs/architecture.md](docs/architecture.md) para el modelo de dominio, contratos, API objetivo y plan de migración del cálculo al backend.
+el aspirante nunca recibe puntaje, percentil, CI, clasificación, claves de respuesta ni motivos internos de invalidación. esa información permanece limitada al personal autorizado.
 
-## Ejecutar en desarrollo
+## arquitectura
 
-**Frontend**
+SAP-UAM es un monolito modular con límites explícitos entre identidad, catálogo, aplicaciones, calificación, reportes y administración. cada evaluación se registra mediante una definición versionada e inmutable; la interfaz compartida consume ese contrato sin depender directamente del nombre del test.
+
+| patrón | aplicación en el sistema |
+| --- | --- |
+| lazy load | carga únicamente el material del ítem actual y obtiene detalles de resultados bajo demanda |
+| mvc observer | el estado publica eventos específicos para vista, navegación, persistencia y seguridad |
+| optimistic lock | detecta escrituras concurrentes mediante versión del intento |
+| pessimistic offline lock | reserva un intento activo con arrendamiento renovable y evita sesiones paralelas |
+| client session state | conserva respuestas y posición como recuperación local, sin guardar puntajes ni claves |
+
+la calificación y el baremo viven exclusivamente en el backend. el frontend público solo contiene metadatos y geometría necesaria para presentar los ítems.
+
+la documentación completa está en [docs/architecture.md](docs/architecture.md).
+
+## stack
+
+| capa | tecnología |
+| --- | --- |
+| frontend | HTML, CSS y JavaScript vanilla |
+| backend | Java 17, Spring Boot 3.3.5, Spring Security y JPA |
+| datos | H2 en desarrollo y PostgreSQL 16 en producción |
+| autenticación | sesión JWT propia, integración Moodle server-to-server y TOTP |
+| despliegue | Docker, nginx y Docker Compose |
+
+## ejecutar en desarrollo
+
+### frontend
+
 ```bash
-cd frontend
-npx serve . -l 8765
-# → http://localhost:8765
+npm install
+npm run serve
 ```
 
-**Backend**
+abre `http://localhost:8765/?demo` para recorrer la interfaz pública. el modo demo no incluye material psicométrico real ni calificación.
+
+### backend
+
 ```bash
 cd backend
 mvn spring-boot:run
-# → http://localhost:8080
 ```
 
-## API de autenticación
+el backend queda disponible en `http://localhost:8080` con el perfil de desarrollo.
 
-| Método | Endpoint | Descripción |
-|--------|----------|-------------|
-| POST | `/api/auth/moodle-login` | Login con CIF + contraseña UAM |
-| POST | `/api/auth/register` | Registro de cuenta externa |
-| POST | `/api/auth/login` | Login manual (correo + contraseña) |
-| GET | `/api/auth/me` | Sesión activa |
-| POST | `/api/auth/logout` | Cierra sesión |
-
-> La contraseña de Moodle y el token de Moodle **nunca se persisten** en base de datos.
-
-## Quién ve los resultados
-
-El aspirante, al entregar, solo ve una **constancia de entrega**: nunca recibe el puntaje, el percentil
-ni el CI (ni en pantalla ni en las respuestas del servidor). Esos datos son solo para el personal.
-
-| Rol | Qué ve |
-|-----|--------|
-| `CLIENTE` (aspirante) | Constancia de entrega |
-| `STAFF` / `ADMIN` | Panel, listado de resultados con puntaje, percentil, CI y clasificación, y la tabla de baremos |
-
-Las cuentas nuevas son `CLIENTE`. El personal y la administración se crean **desde el panel**, sin tocar la
-base de datos:
-
-- **Primer administrador:** al arrancar con `APP_BOOTSTRAP_ADMIN_EMAIL` y `APP_BOOTSTRAP_ADMIN_PASSWORD`
-  (mínimo 12 caracteres) se crea la cuenta inicial, solo si todavía no existe ningún administrador.
-- **Personal:** un `ADMIN` crea las cuentas `STAFF` o `ADMIN` en la pestaña **Personal**, con una contraseña
-  temporal; también cambia roles, desactiva cuentas y restablece el segundo factor.
-- **Segundo factor obligatorio:** `STAFF` y `ADMIN` entran con contraseña **más** un código de 6 dígitos (TOTP,
-  como Google Authenticator o Microsoft Authenticator). En el primer acceso se muestra la clave para
-  configurarlo. Los aspirantes no usan segundo factor.
-- **Sesiones revocables:** desactivar una cuenta, cambiarle el rol, restablecer su segundo factor o cerrar
-  sesión invalida de inmediato todas sus sesiones abiertas, aunque haya varias instancias del servidor.
-- **Auditoría:** la pestaña **Auditoría** muestra quién creó cuentas, cambió accesos o consultó resultados.
-  No se puede editar desde la aplicación.
-
-El listado sale de `GET /api/staff/attempts`, que exige rol `STAFF` o `ADMIN` (403 en otro caso).
-El percentil y el CI se calculan al mostrarlos, con el baremo y con la edad y el grupo que el aspirante
-declaró al entregar.
-
-## Respuesta por arrastre
-
-Cada ítem se responde como un rompecabezas: la figura trae un hueco y las 8 opciones son piezas
-sueltas que se arrastran hasta él (con ratón o con el dedo). También se puede tocar una pieza, usar
-las teclas 1 a 8, o sacar la pieza del hueco arrastrándola afuera. Arrastrar la pieza N equivale a
-responder la opción N, así que la calificación y el servidor no cambian.
-
-Las piezas se generan a partir de las láminas protegidas del backend
-(`backend/src/main/resources/test-material/weil-form-a/pages`):
+### despliegue completo
 
 ```bash
-pip install opencv-python-headless numpy
-python3 tools/build_puzzle_assets.py              # regenera recursos protegidos y puzzle-data.js
-python3 tools/build_puzzle_assets.py --dry-run --debug /tmp/debug   # solo detecta y dibuja lo encontrado
+cp .env.example .env
+# completar secretos, correo y administrador inicial
+docker compose up -d --build
 ```
 
-El frontend público solo conserva la geometría del hueco. Las figuras y piezas se entregan, sin caché,
-por el endpoint autenticado del intento actual.
+las variables requeridas y el procedimiento operativo están documentados en [.env.example](.env.example) y [docs/despliegue-y-operacion.md](docs/despliegue-y-operacion.md).
 
-## Flujo de admisión
-
-1. **Convocatorias** (personal): ventana de fechas, minutos y indicaciones. Se pueden editar y cancelar.
-2. **Habilitación**: el personal pega los correos (con adecuaciones de tiempo opcionales); cada aspirante recibe un código de un solo uso por correo.
-3. **Aspirante**: se registra, canjea el código, lee y acepta el aviso de privacidad y rinde dentro de la ventana. El servidor cierra solo los intentos vencidos.
-4. **Resultados** (personal): filtros por convocatoria, búsqueda, exportación CSV, marcar revisada, **invalidar** (con justificación) y **reaplicar** (nuevo código). El aspirante solo ve una constancia de entrega.
-5. **Avisos**: invitación, recordatorio, constancia e invalidación por correo; ningún correo contiene puntajes ni el motivo de una invalidación.
-6. **Datos personales**: aviso versionado con consentimiento registrado, retención configurable con anonimización y exportación de datos de un titular (administración).
-
-Variables nuevas: `APP_PUBLIC_URL`, `APP_MAIL_MODE` (`log` | `smtp`), `APP_MAIL_FROM`, `MAIL_HOST/PORT/USER/PASSWORD`, `APP_PRIVACY_EMAIL`,
-`APP_RETENTION_MONTHS`, `APP_RETENTION_ENABLED`. Despliegue, respaldos, prueba de carga y estado de lo probado: [docs/despliegue-y-operacion.md](docs/despliegue-y-operacion.md).
-El texto del aviso de privacidad es un **borrador** pendiente de revisión legal.
-
-## Tests
+## pruebas
 
 ```bash
-cd backend && mvn test      # backend
-npm test                    # frontend (desde la raíz del repositorio)
-# esquema y concurrencia sobre PostgreSQL: ver docs/despliegue-y-operacion.md y ops/dev-postgres.sh
+npm test
+cd backend && mvn test
 ```
+
+estado verificado: 32 pruebas de frontend y 49 pruebas de integración del backend, incluyendo autenticación, autorización, concurrencia, retención, admisión, resultados y contratos de botones.
+
+## seguridad y privacidad
+
+- la contraseña y el token temporal de Moodle nunca se persisten.
+- las claves, baremos y recursos protegidos no forman parte del frontend público.
+- cada respuesta se valida y guarda en el servidor mediante operaciones idempotentes.
+- la entrega es transaccional y rechaza conflictos de versión.
+- desactivar una cuenta, cambiar su rol o restablecer MFA invalida sus sesiones.
+- las lecturas y cambios sensibles quedan registrados en auditoría.
+- el aviso de privacidad incluido es un borrador pendiente de revisión legal institucional.
+
+## estructura
+
+```text
+sap-uam-weil/
+├── frontend/        interfaz, catálogo público y pruebas de cliente
+├── backend/         API, seguridad, persistencia y calificación
+├── deploy/          imagen web y configuración de nginx
+├── docs/            arquitectura, despliegue y capturas
+├── ops/             respaldo, restauración y PostgreSQL local
+└── tools/           generación de piezas y pruebas operativas
+```
+
+## documentación
+
+- [arquitectura y patrones](docs/architecture.md)
+- [despliegue y operación](docs/despliegue-y-operacion.md)
+- [backend](backend/README.md)
