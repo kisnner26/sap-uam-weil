@@ -68,3 +68,8 @@ test('las ayudas de carga evitan animación de pintura continua', () => {
   assert.match(theme, /\.puzzle-slot:not\(\.is-filled\)\{animation:none/);
   assert.match(theme, /\.question-figure\.is-loading::after\{animation:none\}/);
 });
+
+test('la navegación anuncia la vista actual', () => {
+  assert.match(app, /const isActive = appState\.route === route;/);
+  assert.match(app, /isActive \? 'aria-current="page"' : ''/);
+});

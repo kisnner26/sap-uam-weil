@@ -1314,8 +1314,9 @@ function renderShell() {
   const nav = (NAV[navKey] || []).filter(([route]) => route !== 'test' || testRouteAvailable());
   const locked = isExamLocked();
   $('#main-nav').innerHTML = nav.map(([route, label]) => {
+    const isActive = appState.route === route;
     const isLocked = locked && route !== 'test';
-    return `<button type="button" class="nav-btn ${appState.route === route ? 'is-active' : ''} ${isLocked ? 'is-locked' : ''}" data-route="${route}" ${isLocked ? 'aria-disabled="true"' : ''}>${label}</button>`;
+    return `<button type="button" class="nav-btn ${isActive ? 'is-active' : ''} ${isLocked ? 'is-locked' : ''}" data-route="${route}" ${isActive ? 'aria-current="page"' : ''} ${isLocked ? 'aria-disabled="true"' : ''}>${label}</button>`;
   }).join('');
   const sessionLabel = $('#session-label');
   if (appState.role === 'staff') {
