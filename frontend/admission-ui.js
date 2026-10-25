@@ -171,7 +171,11 @@
     return `<div class="screen-title"><div><p class="eyebrow">Privacidad</p><h2>Aviso de privacidad</h2><p>Versión ${esc(notice.version)}. Leélo completo antes de aceptar.</p></div></div>
       <section class="panel consent-panel" id="consent-panel" aria-busy="${busy ? 'true' : 'false'}">
         <article class="consent-text" tabindex="0" aria-label="Texto del aviso de privacidad">${noticeHtml(notice.text)}</article>
-        <label class="consent-check"><input type="checkbox" id="consent-check" ${busy ? 'disabled' : ''}> <span>Leí el aviso y acepto el tratamiento de mis datos para el proceso de admisión.</span></label>
+        <div class="consent-check">
+          <input type="checkbox" id="consent-check" ${busy ? 'disabled' : ''} aria-describedby="consent-label">
+          <label id="consent-label" for="consent-check">Leí el aviso y acepto el tratamiento de mis datos para el proceso de admisión.</label>
+          <button class="ghost-btn consent-check__toggle" type="button" data-action="toggle-consent" aria-controls="consent-check">Marcar como leído</button>
+        </div>
         <p id="consent-error" class="form-error" role="alert"></p>
         <div class="consent-actions">
           <button class="ghost-btn" type="button" data-route="inicio">Volver</button>

@@ -2411,6 +2411,14 @@ function handleDocumentClick(event) {
       toast(`${title}: ${appState.settings[key] ? 'activado' : 'desactivado'}.`, 'info');
       return;
     }
+    if (action === 'toggle-consent') {
+      const checkbox = $('#consent-check');
+      if (!checkbox || checkbox.disabled) return;
+      checkbox.checked = !checkbox.checked;
+      updateConsentSelection(checkbox.checked);
+      checkbox.focus();
+      return;
+    }
     if (action === 'logout') logout();
     if (action === 'go-home') routeTo(appState.role === 'staff' ? 'panel' : 'inicio');
     if (action === 'start-test') startTest();
@@ -2493,8 +2501,7 @@ function handleDocumentClick(event) {
 
 function handleDocumentChange(event) {
   if (event.target.id === 'consent-check') {
-    const accept = $('[data-action="accept-consent"]');
-    if (accept) accept.disabled = !event.target.checked;
+    updateConsentSelection(event.target.checked);
     return;
   }
   const setting = event.target.closest('[data-setting]');
@@ -2519,6 +2526,16 @@ function handleDocumentChange(event) {
     appState.settings[range.dataset.settingRange] = Number(range.value);
     saveSettings();
     render();
+  }
+}
+
+function updateConsentSelection(selected) {
+  const accept = $('[data-action="accept-consent"]');
+  const toggle = $('[data-action="toggle-consent"]');
+  if (accept) accept.disabled = !selected;
+  if (toggle) {
+    toggle.textContent = selected ? 'Lectura confirmada' : 'Marcar como leído';
+    toggle.setAttribute('aria-pressed', String(selected));
   }
 }
 
