@@ -388,6 +388,7 @@ function validateLogin() {
 
 function setAuthBusy(isBusy) {
   appState.authBusy = isBusy;
+  $('#form-unified')?.setAttribute('aria-busy', String(isBusy));
   const button = $('#btn-unified');
   const label = $('#btn-unified-label');
   if (button) button.disabled = isBusy || !validateLogin();
