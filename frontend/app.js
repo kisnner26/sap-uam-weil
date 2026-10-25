@@ -165,14 +165,23 @@ function puzzleFor(itemIndex) {
   };
 }
 
-async function openRemoteAttempt() {
+async function openRemoteAttempt({ recoverQaLease = true } = {}) {
   if (STATIC_PAGES_MODE) return null;
   const existing = readAttemptLease();
-  const attempt = await apiRequest('/api/attempts', {
-    testId: ACTIVE_TEST.id,
-    testVersion: ACTIVE_TEST.version,
-    leaseToken: existing?.leaseToken || null
-  });
+  let attempt;
+  try {
+    attempt = await apiRequest('/api/attempts', {
+      testId: ACTIVE_TEST.id,
+      testVersion: ACTIVE_TEST.version,
+      leaseToken: existing?.leaseToken || null
+    });
+  } catch (error) {
+    if (!QA_SCENARIO || !recoverQaLease || error.status !== 409) throw error;
+    await apiRequest(`/api/dev/qa/login/${QA_SCENARIO}`, null, { method: 'POST' });
+    sessionStorage.removeItem(attemptLeaseKey());
+    appState.remoteAttempt = null;
+    return openRemoteAttempt({ recoverQaLease: false });
+  }
   storeAttemptLease(attempt);
   appState.answers = Array(TOTAL_ITEMS).fill(null);
   for (const response of attempt.responses || []) appState.answers[response.itemIndex] = response.selectedOption;
