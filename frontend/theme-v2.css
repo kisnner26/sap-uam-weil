@@ -199,6 +199,8 @@ body.theme-dark .data-table tbody tr:hover{background:#163336}
 
 .exam-head{border-bottom:1px solid color-mix(in srgb,var(--teal) 32%,var(--line));padding-bottom:14px}
 .question-stage{box-shadow:8px 8px 0 color-mix(in srgb,var(--teal) 13%,transparent)}
+.question-figure.is-loading::after{background:var(--surface-2);background-size:auto;animation:soft-pulse 900ms ease-in-out infinite alternate}
+.puzzle-slot:not(.is-filled){animation:none;box-shadow:inset 0 0 0 2px color-mix(in srgb,var(--future-cyan) 55%,transparent)}
 .stage-toolbar{background:var(--future-carbon);color:#e5f0ee}
 .page-dot,.rail-btn,.choice-btn,.puzzle-piece{transition:transform 150ms ease-out,opacity 150ms ease-out}
 .page-dot.is-active,.rail-btn.is-active,.choice-btn.is-selected{background:var(--future-cyan);border-color:var(--future-cyan);color:#041011}
@@ -219,4 +221,5 @@ body.theme-dark .data-table tbody tr:hover{background:#163336}
 }
 @media(prefers-reduced-motion:reduce){
   .pr__btn::after,.ghost-btn::after,.solid-btn::after,.danger-btn::after{transition:none}
+  .question-figure.is-loading::after{animation:none}
 }

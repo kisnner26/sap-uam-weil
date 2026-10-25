@@ -62,3 +62,9 @@ test('los controles mantienen foco, presión y estados deshabilitados claros', (
   assert.match(theme, /\.solid-btn:active:not\(:disabled\)/);
   assert.match(theme, /button:disabled[^}]*cursor:not-allowed/);
 });
+
+test('las ayudas de carga evitan animación de pintura continua', () => {
+  assert.match(theme, /\.question-figure\.is-loading::after\{[^}]*animation:soft-pulse 900ms ease-in-out infinite alternate/);
+  assert.match(theme, /\.puzzle-slot:not\(\.is-filled\)\{animation:none/);
+  assert.match(theme, /\.question-figure\.is-loading::after\{animation:none\}/);
+});
