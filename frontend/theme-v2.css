@@ -206,6 +206,7 @@ body.theme-dark .data-table tbody tr:hover{background:#163336}
 .page-dot.is-active,.rail-btn.is-active,.choice-btn.is-selected{background:var(--future-cyan);border-color:var(--future-cyan);color:#041011}
 .selected-pill{background:var(--future-carbon);color:#a9edf1}
 .submit-dialog__card{border:1px solid #4e777a;box-shadow:14px 14px 0 rgba(0,0,0,.28)}
+.submit-dialog__pending--danger{border-color:color-mix(in srgb,var(--red) 60%,var(--line));background:color-mix(in srgb,var(--red) 9%,var(--surface))}
 
 @media(max-width:1024px){
   .brand{padding-bottom:0!important;border-bottom:0}.brand::after{display:none}

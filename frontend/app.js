@@ -2153,6 +2153,21 @@ function requestFinishTest() {
   playSound('nav');
 }
 
+function requestResetTest() {
+  const answered = answeredCount();
+  if (!answered) {
+    toast('Todavía no hay respuestas para reiniciar.', 'info');
+    return;
+  }
+  showSubmitDialog({
+    status: 'reset',
+    missing: [],
+    title: 'Reiniciar respuestas',
+    message: `Vas a eliminar ${answered} respuesta${answered === 1 ? '' : 's'} de este intento. Esta acción no se puede deshacer.`
+  });
+  playSound('error');
+}
+
 let dialogReturnFocus = null;
 
 function showSubmitDialog({ status, missing, title, message }) {
@@ -2166,7 +2181,7 @@ function showSubmitDialog({ status, missing, title, message }) {
     <div class="submit-dialog__backdrop" data-action="close-submit-dialog"></div>
     <section class="submit-dialog__card submit-dialog__card--${status}" role="document">
       <div class="submit-dialog__head">
-        <p class="eyebrow">${status === 'ready' ? 'Validación completa' : 'Revisión requerida'}</p>
+        <p class="eyebrow">${status === 'ready' ? 'Validación completa' : status === 'reset' ? 'Acción irreversible' : 'Revisión requerida'}</p>
         <h2 id="submit-dialog-title">${esc(title)}</h2>
         <p id="submit-dialog-message">${esc(message)}</p>
       </div>
@@ -2178,6 +2193,10 @@ function showSubmitDialog({ status, missing, title, message }) {
         <div class="submit-dialog__pending">
           <strong>Primer pendiente: ítem ${firstMissing + 1}</strong>
           <span>También faltan: ${esc(missingPreview)}${missing.length > 12 ? '...' : ''}</span>
+        </div>` : status === 'reset' ? `
+        <div class="submit-dialog__pending submit-dialog__pending--danger">
+          <strong>Las respuestas eliminadas no se pueden recuperar</strong>
+          <span>El cronómetro oficial continúa si la prueba ya fue iniciada.</span>
         </div>` : `
         <div class="submit-dialog__ready">
           <strong>Listo para entregar</strong>
@@ -2187,6 +2206,8 @@ function showSubmitDialog({ status, missing, title, message }) {
         <button class="ghost-btn" type="button" data-action="close-submit-dialog">Seguir revisando</button>
         ${status === 'incomplete'
           ? `<button class="solid-btn" type="button" data-action="go-first-missing" data-target-index="${firstMissing}">Ir al primer pendiente</button>`
+          : status === 'reset'
+            ? '<button class="danger-btn" type="button" data-action="confirm-reset-test">Reiniciar respuestas</button>'
           : '<button class="solid-btn" type="button" data-action="confirm-submit-test">Entregar prueba</button>'}
       </div>
     </section>`;
@@ -2275,7 +2296,6 @@ async function completeTest() {
 }
 
 function resetTest() {
-  if (!window.confirm('¿Reiniciar las respuestas de esta sesión?')) return;
   const keepLocked = isExamLocked();
   const answeredIndexes = appState.answers
     .map((answer, index) => answer === null ? null : index)
@@ -2380,7 +2400,11 @@ function handleDocumentClick(event) {
     if (action === 'go-first-missing') goFirstMissing(actionTarget.dataset.targetIndex);
     if (action === 'confirm-submit-test') completeTest();
     if (action === 'restore-fullscreen') enterFullscreen();
-    if (action === 'reset-test') resetTest();
+    if (action === 'reset-test') requestResetTest();
+    if (action === 'confirm-reset-test') {
+      closeSubmitDialog();
+      resetTest();
+    }
     if (action === 'clear-records' && window.confirm('¿Eliminar todos los reportes locales?')) {
       resultRepository.clear();
       toast('Registros eliminados.', 'info');

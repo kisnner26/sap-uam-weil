@@ -78,3 +78,11 @@ test('la navegación anuncia la vista actual', () => {
   assert.match(app, /const isActive = appState\.route === route;/);
   assert.match(app, /isActive \? 'aria-current="page"' : ''/);
 });
+
+test('reiniciar respuestas usa confirmación interna y conserva el contexto del intento', () => {
+  assert.match(app, /function requestResetTest\(\)/);
+  assert.match(app, /data-action="confirm-reset-test"/);
+  assert.match(app, /if \(action === 'reset-test'\) requestResetTest\(\);/);
+  assert.match(app, /if \(action === 'confirm-reset-test'\) \{\s+closeSubmitDialog\(\);\s+resetTest\(\);/);
+  assert.doesNotMatch(app, /function resetTest\(\) \{\s+if \(\!window\.confirm/);
+});
