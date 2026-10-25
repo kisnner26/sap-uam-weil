@@ -28,7 +28,8 @@ test('perfil y entrega pendiente explican el siguiente paso sin dejar datos vacÃ
 });
 
 test('el acceso conserva feedback visible cuando falla una autenticaciÃ³n', () => {
-  assert.match(app, /setFieldState\('#wrap-unified-pass', '#unified-pass-msg', 'err', message\)/);
+  assert.match(app, /let failureMessage = '';/);
+  assert.match(app, /setFieldState\('#wrap-unified-pass', '#unified-pass-msg', 'err', failureMessage\)/);
   assert.match(app, /\$\('#unified-pass'\)\?\.focus\(\)/);
   assert.match(app, /label\.textContent = appState\.manualRegistering \? 'Crear cuenta' : 'Ingresar';/);
 });

@@ -525,6 +525,7 @@ async function submitUnifiedLogin() {
     return;
   }
   setAuthBusy(true);
+  let failureMessage = '';
   try {
     const id = ($('#unified-id')?.value || '').trim();
     const password = $('#unified-pass')?.value || '';
@@ -549,12 +550,14 @@ async function submitUnifiedLogin() {
     }
   } catch (error) {
     playSound('error');
-    const message = error.message || 'No se pudo iniciar sesión.';
-    setFieldState('#wrap-unified-pass', '#unified-pass-msg', 'err', message);
-    $('#unified-pass')?.focus();
-    toast(message, 'err');
+    failureMessage = error.message || 'No se pudo iniciar sesión.';
+    toast(failureMessage, 'err');
   } finally {
     setAuthBusy(false);
+    if (failureMessage) {
+      setFieldState('#wrap-unified-pass', '#unified-pass-msg', 'err', failureMessage);
+      $('#unified-pass')?.focus();
+    }
   }
 }
 
