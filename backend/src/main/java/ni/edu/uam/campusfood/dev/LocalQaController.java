@@ -8,6 +8,8 @@ import ni.edu.uam.campusfood.admission.ExamSession;
 import ni.edu.uam.campusfood.admission.ExamSessionRepository;
 import ni.edu.uam.campusfood.admission.SessionState;
 import ni.edu.uam.campusfood.assessment.AssessmentAttemptRepository;
+import ni.edu.uam.campusfood.assessment.AssessmentEventRepository;
+import ni.edu.uam.campusfood.assessment.AssessmentResponseRepository;
 import ni.edu.uam.campusfood.auth.dto.AuthFlowResponse;
 import ni.edu.uam.campusfood.auth.dto.UserDto;
 import ni.edu.uam.campusfood.privacy.PrivacyService;
@@ -45,13 +47,16 @@ public class LocalQaController {
     private final ExamSessionRepository sessions;
     private final ExamEnrollmentRepository enrollments;
     private final AssessmentAttemptRepository attempts;
+    private final AssessmentResponseRepository responses;
+    private final AssessmentEventRepository events;
     private final PrivacyService privacy;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwt;
     private final boolean secureCookie;
 
     public LocalQaController(UserRepository users, ExamSessionRepository sessions,
-                             ExamEnrollmentRepository enrollments, AssessmentAttemptRepository attempts, PrivacyService privacy,
+                             ExamEnrollmentRepository enrollments, AssessmentAttemptRepository attempts,
+                             AssessmentResponseRepository responses, AssessmentEventRepository events, PrivacyService privacy,
                              PasswordEncoder passwordEncoder,
                              JwtService jwt,
                              @org.springframework.beans.factory.annotation.Value("${app.session-cookie.secure:false}")
@@ -60,6 +65,8 @@ public class LocalQaController {
         this.sessions = sessions;
         this.enrollments = enrollments;
         this.attempts = attempts;
+        this.responses = responses;
+        this.events = events;
         this.privacy = privacy;
         this.passwordEncoder = passwordEncoder;
         this.jwt = jwt;
@@ -92,6 +99,23 @@ public class LocalQaController {
                 .maxAge(token.expiresInSeconds())
                 .build();
         return ResponseEntity.ok().header(HttpHeaders.SET_COOKIE, cookie.toString()).body(response);
+    }
+
+    /** Reinicia exclusivamente el caso ficticio del aspirante para repetir una prueba local desde cero. */
+    @PostMapping("/reset/aspirante")
+    @Transactional
+    public ResponseEntity<Void> resetApplicant() {
+        User applicant = qaUser("qa.aspirante@local.test", "Aspirante QA", Role.CLIENTE);
+        attempts.findByUserId(applicant.getId()).stream()
+                .filter(attempt -> WEIL.equals(attempt.getTestId()))
+                .forEach(attempt -> {
+                    responses.deleteByAttemptId(attempt.getId());
+                    events.deleteByAttemptId(attempt.getId());
+                    attempts.delete(attempt);
+                });
+        attempts.flush();
+        ensureOpenEnrollment(applicant);
+        return ResponseEntity.noContent().build();
     }
 
     private User qaUser(String email, String fullName, Role role) {
