@@ -9,59 +9,46 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&family=Playfair+Display:ital,wght@0,800;1,800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css?v=30">
-<link rel="stylesheet" href="theme-v2.css?v=1">
+<link rel="stylesheet" href="theme-v2.css?v=2">
 </head>
 <body>
 <div class="toast-wrap" id="toast-wrap" aria-live="polite"></div>
 <div class="submit-dialog app-hidden" id="submit-dialog" role="dialog" aria-modal="true" aria-labelledby="submit-dialog-title"></div>
 
 <main id="view-auth" class="login-only">
-  <div class="pr">
-    <div class="pr__canvas" aria-hidden="true">
-      <div class="pr__dark"></div>
-      <div class="pr__bigword">WEIL</div>
-      <div class="pr__matrix">
-        <div class="prm-cell prm-tl"></div><div class="prm-cell prm-tr"></div><div class="prm-cell prm-tl"></div><div class="prm-cell prm-tr"></div>
-        <div class="prm-cell prm-tr"></div><div class="prm-cell prm-tl"></div><div class="prm-cell prm-tr"></div><div class="prm-cell prm-tl"></div>
-        <div class="prm-cell prm-tl"></div><div class="prm-cell prm-tr"></div><div class="prm-cell prm-tl"></div><div class="prm-cell prm-q"><span>?</span></div>
-      </div>
-    </div>
+  <div class="auth-page">
+    <header class="auth-brand">
+      <img src="assets/uam-logo.webp" alt="" class="auth-brand__logo">
+      <div><strong>sap-uam</strong><span>universidad americana</span></div>
+    </header>
 
-    <section class="pr__left" aria-label="Identidad del sistema">
-      <div class="pr__logo">
-        <img src="assets/uam-logo.webp" alt="Universidad Americana UAM" class="pr__logo-img">
-        <div>
-          <span class="pr__inst">Universidad Americana</span>
-          <span class="pr__sub">SAP-UAM · Managua, Nicaragua</span>
+    <section class="auth-shell" aria-label="Acceso a evaluaciones">
+      <div class="auth-context">
+        <div class="auth-context__copy">
+          <p class="auth-kicker">admisión · evaluación cognitiva</p>
+          <h1>tu evaluación,<br><em>sin distracciones.</em></h1>
+          <p>ingresá para consultar tu convocatoria, realizar la prueba y confirmar la entrega.</p>
         </div>
+        <div class="auth-context__preview">
+          <img src="assets/uam-estudiantes.webp" alt="Estudiantes de la Universidad Americana en una sesión de trabajo" loading="eager">
+          <div><span>test de weil</span><strong>60 ítems · 5 láminas</strong></div>
+        </div>
+        <ul class="auth-assurances" aria-label="Características del sistema">
+          <li><strong>progreso protegido</strong><span>podés continuar si recargás la página</span></li>
+          <li><strong>entrega verificable</strong><span>recibís una constancia al finalizar</span></li>
+        </ul>
       </div>
 
-      <div class="pr__hero">
-        <h1 class="pr__h1">Test de<br>Inteligencia<br>de <em>Weil</em></h1>
-        <div class="pr__rule"></div>
-        <p class="pr__tag"><span></span>Módulo de Evaluación Cognitiva</p>
-        <p class="pr__desc">Acceso institucional para aspirantes y personal autorizado.</p>
-        <figure class="pr__campus-card">
-          <img src="assets/uam-campus-edificio-m.webp" alt="Campus Universidad Americana UAM Managua" loading="eager">
-          <figcaption>Campus UAM Managua</figcaption>
-        </figure>
-      </div>
-
-      <div class="pr__stats" aria-label="Datos del módulo">
-        <div class="pr__stat"><span class="pr__sn">60</span><span class="pr__sl">ítems</span></div>
-        <div class="pr__stat-sep"></div>
-        <div class="pr__stat"><span class="pr__sn">5</span><span class="pr__sl">láminas</span></div>
-        <div class="pr__stat-sep"></div>
-        <div class="pr__stat"><span class="pr__sn">UAM</span><span class="pr__sl">Admisión</span></div>
-      </div>
-    </section>
-
-    <section class="pr__right" aria-label="Formulario de acceso">
-      <div class="pr__panel">
-        <figure class="pr__student-card">
-          <img src="assets/uam-estudiantes.webp" alt="Estudiantes de la Universidad Americana UAM Managua" loading="eager">
-        </figure>
-        <p class="pr__access-title">Acceso al sistema</p>
+      <div class="auth-card">
+        <div class="auth-card__intro">
+          <p class="auth-kicker">portal de evaluaciones</p>
+          <h2 id="auth-heading">iniciar sesión</h2>
+          <p id="auth-description">usá tu cif institucional o el correo de tu cuenta externa.</p>
+        </div>
+        <div class="auth-tabs" role="group" aria-label="Tipo de acceso">
+          <button type="button" id="login-tab" class="auth-tab is-active" aria-pressed="true" data-action="show-login">iniciar sesión</button>
+          <button type="button" id="register-tab" class="auth-tab" aria-pressed="false" data-action="show-register">crear cuenta</button>
+        </div>
 
         <form id="form-unified" class="pr__form" novalidate>
           <div class="pf">
@@ -70,7 +57,7 @@
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="pi__ico" id="unified-ico" aria-hidden="true"><circle cx="12" cy="8" r="3.4"/><path d="M5 19c1-3.4 3.8-5 7-5s6 1.6 7 5"/></svg>
               <input id="unified-id" type="text" inputmode="text" maxlength="80" placeholder="CIF UAM o correo registrado" autocomplete="username" aria-describedby="unified-id-msg">
             </div>
-            <div class="pi__msg" id="unified-id-msg"></div>
+            <div class="pi__msg" id="unified-id-msg" aria-live="polite"></div>
           </div>
 
           <div id="staff-pass-wrap">
@@ -84,20 +71,25 @@
                   <svg id="icon-eye-hide-u" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="app-hidden"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24M1 1l22 22"/></svg>
                 </button>
               </div>
-              <div class="pi__msg" id="unified-pass-msg"></div>
+              <div class="pi__msg" id="unified-pass-msg" aria-live="polite"></div>
             </div>
+          </div>
+
+          <div class="register-note app-hidden" id="register-note">
+            <strong>¿cuándo crear esta cuenta?</strong>
+            <p>solo si admisión te indicó que ingresaras con correo. si tenés cif, volvés a “iniciar sesión”.</p>
           </div>
 
           <div id="manual-extra" class="app-hidden">
             <div class="pf">
               <label for="fullname">Nombre completo</label>
-              <div class="pi" id="wrap-name"><input id="fullname" type="text" placeholder="Nombres y apellidos" autocomplete="name"></div>
-              <div class="pi__msg" id="name-msg"></div>
+              <div class="pi" id="wrap-name"><input id="fullname" type="text" placeholder="Nombres y apellidos" autocomplete="name" aria-describedby="name-msg"></div>
+              <div class="pi__msg" id="name-msg" aria-live="polite"></div>
             </div>
             <div class="pf">
               <label for="cedula">Cédula</label>
-              <div class="pi" id="wrap-cedula"><input id="cedula" type="text" maxlength="32" placeholder="Número de cédula" autocomplete="off"></div>
-              <div class="pi__msg" id="cedula-msg"></div>
+              <div class="pi" id="wrap-cedula"><input id="cedula" type="text" maxlength="32" placeholder="Número de cédula" autocomplete="off" aria-describedby="cedula-msg"></div>
+              <div class="pi__msg" id="cedula-msg" aria-live="polite"></div>
             </div>
           </div>
 
@@ -105,7 +97,7 @@
             <span id="btn-unified-label">Ingresar</span>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
           </button>
-          <button type="button" class="auth-secondary" id="manual-register-toggle" data-action="toggle-manual-register">Crear cuenta externa</button>
+          <button type="button" class="auth-secondary app-hidden" id="manual-register-toggle" data-action="toggle-manual-register">Crear cuenta externa</button>
           <button type="button" class="auth-secondary app-hidden" id="demo-access" data-action="enter-demo">Explorar demostración</button>
           <p class="pr__foot" id="unified-foot">Usá tu CIF UAM o tu correo registrado en este mismo campo.</p>
         </form>
@@ -130,8 +122,10 @@
           <button class="pr__btn" id="btn-mfa" type="submit" disabled>Verificar e ingresar</button>
           <button type="button" class="auth-secondary" data-action="cancel-mfa">Volver al acceso</button>
         </form>
+        <footer class="auth-card__footer"><span>acceso protegido</span><span>soporte de admisión</span></footer>
       </div>
     </section>
+    <p class="auth-legal">sap-uam · uso exclusivo de aspirantes y personal autorizado</p>
   </div>
 </main>
 
@@ -157,6 +151,6 @@
 <script src="client-session.js?v=1"></script>
 <script src="demo-credentials.js?v=1"></script>
 <script src="admission-ui.js?v=1"></script>
-<script src="app.js?v=30"></script>
+<script src="app.js?v=31"></script>
 </body>
 </html>

@@ -275,6 +275,11 @@ function setFieldState(wrapSelector, msgSelector, kind, message) {
   if (wrap) {
     wrap.classList.toggle('is-ok', kind === 'ok');
     wrap.classList.toggle('is-err', kind === 'err');
+    const field = wrap.querySelector('input, select, textarea');
+    if (field) {
+      if (kind === 'err') field.setAttribute('aria-invalid', 'true');
+      else field.removeAttribute('aria-invalid');
+    }
   }
   if (msg) msg.textContent = message || '';
 }
@@ -304,6 +309,11 @@ function setMode(mode) {
   const foot = $('#unified-foot');
   const buttonLabel = $('#btn-unified-label');
   const manualToggle = $('#manual-register-toggle');
+  const loginTab = $('#login-tab');
+  const registerTab = $('#register-tab');
+  const heading = $('#auth-heading');
+  const description = $('#auth-description');
+  const registerNote = $('#register-note');
   if (label) label.textContent = isRegister ? 'Correo electrónico' : 'CIF o correo';
   if (input) {
     input.inputMode = isRegister ? 'email' : 'text';
@@ -314,9 +324,18 @@ function setMode(mode) {
   if (pass) pass.autocomplete = isRegister ? 'new-password' : 'current-password';
   if (buttonLabel) buttonLabel.textContent = isRegister ? 'Crear cuenta' : 'Ingresar';
   if (manualToggle) {
-    manualToggle.classList.toggle('app-hidden', false);
+    manualToggle.classList.add('app-hidden');
     manualToggle.textContent = isRegister ? 'Ya tengo cuenta, iniciar sesión' : 'Crear cuenta externa';
   }
+  loginTab?.classList.toggle('is-active', !isRegister);
+  registerTab?.classList.toggle('is-active', isRegister);
+  loginTab?.setAttribute('aria-pressed', String(!isRegister));
+  registerTab?.setAttribute('aria-pressed', String(isRegister));
+  registerNote?.classList.toggle('app-hidden', !isRegister);
+  if (heading) heading.textContent = isRegister ? 'crear cuenta externa' : 'iniciar sesión';
+  if (description) description.textContent = isRegister
+    ? 'solo necesitás registrarte si no tenés un cif institucional activo.'
+    : 'usá tu cif institucional o el correo de tu cuenta externa.';
   if (foot) foot.textContent = isRegister
     ? 'Creá una cuenta externa con correo, contraseña, nombre y cédula.'
     : 'Usá tu CIF UAM o tu correo registrado en este mismo campo.';
@@ -340,7 +359,8 @@ function validateLogin() {
   } else if (mode === 'manual') {
     const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(id);
     const passOk = appState.manualRegistering ? pass.length >= 8 : pass.length > 0;
-    setFieldState('#wrap-unified-id', '#unified-id-msg', emailOk ? 'ok' : 'err', emailOk ? 'Correo listo' : 'Correo inválido');
+    if (id) setFieldState('#wrap-unified-id', '#unified-id-msg', emailOk ? 'ok' : 'err', emailOk ? 'Correo listo' : 'Correo inválido');
+    else clearFieldState('#wrap-unified-id', '#unified-id-msg');
     if (pass) setFieldState('#wrap-unified-pass', '#unified-pass-msg', passOk ? 'ok' : 'err', passOk ? 'Contraseña lista' : appState.manualRegistering ? 'Mínimo 8 caracteres' : 'Contraseña obligatoria');
     else clearFieldState('#wrap-unified-pass', '#unified-pass-msg');
     valid = emailOk && passOk;
@@ -802,6 +822,12 @@ function formatDuration(seconds) {
 
 function initials(name) {
   return String(name || 'U').split(/\s+/).filter(Boolean).slice(0, 2).map(part => part[0]?.toUpperCase()).join('') || 'U';
+}
+
+function displayPersonName(name) {
+  const value = String(name || '').trim();
+  if (!value || value !== value.toUpperCase()) return value;
+  return value.toLocaleLowerCase('es-NI').replace(/(^|[\s-])\p{L}/gu, letter => letter.toLocaleUpperCase('es-NI'));
 }
 
 function enterAspirante(profileOverride = null) {
@@ -1327,10 +1353,11 @@ function renderHome() {
   const progress = Math.round((count / TOTAL_ITEMS) * 100);
   const result = appState.result;
   const home = STATIC_PAGES_MODE ? null : ADM.aspirantHome(appState.availability, { count, hasResult: Boolean(result), error: appState.availabilityError });
-  const profileLine = [appState.profile.fullName, normalizeCareer(appState.profile.carrera)].filter(Boolean).join(' · ');
+  const readableName = displayPersonName(appState.profile.fullName);
+  const profileLine = [readableName, normalizeCareer(appState.profile.carrera)].filter(Boolean).join(' · ');
   return `
     <div class="screen-title">
-      <div><p class="eyebrow">Centro de evaluaciones</p><h2>Hola, ${esc(appState.profile.fullName.split(' ')[0])}</h2><p>${esc(profileLine)}</p></div>
+      <div><p class="eyebrow">Centro de evaluaciones</p><h2>Hola, ${esc(readableName.split(' ')[0])}</h2><p>${esc(profileLine)}</p></div>
     </div>
     <div class="dashboard-grid">
       <section class="hero-band assessment-card">
@@ -1701,12 +1728,13 @@ function renderResults() {
 function renderProfile() {
   const profile = appState.profile;
   const result = appState.result;
+  const readableName = displayPersonName(profile.fullName);
   return `
     <div class="screen-title"><div><p class="eyebrow">Perfil</p><h2>Datos del aspirante</h2><p>Estos son los datos con los que te registraste.</p></div></div>
     <div class="profile-grid">
       <section class="panel profile-card">
-        <div class="avatar" aria-hidden="true">${esc(initials(profile.fullName))}</div>
-        <div><h3>${esc(profile.fullName)}</h3><p class="muted">${esc(identityLabel(profile))}</p></div>
+        <div class="avatar" aria-hidden="true">${esc(initials(readableName))}</div>
+        <div><h3>${esc(readableName)}</h3><p class="muted">${esc(identityLabel(profile))}</p></div>
         <button class="solid-btn" type="button" data-action="start-test">${answeredCount() ? 'Continuar prueba' : 'Iniciar prueba'}</button>
       </section>
       <section class="panel">
@@ -1724,20 +1752,21 @@ function renderProfile() {
 function renderSettings() {
   const profile = appState.profile || {};
   return `
-    <div class="screen-title"><div><p class="eyebrow">Ajustes</p><h2>Preferencias locales</h2><p>Se guardan en este navegador.</p></div></div>
+    <div class="screen-title"><div><p class="eyebrow">Ajustes</p><h2>Tu entorno de evaluación</h2><p>Personalizá la experiencia en este navegador sin afectar tu prueba.</p></div></div>
     <div class="settings-grid">
       <section class="panel settings-profile-panel"><h3>Datos del aspirante</h3><div class="settings-profile-form">
         <label class="setting-row setting-row--field"><div><strong>Carrera</strong><small>Se llena desde Moodle si está disponible; podés completarla manualmente.</small></div><input class="profile-input" type="text" data-profile-field="carrera" value="${esc(normalizeCareer(profile.carrera))}" placeholder="Ej. Medicina General"></label>
       </div></section>
-      <section class="panel"><h3>Visual</h3><div class="detail-list">
+      <section class="panel"><h3>Experiencia</h3><div class="detail-list">
         ${settingSwitch('dark', 'Modo oscuro', 'Alto contraste para ambientes con poca luz.')}
         ${settingSwitch('compact', 'Modo compacto', 'Reduce espacios verticales.')}
         ${settingSwitch('sound', 'Sonidos de interfaz', 'Activa señales breves al responder, avanzar y finalizar.')}
         ${settingSwitch('autoAdvance', 'Avance automático', 'Pasa al siguiente ítem al responder.')}
       </div></section>
-      <section class="panel"><h3>Sesión de evaluación</h3>
+      <section class="panel settings-session-panel"><h3>Sesión de evaluación</h3>
         <p class="muted">El tiempo oficial lo controla el servidor y continúa aunque recargués la página.</p>
         <div class="divider"></div>
+        <p class="settings-warning">reiniciar elimina las respuestas guardadas en este intento.</p>
         <button class="danger-btn" type="button" data-action="reset-test">Reiniciar respuestas del aspirante</button>
       </section>
     </div>`;
@@ -2254,6 +2283,19 @@ function handleDocumentClick(event) {
     if (action === 'toggle-manual-register') {
       appState.manualRegistering = !appState.manualRegistering;
       validateLogin();
+      return;
+    }
+    if (action === 'show-login' || action === 'show-register') {
+      const nextRegistering = action === 'show-register';
+      if (appState.manualRegistering !== nextRegistering) {
+        ['#unified-id', '#unified-pass', '#fullname', '#cedula'].forEach(selector => {
+          const field = $(selector);
+          if (field) field.value = '';
+        });
+      }
+      appState.manualRegistering = nextRegistering;
+      validateLogin();
+      $('#unified-id')?.focus();
       return;
     }
     if (action === 'cancel-mfa') {
