@@ -89,6 +89,6 @@ test('reiniciar respuestas usa confirmación interna y conserva el contexto del 
   assert.match(app, /function requestResetTest\(\)/);
   assert.match(app, /data-action="confirm-reset-test"/);
   assert.match(app, /if \(action === 'reset-test'\) requestResetTest\(\);/);
-  assert.match(app, /if \(action === 'confirm-reset-test'\) \{\s+closeSubmitDialog\(\);\s+resetTest\(\);/);
+  assert.match(app, /if \(action === 'confirm-reset-test'\) \{\s+closeSubmitDialog\(\);\s+resetTest\(\);\s+requestAnimationFrame\(\(\) => \$\('\[data-action="reset-test"\]'\)\?\.focus\(\)\);/);
   assert.doesNotMatch(app, /function resetTest\(\) \{\s+if \(\!window\.confirm/);
 });

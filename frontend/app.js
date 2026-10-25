@@ -2410,6 +2410,7 @@ function handleDocumentClick(event) {
     if (action === 'confirm-reset-test') {
       closeSubmitDialog();
       resetTest();
+      requestAnimationFrame(() => $('[data-action="reset-test"]')?.focus());
     }
     if (action === 'clear-records' && window.confirm('¿Eliminar todos los reportes locales?')) {
       resultRepository.clear();
