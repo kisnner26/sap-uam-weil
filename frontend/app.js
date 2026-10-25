@@ -1267,6 +1267,8 @@ function identityLabel(profile) {
 }
 
 function renderShell() {
+  document.body.dataset.role = appState.sessionUser?.role || appState.role || 'guest';
+  document.body.dataset.route = appState.route || 'inicio';
   const navKey = appState.role === 'staff' && appState.sessionUser?.role === 'ADMIN' ? 'admin' : appState.role;
   const nav = (NAV[navKey] || []).filter(([route]) => route !== 'test' || testRouteAvailable());
   const locked = isExamLocked();
