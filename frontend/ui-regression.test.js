@@ -26,6 +26,12 @@ test('perfil y entrega pendiente explican el siguiente paso sin dejar datos vac�
   assert.match(app, /Todavía no hay una entrega registrada/);
 });
 
+test('el acceso conserva feedback visible cuando falla una autenticación', () => {
+  assert.match(app, /setFieldState\('#wrap-unified-pass', '#unified-pass-msg', 'err', message\)/);
+  assert.match(app, /\$\('#unified-pass'\)\?\.focus\(\)/);
+  assert.match(app, /label\.textContent = appState\.manualRegistering \? 'Crear cuenta' : 'Ingresar';/);
+});
+
 test('las tablas del personal conservan desplazamiento horizontal', () => {
   assert.match(theme, /\.table-wrap\{overflow:auto/);
   assert.match(styles, /\.table-wrap\{overflow-x:auto\}/);

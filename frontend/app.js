@@ -392,7 +392,10 @@ function setAuthBusy(isBusy) {
   const label = $('#btn-unified-label');
   if (button) button.disabled = isBusy || !validateLogin();
   if (label && isBusy) label.textContent = 'Validando acceso...';
-  if (!isBusy) validateLogin();
+  if (!isBusy) {
+    if (label) label.textContent = appState.manualRegistering ? 'Crear cuenta' : 'Ingresar';
+    validateLogin();
+  }
 }
 
 async function apiRequest(path, body = null, options = {}) {
@@ -545,7 +548,10 @@ async function submitUnifiedLogin() {
     }
   } catch (error) {
     playSound('error');
-    toast(error.message || 'No se pudo iniciar sesión.', 'err');
+    const message = error.message || 'No se pudo iniciar sesión.';
+    setFieldState('#wrap-unified-pass', '#unified-pass-msg', 'err', message);
+    $('#unified-pass')?.focus();
+    toast(message, 'err');
   } finally {
     setAuthBusy(false);
   }
