@@ -183,6 +183,9 @@ body.theme-dark .setting-row--toggle:hover{background:#163336;color:var(--ink)}
 .setting-row--toggle .switch>span.is-checked{background:var(--future-cyan)}
 .profile-input,.toolbar input,.toolbar select,.dialog-form input,.dialog-form select,.dialog-form textarea,.admin-form input,.admin-form select,.table-select,.claim-form input{border-radius:2px}
 .avatar{border:1px solid #5cc9d0;background:var(--future-carbon);color:#b7f0f3;box-shadow:7px 7px 0 var(--future-cyan-soft)}
+.profile-card__eyebrow,.empty-state__code{margin-bottom:5px;color:var(--future-cyan);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.62rem;text-transform:uppercase}
+.profile-card__actions{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:auto}.profile-card__actions .solid-btn{min-width:172px}
+.empty-state--action{display:flex;align-items:center;justify-content:space-between;gap:24px;text-align:left}.empty-state--action h3{margin-bottom:7px;font-size:1.2rem}.empty-state--action p:not(.empty-state__code){max-width:54ch;color:var(--muted);font-weight:700}
 .data-table th{background:var(--future-carbon-2);color:#c8e2e1}
 .data-table tbody tr:hover{background:var(--future-cyan-soft)}
 body.theme-dark .data-table tbody tr:hover{background:#163336}
@@ -208,6 +211,7 @@ body.theme-dark .data-table tbody tr:hover{background:#163336}
   .panel::before,.metric::after,.response-card::before,.progress-card::before,.step-card::before{width:13px;height:13px}
   .hero-copy::after{display:none}
   .setting-state{display:none}
+  .empty-state--action{align-items:flex-start;flex-direction:column}.empty-state--action .solid-btn{width:100%}
 }
 @media(prefers-reduced-motion:reduce){
   .pr__btn::after,.ghost-btn::after,.solid-btn::after,.danger-btn::after{transition:none}

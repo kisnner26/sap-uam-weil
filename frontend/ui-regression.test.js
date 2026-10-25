@@ -20,6 +20,12 @@ test('las preferencias anuncian su estado y el cambio aplicado', () => {
   assert.match(app, /toast\(`\$\{title\}: \$\{appState\.settings\[key\] \? 'activado' : 'desactivado'\}\.`/);
 });
 
+test('perfil y entrega pendiente explican el siguiente paso sin dejar datos vacíos', () => {
+  assert.match(app, /const career = normalizeCareer\(profile\.carrera\) \|\| 'Sin registrar';/);
+  assert.match(app, /class="empty-state empty-state--action"/);
+  assert.match(app, /Todavía no hay una entrega registrada/);
+});
+
 test('las tablas del personal conservan desplazamiento horizontal', () => {
   assert.match(theme, /\.table-wrap\{overflow:auto/);
   assert.match(styles, /\.table-wrap\{overflow-x:auto\}/);

@@ -1708,7 +1708,7 @@ function elapsedLabel() {
 function renderResults() {
   const result = appState.result;
   if (!result) {
-    return `<div class="screen-title"><div><p class="eyebrow">Entrega</p><h2>Prueba pendiente</h2><p>Todavía no entregaste la prueba.</p></div><button class="solid-btn" type="button" data-action="start-test">Ir a la prueba</button></div><div class="empty-state">Cuando entregues la prueba, aquí verás la constancia de entrega.</div>`;
+    return `<div class="screen-title"><div><p class="eyebrow">Entrega</p><h2>Prueba pendiente</h2><p>La constancia se habilita automáticamente cuando registrás la entrega.</p></div></div><section class="empty-state empty-state--action"><div><p class="empty-state__code">ENTREGA / 00</p><h3>Todavía no hay una entrega registrada</h3><p>Respondé todos los ítems y finalizá la prueba para generar tu constancia.</p></div><button class="solid-btn" type="button" data-action="start-test">Ir a la prueba</button></section>`;
   }
   const receipt = appState.remoteAttempt?.id ? `N.º ${String(appState.remoteAttempt.id).padStart(6, '0')}` : '';
   const answered = result.answeredCount ?? result.total;
@@ -1738,21 +1738,24 @@ function renderProfile() {
   const profile = appState.profile;
   const result = appState.result;
   const readableName = displayPersonName(profile.fullName);
+  const career = normalizeCareer(profile.carrera) || 'Sin registrar';
+  const progress = `${answeredCount()}/${TOTAL_ITEMS}`;
+  const state = result ? 'Entregada' : answeredCount() ? 'En progreso' : 'Sin iniciar';
   return `
     <div class="screen-title"><div><p class="eyebrow">Perfil</p><h2>Datos del aspirante</h2><p>Estos son los datos con los que te registraste.</p></div></div>
     <div class="profile-grid">
       <section class="panel profile-card">
         <div class="avatar" aria-hidden="true">${esc(initials(readableName))}</div>
-        <div><h3>${esc(readableName)}</h3><p class="muted">${esc(identityLabel(profile))}</p></div>
-        <button class="solid-btn" type="button" data-action="start-test">${answeredCount() ? 'Continuar prueba' : 'Iniciar prueba'}</button>
+        <div><p class="profile-card__eyebrow">Expediente del aspirante</p><h3>${esc(readableName)}</h3><p class="muted">${esc(identityLabel(profile))}</p></div>
+        <div class="profile-card__actions"><span class="pill ${result ? 'good' : 'warn'}">${state}</span><button class="solid-btn" type="button" data-action="start-test">${answeredCount() ? 'Continuar prueba' : 'Iniciar prueba'}</button></div>
       </section>
       <section class="panel">
         <h3>Registro</h3>
         <div class="detail-list">
-          <div class="detail-row"><span>Carrera</span><strong>${esc(normalizeCareer(profile.carrera))}</strong></div>
+          <div class="detail-row"><span>Carrera</span><strong>${esc(career)}</strong></div>
           <div class="detail-row"><span>Edad</span><strong>${esc(profile.edad)}</strong></div>
-          <div class="detail-row"><span>Avance</span><strong>${answeredCount()}/${TOTAL_ITEMS}</strong></div>
-          <div class="detail-row"><span>Estado</span><strong>${result ? 'Entregada' : answeredCount() ? 'En progreso' : 'Sin iniciar'}</strong></div>
+          <div class="detail-row"><span>Avance</span><strong>${progress}</strong></div>
+          <div class="detail-row"><span>Estado</span><strong>${state}</strong></div>
         </div>
       </section>
     </div>`;
