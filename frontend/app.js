@@ -1766,7 +1766,7 @@ function renderSettings() {
       <section class="panel settings-profile-panel"><h3>Datos del aspirante</h3><div class="settings-profile-form">
         <label class="setting-row setting-row--field"><div><strong>Carrera</strong><small>Se llena desde Moodle si está disponible; podés completarla manualmente.</small></div><input class="profile-input" type="text" data-profile-field="carrera" value="${esc(normalizeCareer(profile.carrera))}" placeholder="Ej. Medicina General"></label>
       </div></section>
-      <section class="panel"><h3>Experiencia</h3><div class="detail-list">
+      <section class="panel"><div class="settings-panel__head"><div><h3>Experiencia</h3><p class="muted tiny">Los cambios se guardan en este navegador.</p></div><span class="settings-panel__status">LOCAL</span></div><div class="detail-list">
         ${settingSwitch('dark', 'Modo oscuro', 'Alto contraste para ambientes con poca luz.')}
         ${settingSwitch('compact', 'Modo compacto', 'Reduce espacios verticales.')}
         ${settingSwitch('sound', 'Sonidos de interfaz', 'Activa señales breves al responder, avanzar y finalizar.')}
@@ -1783,7 +1783,8 @@ function renderSettings() {
 
 function settingSwitch(key, title, description) {
   const checked = Boolean(appState.settings[key]);
-  return `<button class="setting-row setting-row--toggle" type="button" role="switch" aria-checked="${checked}" data-action="toggle-setting" data-setting="${key}"><span><strong>${title}</strong><small>${description}</small></span><span class="switch" aria-hidden="true"><span class="${checked ? 'is-checked' : ''}"></span></span></button>`;
+  const status = checked ? 'Activo' : 'Inactivo';
+  return `<button class="setting-row setting-row--toggle" type="button" role="switch" aria-label="${esc(title)}: ${status.toLowerCase()}" aria-checked="${checked}" data-action="toggle-setting" data-setting="${key}"><span><strong>${title}</strong><small>${description}</small></span><span class="setting-state" aria-hidden="true">${status}</span><span class="switch" aria-hidden="true"><span class="${checked ? 'is-checked' : ''}"></span></span></button>`;
 }
 
 function renderStaff() {
@@ -2319,10 +2320,12 @@ function handleDocumentClick(event) {
     if (action === 'toggle-setting') {
       const key = actionTarget.dataset.setting;
       if (!['dark', 'compact', 'sound', 'autoAdvance'].includes(key)) return;
+      const title = actionTarget.querySelector('strong')?.textContent || 'Ajuste';
       appState.settings[key] = !appState.settings[key];
       saveSettings();
       if (key === 'sound' && appState.settings[key]) playSound('success');
       render();
+      toast(`${title}: ${appState.settings[key] ? 'activado' : 'desactivado'}.`, 'info');
       return;
     }
     if (action === 'logout') logout();

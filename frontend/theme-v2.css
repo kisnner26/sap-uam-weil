@@ -172,6 +172,12 @@ body[data-route="test"] .app-content{width:min(1660px,100%);padding-top:18px}.ex
 .setting-row,.detail-row,.toolbar{border-color:color-mix(in srgb,var(--teal) 22%,var(--line));background:color-mix(in srgb,var(--surface-2) 80%,var(--surface))}
 .setting-row--toggle:hover{background:var(--future-cyan-soft)}
 body.theme-dark .setting-row--toggle:hover{background:#163336;color:var(--ink)}
+.setting-row--toggle{grid-template-columns:minmax(0,1fr) auto auto;text-align:left;cursor:pointer}
+.setting-row--toggle:active:not(:disabled){transform:translateY(1px)}
+.setting-state{min-width:62px;color:var(--muted);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.62rem;text-align:right;text-transform:uppercase}
+.setting-row--toggle[aria-checked="true"] .setting-state{color:var(--future-cyan);font-weight:800}
+.settings-panel__head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px}
+.settings-panel__head h3{margin-bottom:4px}.settings-panel__status{padding:4px 6px;border:1px solid color-mix(in srgb,var(--teal) 42%,var(--line));color:var(--future-cyan);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.58rem;line-height:1}
 .switch{border:1px solid color-mix(in srgb,var(--teal) 45%,var(--line))}
 .switch span{background:#8b9999}
 .setting-row--toggle .switch>span.is-checked{background:var(--future-cyan)}
@@ -201,6 +207,7 @@ body.theme-dark .data-table tbody tr:hover{background:#163336}
   .screen-title::after{display:none}
   .panel::before,.metric::after,.response-card::before,.progress-card::before,.step-card::before{width:13px;height:13px}
   .hero-copy::after{display:none}
+  .setting-state{display:none}
 }
 @media(prefers-reduced-motion:reduce){
   .pr__btn::after,.ghost-btn::after,.solid-btn::after,.danger-btn::after{transition:none}

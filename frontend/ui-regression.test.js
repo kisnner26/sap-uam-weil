@@ -10,8 +10,14 @@ const app = fs.readFileSync(path.join(__dirname, 'app.js'), 'utf8');
 test('los interruptores usan toda la fila como objetivo interactivo', () => {
   assert.match(styles, /\.setting-row--toggle\{[^}]*width:100%[^}]*min-height:64px[^}]*cursor:pointer/);
   assert.match(styles, /\.setting-row--toggle \.switch\{pointer-events:none\}/);
-  assert.match(app, /role="switch" aria-checked="\$\{checked\}" data-action="toggle-setting"/);
+  assert.match(app, /role="switch" aria-label="\$\{esc\(title\)\}: \$\{status\.toLowerCase\(\)\}" aria-checked="\$\{checked\}" data-action="toggle-setting"/);
   assert.match(app, /if \(action === 'toggle-setting'\)/);
+});
+
+test('las preferencias anuncian su estado y el cambio aplicado', () => {
+  assert.match(app, /aria-label="\$\{esc\(title\)\}: \$\{status\.toLowerCase\(\)\}"/);
+  assert.match(app, /class="setting-state" aria-hidden="true">\$\{status\}/);
+  assert.match(app, /toast\(`\$\{title\}: \$\{appState\.settings\[key\] \? 'activado' : 'desactivado'\}\.`/);
 });
 
 test('las tablas del personal conservan desplazamiento horizontal', () => {
