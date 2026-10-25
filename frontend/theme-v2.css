@@ -209,6 +209,36 @@ body.theme-dark .data-table tbody tr:hover{background:#163336}
 .submit-dialog__card{border:1px solid #4e777a;box-shadow:14px 14px 0 rgba(0,0,0,.28)}
 .submit-dialog__pending--danger{border-color:color-mix(in srgb,var(--red) 60%,var(--line));background:color-mix(in srgb,var(--red) 9%,var(--surface))}
 
+/* Examen: la barra lateral fija no debe expulsar controles fuera del viewport. */
+body[data-route="test"] .app-content{box-sizing:border-box;max-width:none;min-width:0}
+.exam-head{min-width:0;flex-wrap:wrap}.exam-head>div:first-child{min-width:0}.exam-head__meta{min-width:0;flex:1 1 420px}
+.test-workbench{width:100%;max-width:100%;min-width:0;grid-template-columns:minmax(0,1fr) minmax(280px,320px)}
+.question-stage,.response-column{min-width:0}.response-card,.progress-card,.step-card{min-width:0}
+@media(min-width:1025px){
+  body[data-route="test"] .app-content{width:calc(100dvw - 244px);margin-left:244px}
+}
+@media(min-width:1121px) and (max-width:1500px){
+  .app-content:has(.test-workbench){height:auto;min-height:100dvh;overflow:visible;padding-bottom:32px}
+  .test-workbench{height:auto;grid-template-columns:minmax(0,1fr) minmax(280px,304px)}
+  .question-stage{grid-template-rows:64px minmax(420px,1fr) 54px}
+  .question-figure{min-height:420px}
+  .response-column{position:sticky;top:18px}
+  .puzzle-piece{width:clamp(76px,7.6vw,108px)}
+}
+@media(max-width:1180px){
+  .app-content:has(.test-workbench){height:auto;min-height:100dvh;overflow:visible}
+  .test-workbench{height:auto;grid-template-columns:1fr}
+  .response-column{position:static;grid-template-columns:repeat(3,minmax(0,1fr));align-items:start}
+  .response-card{grid-column:1/-1}
+  .question-stage{grid-template-rows:auto minmax(380px,58dvh) auto}
+  .question-figure{min-height:0}
+}
+@media(max-width:760px){
+  .response-column{grid-template-columns:1fr}
+  .response-card{grid-column:auto}
+  .exam-head__meta{flex-basis:100%}
+}
+
 @media(max-width:1024px){
   .brand{padding-bottom:0!important;border-bottom:0}.brand::after{display:none}
   .nav-btn:hover:not(.is-active){transform:translateY(-1px)}
