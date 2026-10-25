@@ -4,8 +4,6 @@ plataforma web institucional para aplicar, administrar y revisar evaluaciones de
 
 el sistema conserva las reglas de aplicación y calificación existentes, pero separa la plataforma compartida de la lógica específica de cada test para poder incorporar nuevas evaluaciones sin duplicar autenticación, administración ni reportes.
 
-![acceso de SAP-UAM](docs/screenshots/acceso.jpg)
-
 ## funciones principales
 
 - acceso con credenciales Moodle UAM o cuenta externa.
@@ -18,7 +16,27 @@ el sistema conserva las reglas de aplicación y calificación existentes, pero s
 - MFA obligatorio, sesiones revocables y auditoría para `STAFF` y `ADMIN`.
 - avisos por correo, consentimiento versionado y retención configurable de datos.
 
-![inicio del aspirante en SAP-UAM](docs/screenshots/inicio.jpg)
+## interfaz real
+
+capturas tomadas directamente de la aplicación local en modo demostración. no contienen datos personales ni material psicométrico protegido.
+
+| acceso institucional | creación de cuenta externa |
+| --- | --- |
+| ![acceso institucional](docs/screenshots/acceso.jpg) | ![creación de cuenta externa](docs/screenshots/registro.jpg) |
+
+| inicio del aspirante | perfil del aspirante |
+| --- | --- |
+| ![inicio del aspirante](docs/screenshots/inicio.jpg) | ![perfil del aspirante](docs/screenshots/perfil.jpg) |
+
+### ajustes
+
+![ajustes de la evaluación](docs/screenshots/ajustes.jpg)
+
+### diseño adaptable
+
+<p align="center">
+  <img src="docs/screenshots/movil-inicio.jpg" width="390" alt="inicio del aspirante en un dispositivo móvil">
+</p>
 
 ## roles
 
