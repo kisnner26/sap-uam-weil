@@ -34,6 +34,11 @@ const API_BASE = (() => {
   return `http://localhost:${apiPort}`;
 })();
 const STATIC_PAGES_MODE = ((/\.github\.io$/i.test(location.hostname) || new URLSearchParams(location.search).has('demo')) && !window.SAP_UAM_API_BASE);
+const QA_SCENARIO = (() => {
+  const scenario = new URLSearchParams(location.search).get('qa');
+  const isLocal = ['localhost', '127.0.0.1', '::1'].includes(location.hostname);
+  return isLocal && !STATIC_PAGES_MODE && ['aspirante', 'staff', 'admin'].includes(scenario) ? scenario : null;
+})();
 
 const ACTIVE_TEST = window.SAP_UAM_TESTS.get(window.SAP_UAM_TEST_ID || window.SAP_UAM_TESTS.defaultTestId);
 const TOTAL_PAGES = ACTIVE_TEST.sections.length;
@@ -678,7 +683,7 @@ function handleAuthSuccess(response, context = {}) {
     enterStaff(user);
     return;
   }
-  enterAspirante(profileFromUser(user, context));
+  enterAspirante(profileFromUser(user, context), { restoreLocalProgress: !context.qaLocal });
 }
 
 async function restoreSessionFromBackend() {
@@ -692,6 +697,18 @@ async function restoreSessionFromBackend() {
     else enterAspirante(profileFromUser(user));
   } catch {
     localStorage.removeItem(STORAGE.sessionUser);
+  }
+}
+
+async function enterLocalQaScenario() {
+  if (!QA_SCENARIO) return false;
+  try {
+    const response = await apiRequest(`/api/dev/qa/login/${QA_SCENARIO}`, null, { method: 'POST' });
+    handleAuthSuccess(response, { loginId: response?.user?.email || 'qa-local', qaLocal: true });
+    return true;
+  } catch (error) {
+    toast(error.message || 'No se pudo abrir el escenario local de QA.', 'err');
+    return false;
   }
 }
 
@@ -846,7 +863,7 @@ function displayPersonName(name) {
   return value.toLocaleLowerCase('es-NI').replace(/(^|[\s-])\p{L}/gu, letter => letter.toLocaleUpperCase('es-NI'));
 }
 
-function enterAspirante(profileOverride = null) {
+function enterAspirante(profileOverride = null, options = {}) {
   const profile = profileOverride || {
     cif: ($('#unified-id')?.value || '').trim(),
     fullName: ($('#fullname')?.value || '').trim(),
@@ -863,8 +880,8 @@ function enterAspirante(profileOverride = null) {
   appState.result = null;
   appState.focusLosses = 0;
   appState.securityEvents = [];
-  const restoredDraft = loadDraft(profile);
-  if (!restoredDraft) {
+  const restoredDraft = options.restoreLocalProgress === false ? false : loadDraft(profile);
+  if (!restoredDraft && options.restoreLocalProgress !== false) {
     const latest = records().find(item => item.testId === ACTIVE_TEST.id && String(item.profile?.cif) === String(profile?.cif));
     appState.result = latest ? resultRepository.get(latest.id) : null;
   }
@@ -2691,4 +2708,5 @@ setInterval(refreshBackendSession, 10 * 60 * 1000);
 applySettings();
 $('#demo-access')?.classList.toggle('app-hidden', !STATIC_PAGES_MODE);
 validateLogin();
-restoreSessionFromBackend();
+if (QA_SCENARIO) enterLocalQaScenario();
+else restoreSessionFromBackend();
