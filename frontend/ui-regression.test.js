@@ -6,6 +6,7 @@ const test = require('node:test');
 const styles = fs.readFileSync(path.join(__dirname, 'styles.css'), 'utf8');
 const theme = fs.readFileSync(path.join(__dirname, 'theme-v2.css'), 'utf8');
 const app = fs.readFileSync(path.join(__dirname, 'app.js'), 'utf8');
+const admission = fs.readFileSync(path.join(__dirname, 'admission-ui.js'), 'utf8');
 
 test('los interruptores usan toda la fila como objetivo interactivo', () => {
   assert.match(styles, /\.setting-row--toggle\{[^}]*width:100%[^}]*min-height:64px[^}]*cursor:pointer/);
@@ -35,6 +36,13 @@ test('el acceso conserva feedback visible cuando falla una autenticación', () =
 test('las tablas del personal conservan desplazamiento horizontal', () => {
   assert.match(theme, /\.table-wrap\{overflow:auto/);
   assert.match(styles, /\.table-wrap\{overflow-x:auto\}/);
+});
+
+test('las tablas tienen título y encabezados identificables', () => {
+  assert.match(app, /<caption class="sr-only">Cuentas de personal autorizado<\/caption>/);
+  assert.match(app, /<caption class="sr-only">Resultados de aspirantes<\/caption>/);
+  assert.match(admission, /<caption class="sr-only">Convocatorias de evaluación<\/caption>/);
+  assert.match(admission, /<th scope="col"><span class="sr-only">Acciones<\/span><\/th>/);
 });
 
 test('las imágenes principales muestran el contenido completo', () => {

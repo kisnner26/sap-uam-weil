@@ -1845,7 +1845,8 @@ function renderAdminUsers() {
 function renderAdminUsersTable(rows) {
   if (!rows.length) return '<div class="empty-state">No hay cuentas de personal.</div>';
   return `<table class="data-table admin-table">
-    <thead><tr><th>Persona</th><th>Rol</th><th>Segundo factor</th><th>Estado</th><th>Acciones</th></tr></thead>
+    <caption class="sr-only">Cuentas de personal autorizado</caption>
+    <thead><tr><th scope="col">Persona</th><th scope="col">Rol</th><th scope="col">Segundo factor</th><th scope="col">Estado</th><th scope="col">Acciones</th></tr></thead>
     <tbody>${rows.map(user => {
       const own = String(user.id) === String(appState.sessionUser?.id);
       const lock = own ? 'disabled title="Es tu propia cuenta"' : '';
@@ -1877,7 +1878,8 @@ function renderAdminAudit() {
 function renderAuditTable(rows) {
   if (!rows.length) return '<div class="empty-state">Todavía no hay eventos de auditoría.</div>';
   return `<section class="table-wrap"><table class="data-table audit-table">
-    <thead><tr><th>Fecha</th><th>Responsable</th><th>Acción</th><th>Recurso</th><th>Detalle</th></tr></thead>
+    <caption class="sr-only">Registro de auditoría</caption>
+    <thead><tr><th scope="col">Fecha</th><th scope="col">Responsable</th><th scope="col">Acción</th><th scope="col">Recurso</th><th scope="col">Detalle</th></tr></thead>
     <tbody>${rows.map(event => `<tr><td>${formatDate(event.occurredAt)}</td><td>${esc(event.actorName)}</td><td><span class="pill">${esc(event.action)}</span></td><td>${esc(event.targetType)} ${esc(event.targetId || '')}</td><td>${esc(event.detail || '—')}</td></tr>`).join('')}</tbody>
   </table></section>`;
 }
@@ -1919,7 +1921,7 @@ function renderStaffApplicants() {
 
 function renderStaffAttemptsTable(rows) {
   if (!rows.length) return '<div class="empty-state">Todavía no hay pruebas entregadas.</div>';
-  return `<section class="table-wrap"><table class="data-table"><thead><tr><th>Aspirante</th><th>Carrera</th><th>Puntaje</th><th>Percentil</th><th>CI</th><th>Clasificación</th><th>Incidencias</th><th>Entregada</th><th>Tiempo</th></tr></thead><tbody>${rows.map(item => `<tr><td><strong>${esc(item.fullName)}</strong><br><span class="muted tiny">${esc(item.email || '')}</span></td><td>${esc(normalizeCareer(item.career))}</td><td>${item.directScore}/${TOTAL_ITEMS}</td><td>${item.percentile}</td><td>${item.ci}</td><td>${esc(item.classification)}</td><td>${renderSecurityEvents(item.securityEvents)}</td><td>${formatDate(item.submittedAt)}</td><td>${formatDuration(item.durationSeconds)}</td></tr>`).join('')}</tbody></table></section>`;
+  return `<section class="table-wrap"><table class="data-table"><caption class="sr-only">Resultados de aspirantes</caption><thead><tr><th scope="col">Aspirante</th><th scope="col">Carrera</th><th scope="col">Puntaje</th><th scope="col">Percentil</th><th scope="col">CI</th><th scope="col">Clasificación</th><th scope="col">Incidencias</th><th scope="col">Entregada</th><th scope="col">Tiempo</th></tr></thead><tbody>${rows.map(item => `<tr><td><strong>${esc(item.fullName)}</strong><br><span class="muted tiny">${esc(item.email || '')}</span></td><td>${esc(normalizeCareer(item.career))}</td><td>${item.directScore}/${TOTAL_ITEMS}</td><td>${item.percentile}</td><td>${item.ci}</td><td>${esc(item.classification)}</td><td>${renderSecurityEvents(item.securityEvents)}</td><td>${formatDate(item.submittedAt)}</td><td>${formatDuration(item.durationSeconds)}</td></tr>`).join('')}</tbody></table></section>`;
 }
 
 function renderSecurityEvents(events = []) {
@@ -1933,7 +1935,7 @@ function renderBaremo() {
   if (!appState.staffNorms) return '<div class="empty-state">Cargando baremo…</div>';
   return `
     <div class="screen-title"><div><p class="eyebrow">Baremo</p><h2>Tabla de calificación</h2><p>Valores servidos exclusivamente al personal autorizado.</p></div></div>
-    <div class="baremo-table-wrap"><table class="data-table baremo-table"><thead><tr><th>Percentil</th>${columns.map(col => `<th>${col}</th>`).join('')}</tr></thead><tbody>${appState.staffNorms.map(row => `<tr><td>${row.p}</td>${columns.map(col => `<td>${row[col]}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+    <div class="baremo-table-wrap"><table class="data-table baremo-table"><caption class="sr-only">Baremo de calificación por grupo</caption><thead><tr><th scope="col">Percentil</th>${columns.map(col => `<th scope="col">${col}</th>`).join('')}</tr></thead><tbody>${appState.staffNorms.map(row => `<tr><td>${row.p}</td>${columns.map(col => `<td>${row[col]}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
 }
 
 function downloadResultPdf(result = appState.result) {

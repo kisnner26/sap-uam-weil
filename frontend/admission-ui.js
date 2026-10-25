@@ -193,7 +193,7 @@
     if (!sessions) return `${head}<div class="empty-state">Cargando convocatorias…</div>`;
     if (!sessions.length) return `${head}<div class="empty-state">Todavía no hay convocatorias. Creá la primera para habilitar aspirantes.</div>`;
     const kind = { UPCOMING: 'info', OPEN: 'ok', CLOSED: 'muted', CANCELLED: 'err' };
-    return `${head}<section class="table-wrap"><table class="data-table"><thead><tr><th>Convocatoria</th><th>Ventana</th><th>Estado</th><th>Habilitados</th><th>Canjearon</th><th>Entregaron</th><th>Invalidadas</th><th></th></tr></thead><tbody>${sessions.map(s => `<tr>
+    return `${head}<section class="table-wrap"><table class="data-table"><caption class="sr-only">Convocatorias de evaluación</caption><thead><tr><th scope="col">Convocatoria</th><th scope="col">Ventana</th><th scope="col">Estado</th><th scope="col">Habilitados</th><th scope="col">Canjearon</th><th scope="col">Entregaron</th><th scope="col">Invalidadas</th><th scope="col"><span class="sr-only">Acciones</span></th></tr></thead><tbody>${sessions.map(s => `<tr>
       <td><strong>${esc(s.name)}</strong><br><span class="muted tiny">${s.timeLimitMinutes} min${s.defaultTime ? ' (predeterminado)' : ''}</span></td>
       <td class="tiny">${esc(formatDateTime(s.opensAt))}<br>${esc(formatDateTime(s.closesAt))}</td>
       <td>${badge(SESSION_STATE[s.state] || s.state, kind[s.state] || 'muted')}</td>
@@ -232,7 +232,7 @@
     else if (!rows.length) table = '<div class="empty-state">Todavía no hay aspirantes habilitados en esta convocatoria.</div>';
     else {
       const kind = { INVITED: 'muted', CLAIMED: 'info', IN_PROGRESS: 'warn', SUBMITTED: 'ok', INVALIDATED: 'err', REVOKED: 'err' };
-      table = `<section class="table-wrap"><table class="data-table"><thead><tr><th>Aspirante</th><th>Estado</th><th>Minutos extra</th><th>Canjeó</th><th></th></tr></thead><tbody>${rows.map(r => `<tr>
+      table = `<section class="table-wrap"><table class="data-table"><caption class="sr-only">Aspirantes habilitados</caption><thead><tr><th scope="col">Aspirante</th><th scope="col">Estado</th><th scope="col">Minutos extra</th><th scope="col">Canjeó</th><th scope="col"><span class="sr-only">Acciones</span></th></tr></thead><tbody>${rows.map(r => `<tr>
         <td><strong>${esc(r.fullName || r.email)}</strong><br><span class="muted tiny">${esc(r.email)}${r.reappliesAttemptId ? ' · reaplicación' : ''}</span></td>
         <td>${badge(PROGRESS[r.progress] || r.progress, kind[r.progress] || 'muted')}</td>
         <td>${r.extraMinutes ? `+${r.extraMinutes}` : '—'}</td><td class="tiny">${esc(formatDateTime(r.claimedAt))}</td>
@@ -275,7 +275,7 @@
 
   function attemptsTable(rows, totalItems) {
     if (!rows.length) return '<div class="empty-state">No hay pruebas con esos filtros.</div>';
-    return `<section class="table-wrap"><table class="data-table"><thead><tr><th>Aspirante</th><th>Convocatoria</th><th>Puntaje</th><th>Percentil</th><th>CI</th><th>Clasificación</th><th>Incidencias</th><th>Entregada</th><th>Estado</th><th></th></tr></thead><tbody>${rows.map(item => {
+    return `<section class="table-wrap"><table class="data-table"><caption class="sr-only">Resultados filtrados de aspirantes</caption><thead><tr><th scope="col">Aspirante</th><th scope="col">Convocatoria</th><th scope="col">Puntaje</th><th scope="col">Percentil</th><th scope="col">CI</th><th scope="col">Clasificación</th><th scope="col">Incidencias</th><th scope="col">Entregada</th><th scope="col">Estado</th><th scope="col"><span class="sr-only">Acciones</span></th></tr></thead><tbody>${rows.map(item => {
       const state = item.invalidated ? badge('Invalidada', 'err') : item.reviewed ? badge('Revisada', 'ok') : badge('Sin revisar', 'warn');
       const flags = [item.autoSubmitted ? 'cerrada por tiempo' : '', item.extraMinutes ? `+${item.extraMinutes} min` : ''].filter(Boolean).join(' · ');
       return `<tr class="${item.invalidated ? 'is-invalid' : ''}">
