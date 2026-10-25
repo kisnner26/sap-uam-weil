@@ -66,7 +66,8 @@ const NAV = {
     ['aspirantes', 'Resultados'],
     ['usuarios', 'Personal'],
     ['auditoria', 'Auditoría'],
-    ['baremo', 'Baremo']
+    ['baremo', 'Baremo'],
+    ['ajustes', 'Configuración']
   ]
 };
 
@@ -1842,6 +1843,31 @@ function renderSettings() {
     </div>`;
 }
 
+function renderAdminSettings() {
+  const mfa = appState.sessionUser?.mfaEnabled ? 'Configurado' : 'Pendiente';
+  return `
+    <div class="screen-title"><div><p class="eyebrow">Administración</p><h2>Configuración</h2><p>Preferencias locales y accesos de control para esta cuenta administrativa.</p></div></div>
+    <div class="settings-grid">
+      <section class="panel settings-profile-panel"><div class="settings-panel__head"><div><h3>Cuenta administrativa</h3><p class="muted tiny">${esc(appState.sessionUser?.email || '')}</p></div><span class="settings-panel__status">${esc(mfa)}</span></div>
+        <div class="detail-list">
+          <div class="detail-row"><span>Segundo factor</span><strong>${esc(mfa)}</strong></div>
+          <div class="detail-row"><span>Permiso activo</span><strong>Administración</strong></div>
+        </div>
+        <div class="row-actions"><button class="ghost-btn" type="button" data-route="usuarios">Gestionar personal</button><button class="ghost-btn" type="button" data-route="auditoria">Ver auditoría</button></div>
+      </section>
+      <section class="panel"><div class="settings-panel__head"><div><h3>Experiencia local</h3><p class="muted tiny">Estos cambios solo afectan este navegador.</p></div><span class="settings-panel__status">LOCAL</span></div><div class="detail-list">
+        ${settingSwitch('dark', 'Modo oscuro', 'Alto contraste para ambientes con poca luz.')}
+        ${settingSwitch('compact', 'Modo compacto', 'Reduce espacios verticales.')}
+        ${settingSwitch('sound', 'Sonidos de interfaz', 'Activa señales breves al operar el sistema.')}
+      </div></section>
+      <section class="panel settings-session-panel"><h3>Operación segura</h3>
+        <p class="muted">Las reglas de evaluación, tiempos y baremos se controlan en el servidor. No se modifican desde preferencias locales.</p>
+        <div class="divider"></div>
+        <p class="settings-warning">los cambios de roles, convocatorias y baremos quedan registrados en auditoría.</p>
+      </section>
+    </div>`;
+}
+
 function settingSwitch(key, title, description) {
   const checked = Boolean(appState.settings[key]);
   const status = checked ? 'Activo' : 'Inactivo';
@@ -1864,7 +1890,7 @@ function renderStaff() {
   else if (appState.route === 'convocatoria') content.innerHTML = ADM.enrollmentsView(appState.sessionDetail?.session, appState.sessionDetail?.rows, appState.sessionDetail?.lastResult, appState.sessionDetail?.error);
   else if (appState.route === 'aspirantes') content.innerHTML = renderStaffApplicants();
   else if (appState.route === 'baremo') content.innerHTML = renderBaremo();
-  else if (appState.route === 'ajustes') content.innerHTML = renderSettings();
+  else if (appState.route === 'ajustes') content.innerHTML = appState.sessionUser?.role === 'ADMIN' ? renderAdminSettings() : renderSettings();
   else content.innerHTML = renderStaffPanel();
 }
 
