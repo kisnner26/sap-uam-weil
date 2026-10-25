@@ -603,10 +603,17 @@ function validateMfa() {
   return valid;
 }
 
+function setMfaBusy(isBusy) {
+  appState.authBusy = isBusy;
+  $('#form-mfa')?.setAttribute('aria-busy', String(isBusy));
+  const button = $('#btn-mfa');
+  if (button) button.textContent = isBusy ? 'Verificando...' : 'Verificar e ingresar';
+  validateMfa();
+}
+
 async function submitMfa() {
   if (!validateMfa() || !appState.mfaChallenge?.challengeToken) return;
-  appState.authBusy = true;
-  validateMfa();
+  setMfaBusy(true);
   try {
     const response = await apiRequest('/api/auth/mfa/verify', {
       challengeToken: appState.mfaChallenge.challengeToken,
@@ -621,8 +628,7 @@ async function submitMfa() {
     if (message) message.textContent = error.message || 'El código no es válido.';
     input?.focus();
   } finally {
-    appState.authBusy = false;
-    validateMfa();
+    setMfaBusy(false);
   }
 }
 

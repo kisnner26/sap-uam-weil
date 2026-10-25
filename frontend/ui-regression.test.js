@@ -38,6 +38,12 @@ test('el acceso publica su estado de carga', () => {
   assert.match(app, /\$\('#form-unified'\)\?\.setAttribute\('aria-busy', String\(isBusy\)\)/);
 });
 
+test('la verificación multifactor también comunica cuando está procesando', () => {
+  assert.match(app, /function setMfaBusy\(isBusy\)/);
+  assert.match(app, /\$\('#form-mfa'\)\?\.setAttribute\('aria-busy', String\(isBusy\)\)/);
+  assert.match(app, /button\.textContent = isBusy \? 'Verificando\.\.\.' : 'Verificar e ingresar';/);
+});
+
 test('las tablas del personal conservan desplazamiento horizontal', () => {
   assert.match(theme, /\.table-wrap\{overflow:auto/);
   assert.match(styles, /\.table-wrap\{overflow-x:auto\}/);
