@@ -132,6 +132,12 @@ public class AssessmentAttempt {
         updatedAt = Instant.now();
     }
 
+    /** Libera una exclusividad efimera sin alterar respuestas ni el estado del intento. */
+    public void releaseLease() {
+        leaseExpiresAt = Instant.EPOCH;
+        updatedAt = Instant.now();
+    }
+
     public void touch() {
         updatedAt = Instant.now();
     }

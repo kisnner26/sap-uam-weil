@@ -70,8 +70,8 @@ public class SecurityConfig {
                             "/actuator/health"
                     ).permitAll();
                     if (devProfile) {
-                        // Consola H2 solo en desarrollo.
-                        auth.requestMatchers("/h2-console/**").permitAll();
+                        // Herramientas locales: nunca se registran fuera del perfil dev.
+                        auth.requestMatchers("/api/dev/qa/**", "/h2-console/**").permitAll();
                     }
                     // Resultados con puntaje: solo personal y administracion.
                     auth.requestMatchers("/api/staff/**").hasAnyRole("STAFF", "ADMIN");
