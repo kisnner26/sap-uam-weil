@@ -1076,17 +1076,26 @@ async function reloadSessionDetail() {
   if (appState.role === 'staff' && appState.route === 'convocatoria') render();
 }
 
+let staffDialogReturnFocus = null;
+
 function showStaffDialog(title, bodyHtml) {
   closeStaffDialog();
+  staffDialogReturnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
   const root = document.createElement('div');
   root.id = 'staff-dialog-root';
   root.innerHTML = ADM.dialogHtml(title, bodyHtml);
   document.body.appendChild(root);
+  $('#view-app').inert = true;
   root.querySelector('input,select,textarea,button')?.focus();
 }
 
 function closeStaffDialog() {
-  $('#staff-dialog-root')?.remove();
+  const root = $('#staff-dialog-root');
+  if (!root) return;
+  root.remove();
+  $('#view-app').inert = false;
+  staffDialogReturnFocus?.focus({ preventScroll: true });
+  staffDialogReturnFocus = null;
 }
 
 function dialogError(message) {
@@ -2435,30 +2444,38 @@ function isForbiddenExamKey(event) {
   return ['escape', 'f5', 'f11', 'f12', 'printscreen'].includes(key);
 }
 
-function handleKeydown(event) {
-  if (isTypingField(event.target)) return;
-  const dialog = $('#submit-dialog');
-  if (dialog && !dialog.classList.contains('app-hidden')) {
-    if (event.key === 'Escape') {
-      event.preventDefault();
-      closeSubmitDialog();
-      return;
-    }
-    if (event.key === 'Tab') {
-      const controls = $$('button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])', dialog);
-      if (!controls.length) return;
-      const first = controls[0];
-      const last = controls[controls.length - 1];
-      if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault();
-        first.focus();
-      }
-    }
+function keepFocusInsideDialog(event, dialog, close) {
+  if (event.key === 'Escape') {
+    event.preventDefault();
+    close();
     return;
   }
+  if (event.key !== 'Tab') return;
+  const controls = $$('button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])', dialog);
+  if (!controls.length) return;
+  const first = controls[0];
+  const last = controls[controls.length - 1];
+  if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault();
+    first.focus();
+  }
+}
+
+function handleKeydown(event) {
+  const submitDialog = $('#submit-dialog');
+  if (submitDialog && !submitDialog.classList.contains('app-hidden')) {
+    keepFocusInsideDialog(event, submitDialog, closeSubmitDialog);
+    return;
+  }
+  const staffDialog = $('#staff-dialog-root .submit-dialog');
+  if (staffDialog) {
+    keepFocusInsideDialog(event, staffDialog, closeStaffDialog);
+    return;
+  }
+  if (isTypingField(event.target)) return;
   if (isForbiddenExamKey(event)) {
     event.preventDefault();
     event.stopPropagation();
@@ -2596,10 +2613,6 @@ document.addEventListener('submit', event => {
   if (!handler) return;
   event.preventDefault();
   handler(event.target);
-});
-
-document.addEventListener('keydown', event => {
-  if (event.key === 'Escape' && $('#staff-dialog-root')) closeStaffDialog();
 });
 
 setInterval(() => {
