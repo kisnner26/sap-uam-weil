@@ -23,3 +23,10 @@ test('las imágenes principales muestran el contenido completo', () => {
   assert.match(theme, /\.hero-visual img\{[^}]*object-fit:contain/);
   assert.match(theme, /\.lamina-card img\{object-fit:contain/);
 });
+
+test('la interfaz de instrumentación conserva identidad y movimiento seguro', () => {
+  assert.match(theme, /--future-cyan:#0d9da8/);
+  assert.match(theme, /SAP-UAM \/ INTERFAZ DE EVALUACIÓN \/ NODO 01/);
+  assert.match(theme, /transition:transform 150ms ease-out,opacity 150ms ease-out/);
+  assert.match(theme, /@media\(prefers-reduced-motion:reduce\)/);
+});
