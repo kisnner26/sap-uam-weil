@@ -1773,7 +1773,8 @@ function renderSettings() {
 }
 
 function settingSwitch(key, title, description) {
-  return `<label class="setting-row"><div><strong>${title}</strong><small>${description}</small></div><span class="switch"><input type="checkbox" data-setting="${key}" ${appState.settings[key] ? 'checked' : ''}><span></span></span></label>`;
+  const checked = Boolean(appState.settings[key]);
+  return `<button class="setting-row setting-row--toggle" type="button" role="switch" aria-checked="${checked}" data-action="toggle-setting" data-setting="${key}"><span><strong>${title}</strong><small>${description}</small></span><span class="switch" aria-hidden="true"><span class="${checked ? 'is-checked' : ''}"></span></span></button>`;
 }
 
 function renderStaff() {
@@ -2304,6 +2305,15 @@ function handleDocumentClick(event) {
     }
     if (action === 'enter-demo') {
       enterAspirante({ fullName: 'Usuario de demostración', cif: 'DEMO', edad: 18, grupo: 'UN', carrera: '' });
+      return;
+    }
+    if (action === 'toggle-setting') {
+      const key = actionTarget.dataset.setting;
+      if (!['dark', 'compact', 'sound', 'autoAdvance'].includes(key)) return;
+      appState.settings[key] = !appState.settings[key];
+      saveSettings();
+      if (key === 'sound' && appState.settings[key]) playSound('success');
+      render();
       return;
     }
     if (action === 'logout') logout();

@@ -472,3 +472,11 @@ body.theme-dark .pill--warn{background:#4a3a10;color:#f0d278;border-color:#6b551
 .enroll-panel{display:grid;gap:8px;padding:18px;margin-bottom:16px}.enroll-result{margin-top:10px;padding:12px;border:1px solid var(--line);border-radius:8px;background:var(--surface-2);font-weight:700}.enroll-result ul{margin:6px 0 0 18px}
 @media (max-width:720px){.dialog-form__split{grid-template-columns:1fr}.claim-form__row{flex-direction:column}.consent-actions{flex-direction:column-reverse}.consent-actions button{width:100%}.row-actions{justify-content:flex-start}.title-actions{justify-content:flex-start}}
 .consent-text blockquote{margin:0 0 14px;padding:10px 14px;border-left:4px solid var(--gold);background:#fff7dc;color:#5c4400;font-weight:800;border-radius:0 8px 8px 0}body.theme-dark .consent-text blockquote{background:#4a3a10;color:#f0d278}
+
+/* toda la fila es el control: evita zonas muertas en safari y en pantallas táctiles */
+.setting-row--toggle{width:100%;min-height:64px;text-align:left;cursor:pointer}
+.setting-row--toggle:hover{border-color:var(--teal)}
+.setting-row--toggle .switch{pointer-events:none}
+.setting-row--toggle .switch>span{position:absolute;inset:0;pointer-events:none}
+.setting-row--toggle .switch>span.is-checked{background:var(--teal)}
+.setting-row--toggle .switch>span.is-checked::after{transform:translateX(22px)}
