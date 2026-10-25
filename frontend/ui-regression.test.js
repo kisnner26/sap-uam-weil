@@ -44,6 +44,13 @@ test('la verificación multifactor también comunica cuando está procesando', (
   assert.match(app, /button\.textContent = isBusy \? 'Verificando\.\.\.' : 'Verificar e ingresar';/);
 });
 
+test('el consentimiento bloquea duplicados y anuncia su guardado', () => {
+  assert.match(admission, /id="consent-panel" aria-busy="\$\{busy \? 'true' : 'false'\}"/);
+  assert.match(app, /panel\?\.setAttribute\('aria-busy', 'true'\)/);
+  assert.match(app, /acceptButton\.textContent = 'Registrando consentimiento\.\.\.';/);
+  assert.match(app, /if \(checkbox\?\.isConnected\) checkbox\.disabled = false;/);
+});
+
 test('las tablas del personal conservan desplazamiento horizontal', () => {
   assert.match(theme, /\.table-wrap\{overflow:auto/);
   assert.match(styles, /\.table-wrap\{overflow-x:auto\}/);

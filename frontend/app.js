@@ -1049,6 +1049,15 @@ async function acceptConsent() {
   if (!notice || appState.consentBusy) return;
   appState.consentBusy = true;
   const errorBox = $('#consent-error');
+  const panel = $('#consent-panel');
+  const checkbox = $('#consent-check');
+  const acceptButton = $('[data-action="accept-consent"]');
+  panel?.setAttribute('aria-busy', 'true');
+  if (checkbox) checkbox.disabled = true;
+  if (acceptButton) {
+    acceptButton.disabled = true;
+    acceptButton.textContent = 'Registrando consentimiento...';
+  }
   try {
     await apiRequest('/api/privacy/consent', { version: notice.version });
     await loadAvailability();
@@ -1058,6 +1067,12 @@ async function acceptConsent() {
     if (errorBox) errorBox.textContent = error.message || 'No se pudo registrar el consentimiento.';
   } finally {
     appState.consentBusy = false;
+    if (panel?.isConnected) panel.setAttribute('aria-busy', 'false');
+    if (checkbox?.isConnected) checkbox.disabled = false;
+    if (acceptButton?.isConnected) {
+      acceptButton.disabled = !checkbox?.checked;
+      acceptButton.textContent = 'Aceptar y continuar';
+    }
   }
 }
 

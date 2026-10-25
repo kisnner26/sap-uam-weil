@@ -169,7 +169,7 @@
   function consentView(notice, busy) {
     if (!notice) return '<div class="empty-state">Cargando aviso de privacidad…</div>';
     return `<div class="screen-title"><div><p class="eyebrow">Privacidad</p><h2>Aviso de privacidad</h2><p>Versión ${esc(notice.version)}. Leélo completo antes de aceptar.</p></div></div>
-      <section class="panel consent-panel">
+      <section class="panel consent-panel" id="consent-panel" aria-busy="${busy ? 'true' : 'false'}">
         <article class="consent-text" tabindex="0" aria-label="Texto del aviso de privacidad">${noticeHtml(notice.text)}</article>
         <label class="consent-check"><input type="checkbox" id="consent-check" ${busy ? 'disabled' : ''}> <span>Leí el aviso y acepto el tratamiento de mis datos para el proceso de admisión.</span></label>
         <p id="consent-error" class="form-error" role="alert"></p>
