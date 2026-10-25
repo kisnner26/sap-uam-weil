@@ -56,3 +56,9 @@ test('la interfaz de instrumentación conserva identidad y movimiento seguro', (
   assert.match(theme, /transition:transform 150ms ease-out,opacity 150ms ease-out/);
   assert.match(theme, /@media\(prefers-reduced-motion:reduce\)/);
 });
+
+test('los controles mantienen foco, presión y estados deshabilitados claros', () => {
+  assert.match(theme, /\.setting-row--toggle:focus-visible/);
+  assert.match(theme, /\.solid-btn:active:not\(:disabled\)/);
+  assert.match(theme, /button:disabled[^}]*cursor:not-allowed/);
+});

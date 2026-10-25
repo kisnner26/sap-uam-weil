@@ -164,6 +164,9 @@ body[data-route="test"] .app-content{width:min(1660px,100%);padding-top:18px}.ex
 .metric strong,.assessment-meta dd,.score-big,.progress-card__stats strong,.detail-row strong{font-variant-numeric:tabular-nums}
 
 .ghost-btn,.solid-btn,.danger-btn,.auth-secondary{position:relative;overflow:hidden;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;text-transform:uppercase;transition:transform 150ms ease-out,opacity 150ms ease-out}
+.ghost-btn:focus-visible,.solid-btn:focus-visible,.danger-btn:focus-visible,.auth-secondary:focus-visible,.nav-btn:focus-visible,.auth-tab:focus-visible,.setting-row--toggle:focus-visible,.page-dot:focus-visible,.rail-btn:focus-visible,.choice-btn:focus-visible,.puzzle-piece:focus-visible{outline:2px solid var(--future-cyan);outline-offset:3px}
+.ghost-btn:active:not(:disabled),.solid-btn:active:not(:disabled),.danger-btn:active:not(:disabled),.nav-btn:active:not(:disabled),.auth-tab:active:not(:disabled){transform:translateY(1px)}
+button:disabled,.profile-input:disabled,.toolbar input:disabled,.toolbar select:disabled{cursor:not-allowed}
 .ghost-btn::after,.solid-btn::after,.danger-btn::after{content:"";position:absolute;right:0;bottom:0;width:18px;height:2px;background:currentColor;transform:translateX(100%);transition:transform 150ms ease-out}
 .ghost-btn:hover:not(:disabled)::after,.solid-btn:hover:not(:disabled)::after,.danger-btn:hover:not(:disabled)::after,.ghost-btn:focus-visible::after,.solid-btn:focus-visible::after,.danger-btn:focus-visible::after{transform:translateX(0)}
 .solid-btn{background:var(--future-cyan);border-color:var(--future-cyan);color:#041011}
@@ -182,6 +185,7 @@ body.theme-dark .setting-row--toggle:hover{background:#163336;color:var(--ink)}
 .switch span{background:#8b9999}
 .setting-row--toggle .switch>span.is-checked{background:var(--future-cyan)}
 .profile-input,.toolbar input,.toolbar select,.dialog-form input,.dialog-form select,.dialog-form textarea,.admin-form input,.admin-form select,.table-select,.claim-form input{border-radius:2px}
+.profile-input::placeholder,.toolbar input::placeholder,.dialog-form input::placeholder,.dialog-form textarea::placeholder,.admin-form input::placeholder,.claim-form input::placeholder{color:color-mix(in srgb,var(--muted) 72%,transparent);opacity:1}
 .avatar{border:1px solid #5cc9d0;background:var(--future-carbon);color:#b7f0f3;box-shadow:7px 7px 0 var(--future-cyan-soft)}
 .profile-card__eyebrow,.empty-state__code{margin-bottom:5px;color:var(--future-cyan);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.62rem;text-transform:uppercase}
 .profile-card__actions{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:auto}.profile-card__actions .solid-btn{min-width:172px}
