@@ -4,7 +4,7 @@
 
 | Elemento | Estado |
 |---|---|
-| Migración Flyway V1 en PostgreSQL 16 + validación del esquema contra las entidades | Probado |
+| Migraciones Flyway V1 a V4 en PostgreSQL 16 (V4 con relleno de un intento ya entregado y borrado en cascada) + validación del esquema contra las entidades | Probado |
 | Respaldo, cifrado, checksum y restauración con comparación de conteos; detección de archivo corrupto | Probado (`ops/backup.sh`, `ops/restore-test.sh`) |
 | Flujo completo con 300 aspirantes simultáneos (100 a la vez) sobre PostgreSQL | Probado: 300/300, 0 errores, ~1 150 req/s en un portátil |
 | Imágenes Docker, `docker-compose.yml`, `nginx.conf` | **Sin construir ni ejecutar** (Docker no está instalado donde se desarrolló). Lo ejercita el job `imagenes` de CI |
