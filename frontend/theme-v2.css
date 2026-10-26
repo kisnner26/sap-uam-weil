@@ -318,3 +318,10 @@ body[data-route="test"] .app-content{box-sizing:border-box;max-width:none;min-wi
   .settings-grid .detail-list{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   .settings-grid .detail-list .setting-row{margin:0}
 }
+
+/* Examen en portátiles: la lista de ítems y los botones de entrega caben sin desplazar la página. */
+@media(min-width:961px) and (max-height:820px){
+  body[data-route="test"] .app-content{padding-top:12px;padding-bottom:16px}
+  .exam-head{padding:10px 14px;margin-bottom:8px}
+  .exam-head h2{font-size:clamp(1.5rem,2vw,1.9rem)}
+}
