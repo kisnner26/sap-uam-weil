@@ -256,6 +256,24 @@ body[data-route="test"] .app-content{box-sizing:border-box;max-width:none;min-wi
   .question-figure.is-loading::after{animation:none}
 }
 
+/* Portátiles: la acción principal del aspirante debe verse sin pedir desplazamiento. */
+@media(min-width:961px) and (max-height:820px){
+  .app-content{padding-top:24px;padding-bottom:36px}
+  .app-content::before{margin-bottom:12px}
+  .screen-title{min-height:82px;margin-bottom:14px;padding-bottom:14px}
+  .screen-title::before{top:0;bottom:18px}
+  .screen-title h2{font-size:clamp(2.25rem,3vw,3.2rem)}
+  .hero-band{min-height:390px}
+  .hero-copy{padding:28px 32px}
+  .hero-copy h2{font-size:clamp(2.85rem,3.8vw,3.65rem)}
+  .hero-visual{min-height:390px}
+  .assessment-meta{margin-top:16px}
+  .hero-actions{margin-top:16px}
+  .status-stack{gap:12px}
+  .next-step-panel,.readiness-panel{padding:17px}
+  .check-list{gap:7px}
+}
+
 /* navegación y encabezado: nada fuera de alcance ni ocupando media pantalla */
 @media(max-width:1024px){
   .app-top{position:static}
