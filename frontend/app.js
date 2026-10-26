@@ -66,6 +66,8 @@ const NAV = {
     ['aspirantes', 'Resultados'],
     ['usuarios', 'Personal'],
     ['auditoria', 'Auditoría'],
+    ['titulares', 'Privacidad'],
+    ['envios', 'Envíos'],
     ['baremo', 'Baremo'],
     ['ajustes', 'Configuración']
   ]
@@ -99,6 +101,10 @@ const stateStore = window.SAP_UAM_STATE.create({
   sessionDetail: null,
   resultsFilters: { sessionId: '', status: '', q: '' },
   staffAttempts: null,
+  adminNotifications: null,
+  privacySearch: { q: '', rows: null, error: '', busy: false },
+  staffPage: { page: 0, size: 25, total: 0 },
+  staffSummary: null,
   staffNorms: null,
   staffLoading: false,
   staffNormsLoading: false,
@@ -457,8 +463,8 @@ async function apiJson(method, path, body = null) {
   return apiRequest(path, body === null ? undefined : body, { method });
 }
 
-async function downloadFromApi(path, fallbackName) {
-  const response = await fetch(`${API_BASE}${path}`, { credentials: 'include', headers: { Accept: 'text/csv' } });
+async function downloadFromApi(path, fallbackName, accept = 'text/csv') {
+  const response = await fetch(`${API_BASE}${path}`, { credentials: 'include', headers: { Accept: accept } });
   if (!response.ok) {
     const data = safeJson(await response.text());
     throw new Error(data?.message || 'No se pudo generar el archivo.');
@@ -954,6 +960,10 @@ function enterStaff(user = null) {
   appState.profile = { username: user?.fullName || user?.email || ($('#unified-id')?.value || '').trim() || 'Personal' };
   appState.sessionUser = user || appState.sessionUser;
   appState.staffAttempts = null;
+  appState.staffPage = { page: 0, size: 25, total: 0 };
+  appState.staffSummary = null;
+  appState.adminNotifications = null;
+  appState.privacySearch = { q: '', rows: null, error: '', busy: false };
   appState.staffError = '';
   appState.sessions = null;
   appState.sessionDetail = null;
@@ -1035,8 +1045,14 @@ async function loadStaffAttempts(force = false) {
   appState.staffLoading = true;
   appState.staffError = '';
   try {
-    const rows = await apiRequest(`/api/staff/attempts?${resultsQuery()}`);
-    appState.staffAttempts = Array.isArray(rows) ? rows : [];
+    const { page, size } = appState.staffPage;
+    const [data, summary] = await Promise.all([
+      apiRequest(`/api/staff/attempts?${resultsQuery()}&page=${page}&size=${size}`),
+      apiRequest(`/api/staff/attempts/summary?testId=${encodeURIComponent(ACTIVE_TEST.id)}`)
+    ]);
+    appState.staffAttempts = Array.isArray(data?.items) ? data.items : [];
+    appState.staffPage = { page: data?.page ?? 0, size: data?.size ?? size, total: data?.total ?? 0 };
+    appState.staffSummary = summary;
   } catch (error) {
     appState.staffError = error.message || 'No se pudieron cargar los resultados.';
   } finally {
@@ -1313,6 +1329,23 @@ async function exportResults() {
     toast('Archivo generado. Contiene datos personales: guardalo con cuidado.', 'info');
   } catch (error) {
     toast(error.message, 'err');
+  }
+}
+
+function changeResultsPage(delta) {
+  const { page, size, total } = appState.staffPage;
+  const next = Math.min(Math.max(0, page + delta), Math.max(0, Math.ceil(total / size) - 1));
+  if (next === page) return;
+  appState.staffPage = { page: next, size, total };
+  loadStaffAttempts(true);
+}
+
+async function showAttemptDetail(attemptId) {
+  try {
+    const detail = await apiRequest(`/api/staff/attempts/${attemptId}`);
+    showStaffDialog('Detalle de la prueba', ADM.attemptDetailHtml(detail, TOTAL_ITEMS));
+  } catch (error) {
+    toast(error.message || 'No se pudo cargar el detalle.', 'err');
   }
 }
 
@@ -1976,6 +2009,11 @@ function renderStaff() {
   } else if (appState.route === 'auditoria' && appState.sessionUser?.role === 'ADMIN') {
     loadAdminData('audit');
     content.innerHTML = renderAdminAudit();
+  } else if (appState.route === 'envios' && appState.sessionUser?.role === 'ADMIN') {
+    loadAdminNotifications();
+    content.innerHTML = renderAdminNotifications();
+  } else if (appState.route === 'titulares' && appState.sessionUser?.role === 'ADMIN') {
+    content.innerHTML = renderPrivacySubjects();
   } else if (appState.route === 'convocatorias') content.innerHTML = ADM.sessionsView(appState.sessions, appState.sessionsError);
   else if (appState.route === 'convocatoria') content.innerHTML = ADM.enrollmentsView(appState.sessionDetail?.session, appState.sessionDetail?.rows, appState.sessionDetail?.lastResult, appState.sessionDetail?.error);
   else if (appState.route === 'aspirantes') content.innerHTML = renderStaffApplicants();
@@ -2052,6 +2090,116 @@ function renderAuditTable(rows) {
   </table></section>`;
 }
 
+async function loadAdminNotifications(force = false) {
+  if (STATIC_PAGES_MODE || appState.sessionUser?.role !== 'ADMIN' || appState.adminLoading) return;
+  if (appState.adminNotifications && !force) return;
+  appState.adminLoading = true;
+  appState.adminError = '';
+  try {
+    const rows = await apiRequest('/api/admin/notifications');
+    appState.adminNotifications = Array.isArray(rows) ? rows : [];
+  } catch (error) {
+    appState.adminError = error.message || 'No se pudo cargar el estado de los envíos.';
+  } finally {
+    appState.adminLoading = false;
+    if (appState.role === 'staff') render();
+  }
+}
+
+function renderAdminNotifications() {
+  const rows = appState.adminNotifications;
+  const tone = { SENT: 'good', SIMULATED: '', PENDING: 'warn', FAILED: 'warn' };
+  const label = { SENT: 'Enviado', SIMULATED: 'Simulado', PENDING: 'Pendiente', FAILED: 'Falló' };
+  const table = !rows ? '<div class="empty-state" role="status">Cargando envíos…</div>'
+    : !rows.length ? '<div class="empty-state">Todavía no se envió ningún correo.</div>'
+    : `<section class="table-wrap"><table class="data-table">
+      <caption class="sr-only">Últimos 100 correos del sistema</caption>
+      <thead><tr><th scope="col">Fecha</th><th scope="col">Tipo</th><th scope="col">Destinatario</th><th scope="col">Asunto</th><th scope="col">Estado</th><th scope="col">Intentos</th></tr></thead>
+      <tbody>${rows.map(m => `<tr><td>${formatDate(m.createdAt)}</td><td><span class="pill">${esc(m.type)}</span></td><td>${esc(m.toEmail)}</td><td>${esc(m.subject)}${m.body ? `<details><summary class="tiny">Ver texto simulado</summary><pre class="tiny">${esc(m.body)}</pre></details>` : ''}</td>
+        <td><span class="pill ${tone[m.status] || ''}">${esc(label[m.status] || m.status)}</span>${m.lastError ? `<br><span class="muted tiny">${esc(m.lastError)}</span>` : ''}</td><td>${esc(m.attempts)}</td></tr>`).join('')}</tbody>
+    </table></section>`;
+  return `
+    <div class="screen-title">
+      <div><p class="eyebrow">Administración</p><h2>Envíos de correo</h2><p>Invitaciones, constancias y avisos. En producción solo se ve el estado del envío; el texto únicamente aparece en entornos de desarrollo.</p></div>
+      <button class="ghost-btn" type="button" data-action="reload-admin-notifications">Actualizar</button>
+    </div>
+    ${appState.adminError ? `<div class="empty-state">${esc(appState.adminError)}</div>` : table}`;
+}
+
+function renderPrivacySubjects() {
+  const s = appState.privacySearch;
+  const table = s.error ? `<div class="empty-state" role="alert">${esc(s.error)}</div>`
+    : s.rows === null ? '<div class="empty-state">Busca por nombre o correo (mínimo 3 caracteres).</div>'
+    : !s.rows.length ? '<div class="empty-state">Ninguna persona coincide con la búsqueda.</div>'
+    : `<section class="table-wrap"><table class="data-table">
+      <caption class="sr-only">Titulares de datos encontrados</caption>
+      <thead><tr><th scope="col">Persona</th><th scope="col">Estado</th><th scope="col">Acciones</th></tr></thead>
+      <tbody>${s.rows.map(r => `<tr><td><strong>${esc(r.fullName)}</strong><br><span class="muted tiny">${esc(r.email)}</span></td>
+        <td><span class="pill ${r.anonymized ? '' : 'good'}">${r.anonymized ? 'Anonimizada' : 'Con datos'}</span></td>
+        <td><div class="row-actions"><button class="ghost-btn" type="button" data-action="privacy-export" data-user-id="${r.id}">Descargar datos</button>${r.anonymized ? '' : `<button class="danger-btn" type="button" data-action="privacy-anonymize" data-user-id="${r.id}">Anonimizar</button>`}</div></td></tr>`).join('')}</tbody>
+    </table></section>`;
+  return `
+    <div class="screen-title">
+      <div><p class="eyebrow">Administración</p><h2>Privacidad de los titulares</h2><p>Atiende solicitudes de acceso y eliminación. Cada acción queda en la auditoría.</p></div>
+    </div>
+    <form id="form-privacy-search" class="toolbar" role="search">
+      <label class="toolbar__grow"><span>Nombre o correo</span><input name="q" type="search" minlength="3" maxlength="80" value="${esc(s.q)}" required></label>
+      <button class="solid-btn" type="submit" ${s.busy ? 'disabled' : ''}>Buscar</button>
+    </form>
+    ${table}`;
+}
+
+async function searchPrivacySubjects(form) {
+  const q = String(new FormData(form).get('q') || '').trim();
+  const s = appState.privacySearch;
+  s.q = q;
+  if (q.length < 3) { s.error = 'Escribe al menos 3 caracteres.'; s.rows = null; render(); return; }
+  s.busy = true; s.error = '';
+  try {
+    s.rows = await apiRequest(`/api/admin/privacy/subjects?q=${encodeURIComponent(q)}`);
+  } catch (error) {
+    s.error = error.message || 'No se pudo buscar.'; s.rows = null;
+  } finally {
+    s.busy = false;
+    render();
+  }
+}
+
+async function exportPrivacySubject(userId) {
+  try {
+    await downloadFromApi(`/api/admin/privacy/subjects/${userId}/export`, `titular-${userId}.json`, 'application/json');
+    toast('Archivo generado. Contiene datos personales: guárdalo con cuidado.', 'info');
+  } catch (error) {
+    toast(error.message || 'No se pudo generar el archivo.', 'err');
+  }
+}
+
+function askAnonymize(userId) {
+  const row = (appState.privacySearch.rows || []).find(r => r.id === userId);
+  if (!row) return;
+  showStaffDialog('Anonimizar titular', `<form id="form-anonymize" class="dialog-form" data-user-id="${userId}">
+      <p>Vas a anonimizar a <strong>${ADM.esc(row.fullName)}</strong>. Pierde el acceso y sus datos identificables se borran; <strong>no se puede deshacer</strong>.</p>
+      <label><span>Justificación (mínimo 10 caracteres)</span><textarea name="reason" rows="3" minlength="10" maxlength="300" required></textarea></label>
+      <p id="dialog-error" class="form-error" role="alert"></p>
+      <div class="dialog-actions"><button class="ghost-btn" type="button" data-action="close-dialog">Volver</button><button class="danger-btn" type="submit">Anonimizar</button></div>
+    </form>`);
+}
+
+async function submitAnonymize(form) {
+  const reason = String(new FormData(form).get('reason') || '').trim();
+  if (reason.length < 10) return dialogError('Escribe al menos 10 caracteres.');
+  try {
+    await apiRequest(`/api/admin/privacy/subjects/${form.dataset.userId}/anonymize`, { reason });
+    closeStaffDialog();
+    toast('Titular anonimizado.', 'ok');
+    const s = appState.privacySearch;
+    s.rows = await apiRequest(`/api/admin/privacy/subjects?q=${encodeURIComponent(s.q)}`);
+    render();
+  } catch (error) {
+    dialogError(error.message || 'No se pudo anonimizar.');
+  }
+}
+
 function staffStatusCard() {
   if (appState.staffError) {
     return `<div class="empty-state">${esc(appState.staffError)}<br><button class="ghost-btn" type="button" data-action="reload-staff">Reintentar</button></div>`;
@@ -2064,12 +2212,13 @@ function renderStaffPanel() {
     return '<div class="empty-state">El panel del personal requiere conexión segura con el servidor.</div>';
   }
   const rows = appState.staffAttempts;
-  const avg = rows?.length ? Math.round(rows.reduce((sum, item) => sum + item.directScore, 0) / rows.length) : '--';
-  const top = rows?.length ? Math.max(...rows.map(item => item.directScore)) : '--';
+  const summary = appState.staffSummary;
+  const avg = summary?.average ?? '--';
+  const top = summary?.best ?? '--';
   return `
     <div class="screen-title"><div><p class="eyebrow">${appState.sessionUser?.role === 'ADMIN' ? 'Administración' : 'Personal'}</p><h2>Panel de aplicaciones</h2><p>${esc(appState.profile.username)}</p></div><button class="solid-btn" type="button" data-route="aspirantes">Ver aspirantes</button></div>
     <div class="staff-grid">
-      <div class="metric"><strong>${rows ? rows.length : '--'}</strong><span>pruebas entregadas</span></div>
+      <div class="metric"><strong>${summary ? summary.total : '--'}</strong><span>pruebas entregadas</span></div>
       <div class="metric"><strong>${avg}</strong><span>promedio directo</span></div>
       <div class="metric"><strong>${top}</strong><span>mejor puntaje</span></div>
     </div>
@@ -2082,14 +2231,14 @@ function renderStaffApplicants() {
   }
   const rows = appState.staffAttempts;
   return `
-    <div class="screen-title"><div><p class="eyebrow">Aspirantes</p><h2>Resultados</h2><p>${rows ? `${rows.length} pruebas con los filtros actuales.` : 'Pruebas entregadas por los aspirantes.'}</p></div><button class="ghost-btn" type="button" data-action="reload-staff">Actualizar</button></div>
+    <div class="screen-title"><div><p class="eyebrow">Aspirantes</p><h2>Resultados</h2><p>${rows ? `${appState.staffPage.total} ${appState.staffPage.total === 1 ? 'prueba' : 'pruebas'} con los filtros actuales.` : 'Pruebas entregadas por los aspirantes.'}</p></div><button class="ghost-btn" type="button" data-action="reload-staff">Actualizar</button></div>
     ${ADM.resultsToolbar(appState.sessions, appState.resultsFilters)}
-    ${rows ? ADM.attemptsTable(rows, TOTAL_ITEMS) : staffStatusCard()}`;
+    ${rows ? ADM.attemptsTable(rows, TOTAL_ITEMS) + ADM.pager(appState.staffPage) : staffStatusCard()}`;
 }
 
 function renderStaffAttemptsTable(rows) {
   if (!rows.length) return '<div class="empty-state">Todavía no hay pruebas entregadas.</div>';
-  return `<section class="table-wrap"><table class="data-table"><caption class="sr-only">Resultados de aspirantes</caption><thead><tr><th scope="col">Aspirante</th><th scope="col">Carrera</th><th scope="col">Puntaje</th><th scope="col">Percentil</th><th scope="col">CI</th><th scope="col">Clasificación</th><th scope="col">Incidencias</th><th scope="col">Entregada</th><th scope="col">Tiempo</th></tr></thead><tbody>${rows.map(item => `<tr><td><strong>${esc(item.fullName)}</strong><br><span class="muted tiny">${esc(item.email || '')}</span></td><td>${esc(normalizeCareer(item.career))}</td><td>${item.directScore}/${TOTAL_ITEMS}</td><td>${item.percentile}</td><td>${item.ci}</td><td>${esc(item.classification)}</td><td>${renderSecurityEvents(item.securityEvents)}</td><td>${formatDate(item.submittedAt)}</td><td>${formatDuration(item.durationSeconds)}</td></tr>`).join('')}</tbody></table></section>`;
+  return `<section class="table-wrap"><table class="data-table"><caption class="sr-only">Resultados de aspirantes</caption><thead><tr><th scope="col">Aspirante</th><th scope="col">Carrera</th><th scope="col">Puntaje</th><th scope="col">Percentil</th><th scope="col">CI</th><th scope="col">Clasificación</th><th scope="col">Incidencias</th><th scope="col">Entregada</th><th scope="col">Estado</th></tr></thead><tbody>${rows.map(item => `<tr><td><strong>${esc(item.fullName)}</strong><br><span class="muted tiny">${esc(item.email || '')}</span></td><td>${esc(normalizeCareer(item.career))}</td><td>${item.directScore}/${TOTAL_ITEMS}</td><td>${item.percentile}</td><td>${item.ci}</td><td>${esc(item.classification)}</td><td>${item.incidents || 0}</td><td>${formatDate(item.submittedAt)}</td><td>${item.invalidated ? 'Invalidada' : item.reviewed ? 'Revisada' : 'Sin revisar'}</td></tr>`).join('')}</tbody></table></section>`;
 }
 
 function renderSecurityEvents(events = []) {
@@ -2562,11 +2711,16 @@ function handleDocumentClick(event) {
     if (action === 'adjust-enrollment') enrollmentAction('adjust', Number(actionTarget.dataset.enrollmentId));
     if (action === 'revoke-enrollment') enrollmentAction('revoke', Number(actionTarget.dataset.enrollmentId));
     if (action === 'export-results') exportResults();
+    if (action === 'results-prev' || action === 'results-next') changeResultsPage(action === 'results-next' ? 1 : -1);
+    if (action === 'attempt-detail') showAttemptDetail(Number(actionTarget.dataset.attemptId));
     if (action === 'review-attempt') attemptAction('review', Number(actionTarget.dataset.attemptId));
     if (action === 'invalidate-attempt') attemptAction('invalidate', Number(actionTarget.dataset.attemptId));
     if (action === 'reapply-attempt') attemptAction('reapply', Number(actionTarget.dataset.attemptId));
     if (action === 'close-dialog') closeStaffDialog();
     if (action === 'reload-norms') loadStaffNorms(true);
+    if (action === 'reload-admin-notifications') loadAdminNotifications(true);
+    if (action === 'privacy-export') exportPrivacySubject(Number(actionTarget.dataset.userId));
+    if (action === 'privacy-anonymize') askAnonymize(Number(actionTarget.dataset.userId));
     if (action === 'reload-admin-users') loadAdminData('users', true);
     if (action === 'reload-admin-audit') loadAdminData('audit', true);
     if (action === 'save-staff-access' || action === 'toggle-staff-access') {
@@ -2830,6 +2984,8 @@ document.addEventListener('submit', event => {
     'form-admin-user': createStaffAccount,
     'form-claim': claimAccessCode,
     'form-password': submitPasswordChange,
+    'form-privacy-search': searchPrivacySubjects,
+    'form-anonymize': submitAnonymize,
     'form-session': submitSessionForm,
     'form-enroll': submitEnroll,
     'form-adjust': submitAdjust,
@@ -2837,6 +2993,7 @@ document.addEventListener('submit', event => {
     'form-reapply': submitReapply,
     'form-results-filter': form => {
       const data = new FormData(form);
+      appState.staffPage = { ...appState.staffPage, page: 0 };
       appState.resultsFilters = { sessionId: String(data.get('sessionId') || ''), status: String(data.get('status') || ''), q: String(data.get('q') || '') };
       return loadStaffAttempts(true);
     }

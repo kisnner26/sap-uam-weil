@@ -268,3 +268,6 @@ body[data-route="test"] .app-content{box-sizing:border-box;max-width:none;min-wi
   .app-shell:not(:has(.test-workbench)) .top-nav::after{content:"";flex:0 0 32px}
   .app-shell:not(:has(.test-workbench)) .top-nav{-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 32px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 32px),transparent)}
 }
+
+/* paginador de resultados */
+.pager{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:12px 4px}

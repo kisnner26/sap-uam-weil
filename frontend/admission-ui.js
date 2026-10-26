@@ -286,12 +286,42 @@
         <td><strong>${esc(item.fullName)}</strong><br><span class="muted tiny">${esc(item.email || '')}</span></td>
         <td class="tiny">${esc(item.sessionName || '—')}${flags ? `<br><span class="muted">${esc(flags)}</span>` : ''}</td>
         <td>${item.directScore}/${totalItems}</td><td>${item.percentile}</td><td>${item.ci}</td><td>${esc(item.classification)}</td>
-        <td>${eventsHtml(item.securityEvents)}</td><td class="tiny">${esc(formatDateTime(item.submittedAt))}</td>
+        <td>${item.incidents || 0}</td><td class="tiny">${esc(formatDateTime(item.submittedAt))}</td>
         <td>${state}${item.invalidated ? `<br><span class="muted tiny">${esc(item.invalidReason || '')}</span>` : ''}</td>
-        <td class="row-actions">${item.invalidated
+        <td class="row-actions"><button class="ghost-btn" type="button" data-action="attempt-detail" data-attempt-id="${item.id}">Detalle</button>${item.invalidated
           ? `<button class="ghost-btn" type="button" data-action="reapply-attempt" data-attempt-id="${item.id}">Reaplicar</button>`
           : `${item.reviewed ? '' : `<button class="ghost-btn" type="button" data-action="review-attempt" data-attempt-id="${item.id}">Marcar revisada</button>`}<button class="danger-btn" type="button" data-action="invalidate-attempt" data-attempt-id="${item.id}">Invalidar</button>`}</td></tr>`;
     }).join('')}</tbody></table></section>`;
+  }
+
+  /** Paginador de resultados: no pide nada por sí mismo, solo dibuja el estado y las acciones. */
+  function pager(page) {
+    const p = page || { page: 0, size: 25, total: 0 };
+    if (!p.total) return '';
+    const from = p.page * p.size + 1;
+    const to = Math.min(p.total, (p.page + 1) * p.size);
+    const last = to >= p.total;
+    return `<nav class="pager" aria-label="Paginación de resultados"><span class="muted tiny" role="status">Mostrando ${from}–${to} de ${p.total}</span>
+      <div class="row-actions"><button class="ghost-btn" type="button" data-action="results-prev" ${p.page === 0 ? 'disabled' : ''}>Anterior</button><button class="ghost-btn" type="button" data-action="results-next" ${last ? 'disabled' : ''}>Siguiente</button></div></nav>`;
+  }
+
+  /** Detalle que se pide al abrir una fila: puntaje por lámina, baremo aplicado e incidencias. */
+  function attemptDetailHtml(d, totalItems) {
+    const pages = (d.pageScores || []).map((v, i) => `<li>Lámina ${i + 1}: <strong>${esc(v)}</strong></li>`).join('');
+    return `<div class="dialog-form">
+      <p><strong>${esc(d.fullName)}</strong><br><span class="muted tiny">${esc(d.email || '')}</span></p>
+      <dl class="detail-list">
+        <div class="detail-row"><span>Puntaje directo</span><strong>${esc(d.directScore)}/${esc(totalItems)}</strong></div>
+        <div class="detail-row"><span>Baremo</span><strong>${esc(d.normColumn || '—')} · edad ${esc(d.age ?? '—')}</strong></div>
+        <div class="detail-row"><span>Percentil / CI</span><strong>${esc(d.percentile ?? '—')} / ${esc(d.ci ?? '—')}</strong></div>
+        <div class="detail-row"><span>Clasificación</span><strong>${esc(d.classification || '—')}</strong></div>
+        <div class="detail-row"><span>Duración</span><strong>${esc(Math.floor((d.durationSeconds || 0) / 60))} min ${esc((d.durationSeconds || 0) % 60)} s</strong></div>
+      </dl>
+      ${pages ? `<h3>Puntaje por lámina</h3><ul class="plain-list">${pages}</ul>` : ''}
+      <h3>Incidencias (${(d.securityEvents || []).length})</h3>
+      ${(d.securityEvents || []).length ? (d.securityEvents || []).map(e => `<p class="tiny"><strong>${esc(e.type)}</strong><br>${esc(e.detail || 'Sin detalle')}<br>${esc(formatDateTime(e.occurredAt))}</p>`).join('') : '<p class="muted tiny">Ninguna.</p>'}
+      <div class="dialog-actions"><button class="ghost-btn" type="button" data-action="close-dialog">Cerrar</button></div>
+    </div>`;
   }
 
   function eventsHtml(events = []) {
@@ -327,7 +357,7 @@
 
   const api = Object.freeze({
     esc, formatDateTime, toLocalInput, fromLocalInput, parseApplicants, aspirantHome, claimForm, noticeHtml, consentView,
-    sessionsView, sessionFormHtml, enrollmentsView, adjustFormHtml, resultsToolbar, attemptsTable,
+    sessionsView, sessionFormHtml, enrollmentsView, adjustFormHtml, resultsToolbar, attemptsTable, pager, attemptDetailHtml,
     invalidateFormHtml, reapplyFormHtml, dialogHtml
   });
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
