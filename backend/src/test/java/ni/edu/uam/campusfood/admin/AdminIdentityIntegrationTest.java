@@ -35,6 +35,7 @@ class AdminIdentityIntegrationTest {
     @Autowired PasswordEncoder passwords;
     @Autowired JwtService jwt;
     @Autowired ObjectMapper json;
+    @Autowired ni.edu.uam.campusfood.notification.NotificationOutboxRepository outbox;
 
     private String adminToken;
     private String clientToken;
@@ -93,7 +94,15 @@ class AdminIdentityIntegrationTest {
         assertThat(verified.getStatusCode()).isEqualTo(HttpStatus.OK);
         JsonNode session = json.readTree(verified.getBody());
         assertThat(session.get("user").get("mfaEnabled").asBoolean()).isTrue();
-        assertThat(get("/api/staff/attempts", session.get("token").asText()).getStatusCode()).isEqualTo(HttpStatus.OK);
+        // La contraseña temporal bloquea el acceso hasta cambiarla.
+        String sessionToken = session.get("token").asText();
+        assertThat(session.get("user").get("mustChangePassword").asBoolean()).isTrue();
+        assertThat(get("/api/staff/attempts", sessionToken).getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        var changed = exchange("/api/auth/password", HttpMethod.POST, sessionToken,
+                "{\"currentPassword\":\"temporal-segura-2026\",\"newPassword\":\"definitiva-segura-2026\"}");
+        assertThat(changed.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(get("/api/staff/attempts", json.readTree(changed.getBody()).get("token").asText()).getStatusCode())
+                .isEqualTo(HttpStatus.OK);
     }
 
     @Test
@@ -236,6 +245,56 @@ class AdminIdentityIntegrationTest {
         assertThat(exchange("/api/auth/login", HttpMethod.POST, null,
                 "{\"email\":\"aspirante@example.com\",\"password\":\"clave-nueva-123\"}").getStatusCode())
                 .isEqualTo(HttpStatus.OK);
+    }
+
+    @Test
+    void laContrasenaTemporalBloqueaTodoHastaCambiarla() throws Exception {
+        User temp = User.staff("Personal Nuevo", "nuevo@uam.edu.ni", passwords.encode("temporal-segura-1"), Role.STAFF);
+        temp.requirePasswordChange();
+        temp.enableMfa();
+        temp = users.save(temp);
+        String token = jwt.issue(temp).token();
+
+        var blocked = get("/api/staff/sessions", token);
+        assertThat(blocked.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        assertThat(blocked.getBody()).contains("PASSWORD_CHANGE_REQUIRED");
+        assertThat(get("/api/auth/me", token).getStatusCode()).isEqualTo(HttpStatus.OK);
+
+        var changed = exchange("/api/auth/password", HttpMethod.POST, token,
+                "{\"currentPassword\":\"temporal-segura-1\",\"newPassword\":\"definitiva-segura-2\"}");
+        assertThat(changed.getStatusCode()).isEqualTo(HttpStatus.OK);
+        String fresh = json.readTree(changed.getBody()).get("token").asText();
+        assertThat(get("/api/staff/sessions", fresh).getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(json.readTree(changed.getBody()).get("user").get("mustChangePassword").asBoolean()).isFalse();
+    }
+
+    @Test
+    void recuperarLaContrasenaPorCorreoUsaUnEnlaceDeUnSoloUso() throws Exception {
+        outbox.deleteAll();
+        String generic = exchange("/api/auth/forgot", HttpMethod.POST, null, "{\"email\":\"aspirante@example.com\"}").getBody();
+        var unknown = exchange("/api/auth/forgot", HttpMethod.POST, null, "{\"email\":\"nadie@example.com\"}");
+        assertThat(unknown.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
+        assertThat(unknown.getBody()).isEqualTo(generic);
+        assertThat(outbox.count()).isEqualTo(1);
+        var mail = outbox.findTop100ByOrderByCreatedAtDesc().get(0);
+        assertThat(mail.getType()).isEqualTo("PASSWORD_RESET");
+        var matcher = java.util.regex.Pattern.compile("\\?reset=(\\S+)").matcher(mail.getBody());
+        assertThat(matcher.find()).isTrue();
+        String link = matcher.group(1);
+
+        assertThat(exchange("/api/auth/reset", HttpMethod.POST, null,
+                json.createObjectNode().put("token", link).put("newPassword", "corta").toString()).getStatusCode())
+                .isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(exchange("/api/auth/reset", HttpMethod.POST, null,
+                json.createObjectNode().put("token", link).put("newPassword", "clave-recuperada-1").toString()).getStatusCode())
+                .isEqualTo(HttpStatus.NO_CONTENT);
+        assertThat(exchange("/api/auth/reset", HttpMethod.POST, null,
+                json.createObjectNode().put("token", link).put("newPassword", "otra-clave-larga-2").toString()).getStatusCode())
+                .isEqualTo(HttpStatus.UNAUTHORIZED);
+        assertThat(exchange("/api/auth/login", HttpMethod.POST, null,
+                "{\"email\":\"aspirante@example.com\",\"password\":\"clave-recuperada-1\"}").getStatusCode())
+                .isEqualTo(HttpStatus.OK);
+        assertThat(get("/api/auth/me", clientToken).getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
     }
 
     private org.springframework.http.ResponseEntity<String> get(String path, String token) {

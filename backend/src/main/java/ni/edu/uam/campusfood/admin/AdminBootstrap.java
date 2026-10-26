@@ -37,7 +37,9 @@ public class AdminBootstrap implements ApplicationRunner {
     public void run(ApplicationArguments args) {
         if (users.existsByRole(Role.ADMIN) || email.isBlank() || password.isBlank()) return;
         if (password.length() < 12) throw new IllegalStateException("APP_BOOTSTRAP_ADMIN_PASSWORD requiere al menos 12 caracteres");
-        User admin = users.save(User.staff(name.trim(), email.trim().toLowerCase(), passwords.encode(password), Role.ADMIN));
+        User initial = User.staff(name.trim(), email.trim().toLowerCase(), passwords.encode(password), Role.ADMIN);
+        initial.requirePasswordChange();
+        User admin = users.save(initial);
         audit.record(admin.getId(), "BOOTSTRAP_ADMIN", "USER", admin.getId(), "primera cuenta administrativa");
     }
 }

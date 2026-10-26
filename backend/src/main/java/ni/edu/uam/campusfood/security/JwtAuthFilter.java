@@ -57,6 +57,13 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                         && !Boolean.TRUE.equals(claims.get("mfa", Boolean.class))) {
                     throw new JwtException("Segundo factor requerido");
                 }
+                if (user.isMustChangePassword() && !isPasswordChangeAllowed(request)) {
+                    SecurityContextHolder.clearContext();
+                    response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                    response.setContentType("application/json;charset=UTF-8");
+                    response.getWriter().write("{\"status\":403,\"error\":\"Forbidden\",\"message\":\"Debes cambiar tu contraseña temporal antes de continuar.\",\"code\":\"PASSWORD_CHANGE_REQUIRED\"}");
+                    return;
+                }
                 String role = user.getRole().name();
                 var authority = new SimpleGrantedAuthority("ROLE_" + role);
                 var authentication = new UsernamePasswordAuthenticationToken(
@@ -71,6 +78,12 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    /** Con la contraseña temporal solo se puede cambiarla, ver el propio perfil o salir. */
+    private static boolean isPasswordChangeAllowed(HttpServletRequest request) {
+        String path = request.getRequestURI();
+        return "/api/auth/password".equals(path) || "/api/auth/logout".equals(path) || "/api/auth/me".equals(path);
     }
 
     private String resolveToken(HttpServletRequest request) {

@@ -35,8 +35,10 @@ public class AdminUserService {
         if (users.existsByEmailIgnoreCase(request.email())) {
             throw new AuthException(AuthException.Kind.EMAIL_TAKEN, "Ya existe una cuenta con ese correo");
         }
-        User user = users.save(User.staff(clean(request.fullName()), request.email().trim().toLowerCase(),
-                passwords.encode(request.temporaryPassword()), request.role()));
+        User newStaff = User.staff(clean(request.fullName()), request.email().trim().toLowerCase(),
+                passwords.encode(request.temporaryPassword()), request.role());
+        newStaff.requirePasswordChange();
+        User user = users.save(newStaff);
         audit.record(actorId, "CREATE_STAFF", "USER", user.getId(), "rol=" + user.getRole());
         return UserDto.from(user);
     }

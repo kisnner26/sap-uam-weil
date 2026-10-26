@@ -27,13 +27,15 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController {
 
     private final AuthService authService;
+    private final PasswordResetService resets;
     private final UserRepository users;
     private final boolean secureCookie;
 
-    public AuthController(AuthService authService, UserRepository users,
+    public AuthController(AuthService authService, PasswordResetService resets, UserRepository users,
                           @org.springframework.beans.factory.annotation.Value("${app.session-cookie.secure:false}")
                           boolean secureCookie) {
         this.authService = authService;
+        this.resets = resets;
         this.users = users;
         this.secureCookie = secureCookie;
     }
@@ -69,6 +71,21 @@ public class AuthController {
     public ResponseEntity<AuthFlowResponse> refresh(Authentication authentication,
                                                     HttpServletRequest request) {
         return withSessionCookie(authService.refresh(Long.valueOf(authentication.getName())), request, HttpStatus.OK);
+    }
+
+    /** Pide el enlace de recuperación. Responde igual exista o no la cuenta. */
+    @PostMapping("/forgot")
+    public ResponseEntity<java.util.Map<String, String>> forgot(@Valid @RequestBody ni.edu.uam.campusfood.auth.dto.ForgotPasswordRequest req) {
+        resets.request(req.email());
+        return ResponseEntity.accepted().body(java.util.Map.of("message",
+                "Si el correo corresponde a una cuenta, te enviamos un enlace para crear una contraseña nueva. Vence en 30 minutos."));
+    }
+
+    /** Fija una contraseña nueva con el enlace recibido por correo. */
+    @PostMapping("/reset")
+    public ResponseEntity<Void> reset(@Valid @RequestBody ni.edu.uam.campusfood.auth.dto.ResetPasswordRequest req) {
+        resets.reset(req.token(), req.newPassword());
+        return ResponseEntity.noContent().build();
     }
 
     /** Cambia la contraseña de la cuenta autenticada; las demás sesiones quedan revocadas. */

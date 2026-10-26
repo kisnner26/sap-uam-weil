@@ -103,6 +103,22 @@ public class NotificationService {
                 """.formatted(greeting(fullName)));
     }
 
+    @Transactional
+    public void passwordReset(String email, String fullName, String link, long validMinutes) {
+        queue("PASSWORD_RESET", email, "Crea una contraseña nueva para tu cuenta", """
+                %s
+
+                Recibimos una solicitud para crear una contraseña nueva en el sistema de evaluaciones de la UAM.
+
+                Abre este enlace (vale %d minutos y solo se puede usar una vez):
+                %s
+
+                Si no fuiste tú, ignora este mensaje: tu contraseña actual sigue funcionando.
+
+                Admisión UAM
+                """.formatted(greeting(fullName), validMinutes, link));
+    }
+
     private void queue(String type, String to, String subject, String body) {
         outbox.save(new NotificationOutbox(type, to, subject, body));
     }

@@ -13,7 +13,8 @@ public record UserDto(
         String authProvider,
         Integer moodleId,
         boolean active,
-        boolean mfaEnabled
+        boolean mfaEnabled,
+        boolean mustChangePassword
 ) {
     public static UserDto from(User user) {
         return new UserDto(
@@ -26,7 +27,8 @@ public record UserDto(
                 user.getAuthProvider().value(),
                 user.getMoodleId(),
                 user.isActive(),
-                user.isMfaEnabled()
+                user.isMfaEnabled(),
+                user.isMustChangePassword()
         );
     }
 }

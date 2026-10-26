@@ -89,6 +89,10 @@ public class User {
     @Column(name = "mfa_enabled", nullable = false)
     private boolean mfaEnabled = false;
 
+    /** Cuentas creadas por administración: deben cambiar la contraseña temporal en el primer ingreso. */
+    @Column(name = "must_change_password", nullable = false)
+    private boolean mustChangePassword = false;
+
     /** Último paso TOTP aceptado: un código ya usado no se acepta de nuevo. */
     @Column(name = "mfa_last_step")
     private Long mfaLastStep;
@@ -266,8 +270,17 @@ public class User {
         this.updatedAt = Instant.now();
     }
 
+    public boolean isMustChangePassword() {
+        return mustChangePassword;
+    }
+
+    public void requirePasswordChange() {
+        this.mustChangePassword = true;
+    }
+
     public void changePassword(String newHash) {
         this.passwordHash = newHash;
+        this.mustChangePassword = false;
         revokeSessions();
     }
 
