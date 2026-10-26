@@ -10,13 +10,14 @@ public record AuthFlowResponse(
         boolean mfaEnrollmentRequired,
         String challengeToken,
         String enrollmentSecret,
-        String otpauthUri
+        String otpauthUri,
+        String qrSvg
 ) {
     public static AuthFlowResponse authenticated(String token, long expiresIn, UserDto user) {
-        return new AuthFlowResponse(token, "Bearer", expiresIn, user, false, false, null, null, null);
+        return new AuthFlowResponse(token, "Bearer", expiresIn, user, false, false, null, null, null, null);
     }
 
-    public static AuthFlowResponse challenge(String token, boolean enrollment, String secret, String uri) {
-        return new AuthFlowResponse(null, null, 0, null, true, enrollment, token, secret, uri);
+    public static AuthFlowResponse challenge(String token, boolean enrollment, String secret, String uri, String qrSvg) {
+        return new AuthFlowResponse(null, null, 0, null, true, enrollment, token, secret, uri, qrSvg);
     }
 }

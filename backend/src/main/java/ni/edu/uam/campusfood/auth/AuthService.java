@@ -34,6 +34,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final MfaSecretCipher mfaCipher;
     private final TotpService totp;
+    private final ni.edu.uam.campusfood.security.QrCodeService qr;
     private final DatabaseLoginThrottleService throttles;
     private final String dummyHash;
 
@@ -43,6 +44,7 @@ public class AuthService {
                        PasswordEncoder passwordEncoder,
                        MfaSecretCipher mfaCipher,
                        TotpService totp,
+                       ni.edu.uam.campusfood.security.QrCodeService qr,
                        DatabaseLoginThrottleService throttles) {
         this.moodleClient = moodleClient;
         this.users = users;
@@ -50,6 +52,7 @@ public class AuthService {
         this.passwordEncoder = passwordEncoder;
         this.mfaCipher = mfaCipher;
         this.totp = totp;
+        this.qr = qr;
         this.throttles = throttles;
         // Hash de relleno: el login de un correo inexistente cuesta lo mismo que el de uno real.
         this.dummyHash = passwordEncoder.encode("relleno-sin-uso-" + java.util.UUID.randomUUID());
@@ -210,7 +213,7 @@ public class AuthService {
         String uri = plainSecret == null ? null : "otpauth://totp/SAP-UAM:"
                 + url(user.getEmail()) + "?secret=" + plainSecret + "&issuer=SAP-UAM";
         return AuthFlowResponse.challenge(jwtService.issueMfaChallenge(user).token(),
-                !user.isMfaEnabled(), plainSecret, uri);
+                !user.isMfaEnabled(), plainSecret, uri, uri == null ? null : qr.svg(uri));
     }
 
     private AuthFlowResponse issueFor(User user) {
