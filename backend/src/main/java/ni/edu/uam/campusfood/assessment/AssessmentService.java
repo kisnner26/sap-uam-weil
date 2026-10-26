@@ -19,16 +19,13 @@ import java.util.UUID;
 @Service
 public class AssessmentService {
     private static final Duration LEASE_DURATION = Duration.ofMinutes(2);
-    private static final String WEIL_TEST_ID = "weil-form-a";
-    private static final int WEIL_VERSION = 1;
-    private static final int WEIL_ITEMS = 60;
-    private static final int WEIL_OPTIONS = 8;
 
     private final AssessmentAttemptRepository attempts;
     private final AssessmentResponseRepository responses;
     private final UserRepository users;
     private final AssessmentEventRepository events;
     private final ScoringRegistry scoring;
+    private final TestCatalog catalog;
     private final AdmissionService admission;
     private final NotificationService notifications;
 
@@ -37,6 +34,7 @@ public class AssessmentService {
                              UserRepository users,
                              AssessmentEventRepository events,
                              ScoringRegistry scoring,
+                             TestCatalog catalog,
                              AdmissionService admission,
                              NotificationService notifications) {
         this.attempts = attempts;
@@ -44,6 +42,7 @@ public class AssessmentService {
         this.users = users;
         this.events = events;
         this.scoring = scoring;
+        this.catalog = catalog;
         this.admission = admission;
         this.notifications = notifications;
     }
@@ -95,8 +94,8 @@ public class AssessmentService {
     @Transactional
     public AttemptView answer(Long userId, Long attemptId, int itemIndex, int option,
                               String leaseToken, long expectedVersion) {
-        validateAnswer(itemIndex, option);
         AssessmentAttempt attempt = writableAttempt(userId, attemptId, leaseToken, expectedVersion);
+        validateAnswer(attempt, itemIndex, option);
         AssessmentResponse response = responses.findByAttemptIdAndItemIndex(attemptId, itemIndex)
                 .orElseGet(() -> new AssessmentResponse(attempt, itemIndex, option));
         response.select(option);
@@ -109,10 +108,10 @@ public class AssessmentService {
     @Transactional
     public AttemptView clearAnswer(Long userId, Long attemptId, int itemIndex,
                                    String leaseToken, long expectedVersion) {
-        if (itemIndex < 0 || itemIndex >= WEIL_ITEMS) {
+        AssessmentAttempt attempt = writableAttempt(userId, attemptId, leaseToken, expectedVersion);
+        if (!definition(attempt).acceptsItem(itemIndex)) {
             throw new IllegalArgumentException("El ítem no pertenece a la definición publicada.");
         }
-        AssessmentAttempt attempt = writableAttempt(userId, attemptId, leaseToken, expectedVersion);
         responses.deleteByAttemptIdAndItemIndex(attemptId, itemIndex);
         attempt.touch();
         flushOptimistically(attempt);
@@ -135,14 +134,14 @@ public class AssessmentService {
     public void authorizeMaterial(Long userId, Long attemptId, int itemIndex) {
         AssessmentAttempt attempt = ownedAttempt(userId, attemptId);
         ensureWithinTime(attempt, Instant.now());
-        if (attempt.getStatus() != AttemptStatus.IN_PROGRESS || itemIndex < 0 || itemIndex >= WEIL_ITEMS) {
+        if (attempt.getStatus() != AttemptStatus.IN_PROGRESS || !definition(attempt).acceptsItem(itemIndex)) {
             throw new AssessmentConflictException("El material solicitado no está disponible.");
         }
         java.util.Set<Integer> answered = responses.findByAttemptIdOrderByItemIndex(attemptId).stream()
                 .map(AssessmentResponse::getItemIndex).collect(java.util.stream.Collectors.toSet());
         int firstPending = 0;
-        while (firstPending < WEIL_ITEMS && answered.contains(firstPending)) firstPending++;
-        int exposedThrough = Math.min(WEIL_ITEMS - 1, firstPending + 1);
+        while (firstPending < definition(attempt).itemCount() && answered.contains(firstPending)) firstPending++;
+        int exposedThrough = Math.min(definition(attempt).itemCount() - 1, firstPending + 1);
         if (itemIndex > exposedThrough) {
             throw new AssessmentConflictException("Este ítem todavía no está disponible.");
         }
@@ -153,12 +152,12 @@ public class AssessmentService {
                               List<Integer> submittedAnswers, Integer age, String normGroup) {
         validateProfile(age, normGroup);
         AssessmentAttempt attempt = writableAttempt(userId, attemptId, leaseToken, expectedVersion);
-        if (submittedAnswers == null || submittedAnswers.size() != WEIL_ITEMS) {
+        if (submittedAnswers == null || submittedAnswers.size() != definition(attempt).itemCount()) {
             throw new AssessmentConflictException("El intento todavía tiene respuestas pendientes.");
         }
         for (int itemIndex = 0; itemIndex < submittedAnswers.size(); itemIndex++) {
             int option = submittedAnswers.get(itemIndex) == null ? 0 : submittedAnswers.get(itemIndex);
-            validateAnswer(itemIndex, option);
+            validateAnswer(attempt, itemIndex, option);
             int currentIndex = itemIndex;
             AssessmentResponse response = responses.findByAttemptIdAndItemIndex(attemptId, itemIndex)
                     .orElseGet(() -> new AssessmentResponse(attempt, currentIndex, option));
@@ -166,7 +165,7 @@ public class AssessmentService {
             responses.save(response);
         }
         responses.flush();
-        if (responses.countByAttemptId(attemptId) != WEIL_ITEMS) {
+        if (responses.countByAttemptId(attemptId) != definition(attempt).itemCount()) {
             throw new AssessmentConflictException("El intento todavía tiene respuestas pendientes.");
         }
         ScoringStrategy.Score score = strategy(attempt).score(submittedAnswers);
@@ -189,7 +188,7 @@ public class AssessmentService {
         Instant now = Instant.now();
         int closed = 0;
         for (AssessmentAttempt attempt : attempts.findByStatusAndDeadlineAtBefore(AttemptStatus.IN_PROGRESS, now.minusSeconds(5))) {
-            List<Integer> answers = new java.util.ArrayList<>(java.util.Collections.nCopies(WEIL_ITEMS, 0));
+            List<Integer> answers = new java.util.ArrayList<>(java.util.Collections.nCopies(definition(attempt).itemCount(), 0));
             for (AssessmentResponse response : responses.findByAttemptIdOrderByItemIndex(attempt.getId())) {
                 answers.set(response.getItemIndex(), response.getSelectedOption());
             }
@@ -287,7 +286,7 @@ public class AssessmentService {
         }
         return submitted.stream().map(attempt -> {
             List<Integer> answers = byAttempt.getOrDefault(attempt.getId(), List.of());
-            ScoringStrategy.Score score = answers.size() == WEIL_ITEMS ? strategy(attempt).score(answers) : null;
+            ScoringStrategy.Score score = answers.size() == definition(attempt).itemCount() ? strategy(attempt).score(answers) : null;
             ScoringStrategy.Interpretation interpretation = attempt.getDirectScore() == null ? null
                     : strategy(attempt).interpret(attempt.getDirectScore(), attempt.getParticipantAge(), attempt.getNormGroup());
             return StaffAttemptView.from(attempt, score == null ? List.of() : score.pageScores(), interpretation,
@@ -336,7 +335,7 @@ public class AssessmentService {
                         AssessmentConflictException.Kind.NOT_FOUND));
         List<Integer> answers = responses.findForAttempts(List.of(attemptId)).stream()
                 .map(AssessmentResponse::getSelectedOption).toList();
-        ScoringStrategy.Score score = answers.size() == WEIL_ITEMS ? strategy(attempt).score(answers) : null;
+        ScoringStrategy.Score score = answers.size() == definition(attempt).itemCount() ? strategy(attempt).score(answers) : null;
         var interpretation = attempt.getDirectScore() == null ? null
                 : strategy(attempt).interpret(attempt.getDirectScore(), attempt.getParticipantAge(), attempt.getNormGroup());
         List<SecurityEventView> eventViews = events.findForAttempts(List.of(attemptId)).stream()
@@ -353,7 +352,7 @@ public class AssessmentService {
     }
 
     public List<java.util.Map<String, Integer>> norms() {
-        return scoring.forTest(WEIL_TEST_ID).norms();
+        return scoring.forTest(catalog.defaultTest().id()).norms();
     }
 
     private static void ensureWithinTime(AssessmentAttempt attempt, Instant now) {
@@ -362,8 +361,8 @@ public class AssessmentService {
         }
     }
 
-    private static void validateDefinition(String testId, int testVersion) {
-        if (!WEIL_TEST_ID.equals(testId) || testVersion != WEIL_VERSION) {
+    private void validateDefinition(String testId, int testVersion) {
+        if (catalog.get(testId).version() != testVersion) {
             throw new IllegalArgumentException("La versión del test no está publicada.");
         }
     }
@@ -379,8 +378,12 @@ public class AssessmentService {
         }
     }
 
-    private static void validateAnswer(int itemIndex, int option) {
-        if (itemIndex < 0 || itemIndex >= WEIL_ITEMS || option < 1 || option > WEIL_OPTIONS) {
+    private TestDefinition definition(AssessmentAttempt attempt) {
+        return catalog.get(attempt.getTestId());
+    }
+
+    private void validateAnswer(AssessmentAttempt attempt, int itemIndex, int option) {
+        if (!definition(attempt).accepts(itemIndex, option)) {
             throw new IllegalArgumentException("La respuesta no pertenece a la definición publicada.");
         }
     }

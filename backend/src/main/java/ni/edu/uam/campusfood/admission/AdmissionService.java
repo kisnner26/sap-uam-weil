@@ -3,6 +3,7 @@ package ni.edu.uam.campusfood.admission;
 import ni.edu.uam.campusfood.assessment.AssessmentAttempt;
 import ni.edu.uam.campusfood.assessment.AssessmentAttemptRepository;
 import ni.edu.uam.campusfood.assessment.AttemptStatus;
+import ni.edu.uam.campusfood.assessment.TestCatalog;
 import ni.edu.uam.campusfood.audit.AuditService;
 import ni.edu.uam.campusfood.notification.NotificationService;
 import ni.edu.uam.campusfood.privacy.PrivacyService;
@@ -37,7 +38,6 @@ import java.util.stream.Collectors;
  */
 @Service
 public class AdmissionService {
-    public static final String WEIL = "weil-form-a";
     private static final String CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
     private static final int CODE_LENGTH = 12;
     private static final Pattern EMAIL = Pattern.compile("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$");
@@ -53,14 +53,16 @@ public class AdmissionService {
     private final NotificationService notifications;
     private final PrivacyService privacy;
     private final DatabaseLoginThrottleService throttles;
+    private final TestCatalog catalog;
     private final int defaultMinutes;
 
     public AdmissionService(ExamSessionRepository sessions, ExamEnrollmentRepository enrollments,
                             AssessmentAttemptRepository attempts, UserRepository users, AuditService audit,
                             NotificationService notifications, PrivacyService privacy,
-                            DatabaseLoginThrottleService throttles,
+                            DatabaseLoginThrottleService throttles, TestCatalog catalog,
                             @Value("${app.assessment.weil-duration-seconds:1200}") long durationSeconds) {
         this.sessions = sessions;
+        this.catalog = catalog;
         this.enrollments = enrollments;
         this.attempts = attempts;
         this.users = users;
@@ -76,7 +78,7 @@ public class AdmissionService {
     @Transactional
     public SessionView createSession(Long actorId, SessionInput input) {
         validate(input);
-        ExamSession session = sessions.save(new ExamSession(input.name().strip(), WEIL, input.opensAt(),
+        ExamSession session = sessions.save(new ExamSession(input.name().strip(), catalog.defaultTest().id(), input.opensAt(),
                 input.closesAt(), input.timeLimitMinutes(), blankToNull(input.instructions()), actorId));
         audit.record(actorId, "CREATE_SESSION", "SESSION", session.getId(), session.getName());
         return toView(session, List.of(), Map.of());
@@ -85,7 +87,7 @@ public class AdmissionService {
     /** Atajo para pruebas: crea una convocatoria sin pasar por la validacion de formularios. */
     @Transactional
     public ExamSession createSessionForTest(Long actorId, String name, Instant opensAt, Instant closesAt) {
-        return sessions.save(new ExamSession(name, WEIL, opensAt, closesAt, null, null, actorId));
+        return sessions.save(new ExamSession(name, catalog.defaultTest().id(), opensAt, closesAt, null, null, actorId));
     }
 
     @Transactional
@@ -111,7 +113,7 @@ public class AdmissionService {
 
     @Transactional(readOnly = true)
     public List<SessionView> listSessions() {
-        List<ExamSession> all = sessions.findByTestIdOrderByOpensAtDesc(WEIL);
+        List<ExamSession> all = sessions.findByTestIdOrderByOpensAtDesc(catalog.defaultTest().id());
         if (all.isEmpty()) return List.of();
         List<Long> ids = all.stream().map(ExamSession::getId).toList();
         List<ExamEnrollment> rows = enrollments.findBySessionIdIn(ids);
@@ -227,7 +229,7 @@ public class AdmissionService {
         Instant now = Instant.now();
         boolean needsConsent = !privacy.hasConsented(userId);
         int version = privacy.currentVersion();
-        var active = attempts.findFirstByUserIdAndTestIdAndStatusOrderByStartedAtDesc(userId, WEIL, AttemptStatus.IN_PROGRESS);
+        var active = attempts.findFirstByUserIdAndTestIdAndStatusOrderByStartedAtDesc(userId, catalog.defaultTest().id(), AttemptStatus.IN_PROGRESS);
         if (active.isPresent() && active.get().isWithinTime(now)) {
             AssessmentAttempt attempt = active.get();
             ExamEnrollment enrollment = attempt.getEnrollment();
