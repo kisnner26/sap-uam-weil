@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&family=Playfair+Display:ital,wght@0,800;1,800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css?v=31">
-<link rel="stylesheet" href="theme-v2.css?v=11">
+<link rel="stylesheet" href="theme-v2.css?v=14">
 </head>
 <body>
 <div class="toast-wrap" id="toast-wrap" aria-live="polite"></div>
@@ -103,9 +103,42 @@
             <span id="btn-unified-label">Ingresar</span>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
           </button>
+          <button type="button" class="auth-secondary" id="forgot-link" data-action="show-forgot">¿Olvidaste tu contraseña?</button>
           <button type="button" class="auth-secondary app-hidden" id="manual-register-toggle" data-action="toggle-manual-register">Crear cuenta externa</button>
           <button type="button" class="auth-secondary app-hidden" id="demo-access" data-action="enter-demo">Explorar demostración</button>
           <p class="pr__foot" id="unified-foot">Usá tu CIF UAM o tu correo registrado en este mismo campo.</p>
+        </form>
+        <form id="form-forgot" class="pr__form app-hidden" novalidate aria-labelledby="forgot-title">
+          <div class="mfa-intro">
+            <p class="eyebrow">Recuperar acceso</p>
+            <h2 id="forgot-title">Contraseña olvidada</h2>
+            <p id="forgot-help">Escribe el correo de tu cuenta externa o de personal y te enviamos un enlace para crear una contraseña nueva. Las cuentas con CIF se recuperan desde Moodle UAM.</p>
+          </div>
+          <div class="pf">
+            <label for="forgot-email">Correo de la cuenta</label>
+            <div class="pi" id="wrap-forgot-email"><input id="forgot-email" type="email" maxlength="160" autocomplete="email" aria-describedby="forgot-msg" required></div>
+            <div class="pi__msg" id="forgot-msg" role="alert"></div>
+          </div>
+          <button class="pr__btn" id="btn-forgot" type="submit">Enviar enlace</button>
+          <button type="button" class="auth-secondary" data-action="cancel-forgot">Volver al acceso</button>
+        </form>
+        <form id="form-reset" class="pr__form app-hidden" novalidate aria-labelledby="reset-title">
+          <div class="mfa-intro">
+            <p class="eyebrow">Recuperar acceso</p>
+            <h2 id="reset-title">Contraseña nueva</h2>
+            <p id="reset-help">Elige una contraseña de al menos 8 caracteres (12 si eres personal).</p>
+          </div>
+          <div class="pf">
+            <label for="reset-pass">Contraseña nueva</label>
+            <div class="pi" id="wrap-reset-pass"><input id="reset-pass" type="password" maxlength="72" autocomplete="new-password" required></div>
+          </div>
+          <div class="pf">
+            <label for="reset-pass2">Repite la contraseña</label>
+            <div class="pi" id="wrap-reset-pass2"><input id="reset-pass2" type="password" maxlength="72" autocomplete="new-password" aria-describedby="reset-msg" required></div>
+            <div class="pi__msg" id="reset-msg" role="alert"></div>
+          </div>
+          <button class="pr__btn" id="btn-reset" type="submit">Guardar contraseña</button>
+          <button type="button" class="auth-secondary" data-action="cancel-forgot">Volver al acceso</button>
         </form>
         <form id="form-mfa" class="pr__form app-hidden" novalidate aria-labelledby="mfa-title">
           <div class="mfa-intro">
@@ -114,7 +147,8 @@
             <p id="mfa-help">Abrí tu aplicación de autenticación e ingresá el código actual.</p>
           </div>
           <div id="mfa-enrollment" class="mfa-enrollment app-hidden">
-            <p>Agregá una cuenta TOTP con esta clave. Se mostrará una sola vez.</p>
+            <p>Escanea el código con tu aplicación de autenticación o escribe la clave a mano. Se mostrará una sola vez.</p>
+            <img id="mfa-qr" class="mfa-qr app-hidden" alt="Código QR para configurar el autenticador" width="176" height="176">
             <output id="mfa-secret" class="mfa-secret" aria-label="Clave para configurar el autenticador"></output>
             <a id="mfa-open-app" class="mfa-open-app" href="#">Abrir en el autenticador</a>
           </div>
@@ -157,6 +191,6 @@
 <script src="client-session.js?v=1"></script>
 <script src="demo-credentials.js?v=1"></script>
 <script src="admission-ui.js?v=1"></script>
-<script src="app.js?v=38"></script>
+<script src="app.js?v=41"></script>
 </body>
 </html>

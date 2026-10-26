@@ -271,3 +271,10 @@ body[data-route="test"] .app-content{box-sizing:border-box;max-width:none;min-wi
 
 /* paginador de resultados */
 .pager{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:12px 4px}
+.pi__msg.is-ok{color:var(--teal)}
+.mfa-qr{display:block;width:176px;height:176px;margin:8px 0;border:1px solid var(--line);background:#fff;image-rendering:pixelated}
+
+/* con el menú horizontal el indicador activo es un subrayado: la barra lateral pisaba la etiqueta anterior */
+@media(min-width:721px) and (max-width:1024px){
+  .nav-btn.is-active::after{left:0;right:0;top:auto;bottom:0;width:auto;height:3px}
+}

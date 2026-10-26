@@ -598,6 +598,94 @@ async function submitUnifiedLogin() {
   }
 }
 
+// Alterna entre el acceso, la recuperación de contraseña y el formulario del enlace recibido por correo.
+function showAuthPanel(panel) {
+  const forms = { login: '#form-unified', forgot: '#form-forgot', reset: '#form-reset' };
+  Object.entries(forms).forEach(([name, selector]) => $(selector)?.classList.toggle('app-hidden', name !== panel));
+  $('.auth-tabs')?.classList.toggle('app-hidden', panel !== 'login');
+  $('#form-mfa')?.classList.add('app-hidden');
+  const focusId = { login: 'unified-id', forgot: 'forgot-email', reset: 'reset-pass' }[panel];
+  $(`#${focusId}`)?.focus();
+}
+
+async function submitForgot(form) {
+  const email = String($('#forgot-email')?.value || '').trim();
+  const msg = $('#forgot-msg');
+  if (msg) msg.textContent = '';
+  if (!/^\S+@\S+\.\S+$/.test(email)) { if (msg) msg.textContent = 'Escribe un correo válido.'; return; }
+  const button = $('#btn-forgot');
+  button.disabled = true;
+  try {
+    const result = await apiRequest('/api/auth/forgot', { email });
+    if (msg) { msg.textContent = result?.message || 'Revisa tu correo.'; msg.classList.add('is-ok'); }
+  } catch (error) {
+    if (msg) { msg.textContent = error.message || 'No se pudo enviar el enlace.'; msg.classList.remove('is-ok'); }
+  } finally {
+    button.disabled = false;
+  }
+}
+
+async function submitReset(form) {
+  const pass = String($('#reset-pass')?.value || '');
+  const msg = $('#reset-msg');
+  if (msg) msg.textContent = '';
+  if (pass.length < 8) { if (msg) msg.textContent = 'Usa al menos 8 caracteres.'; return; }
+  if (pass !== String($('#reset-pass2')?.value || '')) { if (msg) msg.textContent = 'Las contraseñas no coinciden.'; return; }
+  try {
+    await apiRequest('/api/auth/reset', { token: appState.resetToken, newPassword: pass });
+    appState.resetToken = null;
+    form.reset();
+    showAuthPanel('login');
+    toast('Contraseña actualizada. Inicia sesión con la nueva.', 'ok');
+  } catch (error) {
+    if (msg) msg.textContent = error.message || 'No se pudo guardar la contraseña.';
+  }
+}
+
+// El enlace del correo trae ?reset=…: se toma el valor y se borra de la barra de direcciones.
+function initPasswordResetFromUrl() {
+  const params = new URLSearchParams(location.search);
+  const token = params.get('reset');
+  if (!token) return false;
+  appState.resetToken = token;
+  params.delete('reset');
+  const rest = params.toString();
+  history.replaceState(null, '', location.pathname + (rest ? `?${rest}` : '') + location.hash);
+  showAuthPanel('reset');
+  return true;
+}
+
+// Con una contraseña temporal solo se puede cambiarla: el diálogo no se cierra hasta lograrlo.
+function showForcedPasswordDialog() {
+  const staff = appState.sessionUser?.role !== 'CLIENTE';
+  const min = staff ? 12 : 8;
+  showStaffDialog('Cambia tu contraseña temporal', `<form id="form-forced-password" class="dialog-form" autocomplete="off" novalidate>
+      <p>Tu cuenta usa una contraseña temporal. Crea una propia para continuar (mínimo ${min} caracteres).</p>
+      <label><span>Contraseña temporal</span><input name="currentPassword" type="password" autocomplete="current-password" required></label>
+      <label><span>Contraseña nueva</span><input name="newPassword" type="password" autocomplete="new-password" minlength="${min}" maxlength="72" required></label>
+      <label><span>Repite la contraseña nueva</span><input name="confirmPassword" type="password" autocomplete="new-password" required></label>
+      <p id="dialog-error" class="form-error" role="alert"></p>
+      <div class="dialog-actions"><button class="ghost-btn" type="button" data-action="logout">Salir</button><button class="solid-btn" type="submit">Guardar contraseña</button></div>
+    </form>`);
+  appState.forcedPassword = true;
+}
+
+async function submitForcedPassword(form) {
+  const data = new FormData(form);
+  const min = appState.sessionUser?.role !== 'CLIENTE' ? 12 : 8;
+  const newPassword = String(data.get('newPassword') || '');
+  if (newPassword.length < min) return dialogError(`La contraseña nueva debe tener al menos ${min} caracteres.`);
+  if (newPassword !== String(data.get('confirmPassword') || '')) return dialogError('Las contraseñas nuevas no coinciden.');
+  try {
+    await apiRequest('/api/auth/password', { currentPassword: String(data.get('currentPassword') || ''), newPassword });
+    appState.forcedPassword = false;
+    // Las peticiones previas se rechazaron con 403: se recarga ya con la sesión nueva.
+    location.reload();
+  } catch (error) {
+    dialogError(error.message || 'No se pudo cambiar la contraseña.');
+  }
+}
+
 function showMfaChallenge(response) {
   appState.mfaChallenge = response;
   $('#form-unified')?.classList.add('app-hidden');
@@ -609,6 +697,12 @@ function showMfaChallenge(response) {
   if (help) help.textContent = enrollment
     ? 'Configurá primero una cuenta en tu aplicación de autenticación y luego ingresá el código actual.'
     : 'Abrí tu aplicación de autenticación e ingresá el código actual.';
+  const qr = $('#mfa-qr');
+  if (qr) {
+    const showQr = enrollment && !!response.qrSvg;
+    qr.classList.toggle('app-hidden', !showQr);
+    qr.src = showQr ? `data:image/svg+xml;charset=utf-8,${encodeURIComponent(response.qrSvg)}` : '';
+  }
   const secret = $('#mfa-secret');
   if (secret) secret.textContent = enrollment ? response.enrollmentSecret || '' : '';
   const openApp = $('#mfa-open-app');
@@ -733,9 +827,10 @@ function handleAuthSuccess(response, context = {}) {
   toast('Sesión iniciada.', 'ok');
   if (isStaffRole(user.role)) {
     enterStaff(user);
-    return;
+  } else {
+    enterAspirante(profileFromUser(user, context), { restoreLocalProgress: !context.qaLocal });
   }
-  enterAspirante(profileFromUser(user, context), { restoreLocalProgress: !context.qaLocal });
+  if (user.mustChangePassword) showForcedPasswordDialog();
 }
 
 async function restoreSessionFromBackend() {
@@ -747,6 +842,7 @@ async function restoreSessionFromBackend() {
     localStorage.setItem(STORAGE.sessionUser, JSON.stringify(user));
     if (isStaffRole(user.role)) enterStaff(user);
     else enterAspirante(profileFromUser(user));
+    if (user.mustChangePassword) showForcedPasswordDialog();
   } catch {
     localStorage.removeItem(STORAGE.sessionUser);
   }
@@ -1214,6 +1310,7 @@ function showStaffDialog(title, bodyHtml) {
 }
 
 function closeStaffDialog() {
+  if (appState.forcedPassword) return;
   const root = $('#staff-dialog-root');
   if (!root) return;
   root.remove();
@@ -1411,6 +1508,8 @@ async function logout() {
     await apiRequest('/api/auth/logout', {}, { method: 'POST' });
   } catch {}
   purgePersonalLocalData();
+  appState.forcedPassword = false;
+  closeStaffDialog();
   appState.startedAt = null;
   appState.remoteAttempt = null;
   appState.answers = Array(TOTAL_ITEMS).fill(null);
@@ -2218,7 +2317,7 @@ function renderStaffPanel() {
   return `
     <div class="screen-title"><div><p class="eyebrow">${appState.sessionUser?.role === 'ADMIN' ? 'Administración' : 'Personal'}</p><h2>Panel de aplicaciones</h2><p>${esc(appState.profile.username)}</p></div><button class="solid-btn" type="button" data-route="aspirantes">Ver aspirantes</button></div>
     <div class="staff-grid">
-      <div class="metric"><strong>${summary ? summary.total : '--'}</strong><span>pruebas entregadas</span></div>
+      <div class="metric"><strong>${summary ? summary.total : '--'}</strong><span>${summary && summary.total === 1 ? 'prueba entregada' : 'pruebas entregadas'}</span></div>
       <div class="metric"><strong>${avg}</strong><span>promedio directo</span></div>
       <div class="metric"><strong>${top}</strong><span>mejor puntaje</span></div>
     </div>
@@ -2664,6 +2763,8 @@ function handleDocumentClick(event) {
       $('#unified-id')?.focus();
       return;
     }
+    if (action === 'show-forgot') { showAuthPanel('forgot'); return; }
+    if (action === 'cancel-forgot') { appState.resetToken = null; showAuthPanel('login'); return; }
     if (action === 'cancel-mfa') {
       cancelMfa();
       return;
@@ -2974,6 +3075,16 @@ $('#form-unified')?.addEventListener('submit', event => {
   submitUnifiedLogin();
 });
 
+$('#form-forgot')?.addEventListener('submit', event => {
+  event.preventDefault();
+  submitForgot(event.target);
+});
+
+$('#form-reset')?.addEventListener('submit', event => {
+  event.preventDefault();
+  submitReset(event.target);
+});
+
 $('#form-mfa')?.addEventListener('submit', event => {
   event.preventDefault();
   submitMfa();
@@ -2984,6 +3095,7 @@ document.addEventListener('submit', event => {
     'form-admin-user': createStaffAccount,
     'form-claim': claimAccessCode,
     'form-password': submitPasswordChange,
+    'form-forced-password': submitForcedPassword,
     'form-privacy-search': searchPrivacySubjects,
     'form-anonymize': submitAnonymize,
     'form-session': submitSessionForm,
@@ -3016,4 +3128,4 @@ applySettings();
 $('#demo-access')?.classList.toggle('app-hidden', !STATIC_PAGES_MODE);
 validateLogin();
 if (QA_SCENARIO) enterLocalQaScenario();
-else restoreSessionFromBackend();
+else if (!initPasswordResetFromUrl()) restoreSessionFromBackend();
