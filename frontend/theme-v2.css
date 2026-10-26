@@ -347,3 +347,9 @@ body[data-route="test"] .app-content{box-sizing:border-box;max-width:none;min-wi
   .puzzle-stage{padding:8px;height:auto;flex:none}
   .question-figure.puzzle{gap:8px}
 }
+
+/* Examen en tablet vertical: la figura no ocupa más del 40 % de la altura para que las piezas queden a la vista. */
+@media(min-width:561px) and (max-width:960px){
+  .puzzle-stage{container-type:normal;display:block;height:auto;flex:none}
+  .puzzle-board{width:min(100%,calc(40dvh * var(--pw) / var(--ph)));margin-inline:auto}
+}
