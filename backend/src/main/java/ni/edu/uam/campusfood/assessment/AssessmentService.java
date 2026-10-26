@@ -28,7 +28,7 @@ public class AssessmentService {
     private final AssessmentResponseRepository responses;
     private final UserRepository users;
     private final AssessmentEventRepository events;
-    private final WeilScoringStrategy scoring;
+    private final ScoringRegistry scoring;
     private final AdmissionService admission;
     private final NotificationService notifications;
 
@@ -36,7 +36,7 @@ public class AssessmentService {
                              AssessmentResponseRepository responses,
                              UserRepository users,
                              AssessmentEventRepository events,
-                             WeilScoringStrategy scoring,
+                             ScoringRegistry scoring,
                              AdmissionService admission,
                              NotificationService notifications) {
         this.attempts = attempts;
@@ -169,7 +169,7 @@ public class AssessmentService {
         if (responses.countByAttemptId(attemptId) != WEIL_ITEMS) {
             throw new AssessmentConflictException("El intento todavía tiene respuestas pendientes.");
         }
-        WeilScoringStrategy.Score score = scoring.score(submittedAnswers);
+        ScoringStrategy.Score score = strategy(attempt).score(submittedAnswers);
         ExamEnrollment enrollment = attempt.getEnrollment();
         // El grupo de baremo y la edad los fija Admision al habilitar: lo que mande el navegador se ignora.
         attempt.submit(score.directScore(), enrollment != null ? enrollment.getParticipantAge() : age,
@@ -194,7 +194,7 @@ public class AssessmentService {
                 answers.set(response.getItemIndex(), response.getSelectedOption());
             }
             ExamEnrollment enrollment = attempt.getEnrollment();
-            attempt.autoClose(scoring.score(answers).directScore(),
+            attempt.autoClose(strategy(attempt).score(answers).directScore(),
                     enrollment == null ? null : enrollment.getParticipantAge(),
                     enrollment == null ? null : enrollment.getNormGroup());
             attempts.save(attempt);
@@ -287,9 +287,9 @@ public class AssessmentService {
         }
         return submitted.stream().map(attempt -> {
             List<Integer> answers = byAttempt.getOrDefault(attempt.getId(), List.of());
-            WeilScoringStrategy.Score score = answers.size() == WEIL_ITEMS ? scoring.score(answers) : null;
-            WeilScoringStrategy.Interpretation interpretation = attempt.getDirectScore() == null ? null
-                    : scoring.interpret(attempt.getDirectScore(), attempt.getParticipantAge(), attempt.getNormGroup());
+            ScoringStrategy.Score score = answers.size() == WEIL_ITEMS ? strategy(attempt).score(answers) : null;
+            ScoringStrategy.Interpretation interpretation = attempt.getDirectScore() == null ? null
+                    : strategy(attempt).interpret(attempt.getDirectScore(), attempt.getParticipantAge(), attempt.getNormGroup());
             return StaffAttemptView.from(attempt, score == null ? List.of() : score.pageScores(), interpretation,
                     eventsByAttempt.getOrDefault(attempt.getId(), List.of()));
         }).toList();
@@ -313,7 +313,7 @@ public class AssessmentService {
         }
         List<StaffAttemptRow> rows = result.getContent().stream().map(attempt -> {
             var interpretation = attempt.getDirectScore() == null ? null
-                    : scoring.interpret(attempt.getDirectScore(), attempt.getParticipantAge(), attempt.getNormGroup());
+                    : strategy(attempt).interpret(attempt.getDirectScore(), attempt.getParticipantAge(), attempt.getNormGroup());
             return StaffAttemptRow.from(attempt, interpretation, incidents.getOrDefault(attempt.getId(), 0L));
         }).toList();
         return new StaffAttemptPage(rows, result.getTotalElements(), safePage, safeSize);
@@ -336,9 +336,9 @@ public class AssessmentService {
                         AssessmentConflictException.Kind.NOT_FOUND));
         List<Integer> answers = responses.findForAttempts(List.of(attemptId)).stream()
                 .map(AssessmentResponse::getSelectedOption).toList();
-        WeilScoringStrategy.Score score = answers.size() == WEIL_ITEMS ? scoring.score(answers) : null;
+        ScoringStrategy.Score score = answers.size() == WEIL_ITEMS ? strategy(attempt).score(answers) : null;
         var interpretation = attempt.getDirectScore() == null ? null
-                : scoring.interpret(attempt.getDirectScore(), attempt.getParticipantAge(), attempt.getNormGroup());
+                : strategy(attempt).interpret(attempt.getDirectScore(), attempt.getParticipantAge(), attempt.getNormGroup());
         List<SecurityEventView> eventViews = events.findForAttempts(List.of(attemptId)).stream()
                 .map(SecurityEventView::from).toList();
         return StaffAttemptView.from(attempt, score == null ? List.of() : score.pageScores(), interpretation, eventViews);
@@ -348,8 +348,12 @@ public class AssessmentService {
         return value != null && value.toLowerCase().contains(needle);
     }
 
+    private ScoringStrategy strategy(AssessmentAttempt attempt) {
+        return scoring.forTest(attempt.getTestId());
+    }
+
     public List<java.util.Map<String, Integer>> norms() {
-        return scoring.norms();
+        return scoring.forTest(WEIL_TEST_ID).norms();
     }
 
     private static void ensureWithinTime(AssessmentAttempt attempt, Instant now) {
@@ -432,7 +436,7 @@ public class AssessmentService {
                                   String sessionName, Integer directScore, Integer percentile, Integer ci,
                                   String classification, long incidents, Instant submittedAt, boolean autoSubmitted,
                                   int extraMinutes, boolean invalidated, String invalidReason, boolean reviewed) {
-        static StaffAttemptRow from(AssessmentAttempt attempt, WeilScoringStrategy.Interpretation interpretation, long incidents) {
+        static StaffAttemptRow from(AssessmentAttempt attempt, ScoringStrategy.Interpretation interpretation, long incidents) {
             var user = attempt.getUser();
             ExamEnrollment enrollment = attempt.getEnrollment();
             return new StaffAttemptRow(attempt.getId(), user.getFullName(), user.getEmail(), user.getCareer(),
@@ -458,7 +462,7 @@ public class AssessmentService {
                                    boolean invalidated, String invalidReason, Instant invalidatedAt,
                                    boolean reviewed, Instant reviewedAt) {
         static StaffAttemptView from(AssessmentAttempt attempt, List<Integer> pageScores,
-                                     WeilScoringStrategy.Interpretation interpretation,
+                                     ScoringStrategy.Interpretation interpretation,
                                      List<SecurityEventView> securityEvents) {
             var user = attempt.getUser();
             long seconds = attempt.getSubmittedAt() == null ? 0

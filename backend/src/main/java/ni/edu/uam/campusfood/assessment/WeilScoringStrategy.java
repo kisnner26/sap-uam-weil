@@ -6,7 +6,9 @@ import java.util.List;
 import java.util.Map;
 
 @Component
-public class WeilScoringStrategy {
+public class WeilScoringStrategy implements ScoringStrategy {
+    public static final String TEST_ID = "weil-form-a";
+
     private static final int[] ANSWER_PATTERN = {2, 8, 7, 4, 5, 6, 8, 4, 4, 7, 3, 2};
     private static final List<Map<String, Integer>> NORMS = List.of(
             norm(90, 35, 41, 42, 46, 46, 46, 47, 47, 48, 50, 30, 47, 57),
@@ -33,6 +35,12 @@ public class WeilScoringStrategy {
             Map.of("p", 5, "ci", 75), Map.of("p", 3, "ci", 72), Map.of("p", 1, "ci", 65)
     );
 
+    @Override
+    public String testId() {
+        return TEST_ID;
+    }
+
+    @Override
     public Score score(List<Integer> answers) {
         List<Integer> pages = java.util.stream.IntStream.range(0, 5)
                 .map(page -> java.util.stream.IntStream.range(0, ANSWER_PATTERN.length)
@@ -42,6 +50,7 @@ public class WeilScoringStrategy {
         return new Score(pages.stream().mapToInt(Integer::intValue).sum(), pages);
     }
 
+    @Override
     public Interpretation interpret(int score, Integer age, String group) {
         String column = resolveColumn(age, group);
         int percentile = NORMS.stream().filter(row -> score >= row.get(column))
@@ -51,6 +60,7 @@ public class WeilScoringStrategy {
         return new Interpretation(column, percentile, ci, classify(ci));
     }
 
+    @Override
     public List<Map<String, Integer>> norms() {
         return NORMS;
     }
@@ -79,7 +89,4 @@ public class WeilScoringStrategy {
                 Map.entry("15", a15), Map.entry("16", a16), Map.entry("AN", an),
                 Map.entry("AD", ad), Map.entry("UN", un));
     }
-
-    public record Score(int directScore, List<Integer> pageScores) {}
-    public record Interpretation(String normColumn, int percentile, int ci, String classification) {}
 }

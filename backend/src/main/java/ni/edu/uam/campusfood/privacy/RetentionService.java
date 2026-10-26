@@ -5,7 +5,7 @@ import ni.edu.uam.campusfood.admission.ExamEnrollmentRepository;
 import ni.edu.uam.campusfood.assessment.AssessmentAttempt;
 import ni.edu.uam.campusfood.assessment.AssessmentAttemptRepository;
 import ni.edu.uam.campusfood.assessment.AssessmentEventRepository;
-import ni.edu.uam.campusfood.assessment.WeilScoringStrategy;
+import ni.edu.uam.campusfood.assessment.ScoringRegistry;
 import ni.edu.uam.campusfood.audit.AuditService;
 import ni.edu.uam.campusfood.notification.NotificationOutbox;
 import ni.edu.uam.campusfood.notification.NotificationOutboxRepository;
@@ -41,14 +41,14 @@ public class RetentionService {
     private final ExamEnrollmentRepository enrollments;
     private final ConsentRecordRepository consents;
     private final NotificationOutboxRepository outbox;
-    private final WeilScoringStrategy scoring;
+    private final ScoringRegistry scoring;
     private final AuditService audit;
     private final int months;
     private final boolean enabled;
 
     public RetentionService(UserRepository users, AssessmentAttemptRepository attempts, AssessmentEventRepository events,
                             ExamEnrollmentRepository enrollments, ConsentRecordRepository consents,
-                            NotificationOutboxRepository outbox, WeilScoringStrategy scoring, AuditService audit,
+                            NotificationOutboxRepository outbox, ScoringRegistry scoring, AuditService audit,
                             @Value("${app.retention.months:24}") int months,
                             @Value("${app.retention.enabled:false}") boolean enabled) {
         this.users = users;
@@ -88,7 +88,7 @@ public class RetentionService {
             row.put("entrega", a.getSubmittedAt());
             row.put("puntajeDirecto", a.getDirectScore());
             if (a.getDirectScore() != null) {
-                var i = scoring.interpret(a.getDirectScore(), a.getParticipantAge(), a.getNormGroup());
+                var i = scoring.forTest(a.getTestId()).interpret(a.getDirectScore(), a.getParticipantAge(), a.getNormGroup());
                 row.put("percentil", i.percentile());
                 row.put("ci", i.ci());
             }
