@@ -10,7 +10,7 @@ public record LoginRequest(
         @Email(message = "Correo invalido")
         String email,
 
-        @NotBlank(message = "La contrasena es obligatoria")
+        @NotBlank(message = "La contraseña es obligatoria")
         String password
 ) {
 }

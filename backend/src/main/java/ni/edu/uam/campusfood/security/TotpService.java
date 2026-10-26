@@ -22,12 +22,21 @@ public class TotpService {
     }
 
     public boolean verify(String secret, String code, Instant now) {
-        if (code == null || !code.matches("\\d{6}")) return false;
+        return matchingStep(secret, code, now).isPresent();
+    }
+
+    /** Paso TOTP al que corresponde el código (ventana de ±1 paso), o vacío si no coincide. */
+    public java.util.OptionalLong matchingStep(String secret, String code, Instant now) {
+        if (code == null || !code.matches("\\d{6}")) return java.util.OptionalLong.empty();
         long step = now.getEpochSecond() / 30;
+        byte[] given = code.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        java.util.OptionalLong found = java.util.OptionalLong.empty();
+        // Se recorren siempre los tres pasos y se compara en tiempo constante.
         for (long offset = -1; offset <= 1; offset++) {
-            if (generate(secret, step + offset).equals(code)) return true;
+            byte[] expected = generate(secret, step + offset).getBytes(java.nio.charset.StandardCharsets.UTF_8);
+            if (java.security.MessageDigest.isEqual(expected, given)) found = java.util.OptionalLong.of(step + offset);
         }
-        return false;
+        return found;
     }
 
     String generate(String secret, long step) {

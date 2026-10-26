@@ -72,7 +72,7 @@ public class MoodleClient {
             // invalidlogin y similares son fallo de credenciales; el resto tambien
             // se trata como login fallido para no filtrar detalles internos.
             log.info("Login Moodle rechazado (errorcode={})", errorcode);
-            throw MoodleException.invalidCredentials("CIF o contrasena incorrectos");
+            throw MoodleException.invalidCredentials("CIF o contraseña incorrectos");
         }
         // JSON inesperado: lo tratamos como plataforma no disponible.
         log.warn("Respuesta inesperada de token.php: {}", trim(body));

@@ -10,7 +10,7 @@ public record MoodleLoginRequest(
         @Pattern(regexp = "\\d{4,12}", message = "El CIF debe ser numerico")
         String cif,
 
-        @NotBlank(message = "La contrasena es obligatoria")
+        @NotBlank(message = "La contraseña es obligatoria")
         String password
 ) {
 }

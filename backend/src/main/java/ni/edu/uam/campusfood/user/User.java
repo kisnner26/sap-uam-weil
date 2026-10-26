@@ -89,6 +89,10 @@ public class User {
     @Column(name = "mfa_enabled", nullable = false)
     private boolean mfaEnabled = false;
 
+    /** Último paso TOTP aceptado: un código ya usado no se acepta de nuevo. */
+    @Column(name = "mfa_last_step")
+    private Long mfaLastStep;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -253,6 +257,20 @@ public class User {
         this.updatedAt = Instant.now();
     }
 
+    public Long getMfaLastStep() {
+        return mfaLastStep;
+    }
+
+    public void recordMfaStep(long step) {
+        this.mfaLastStep = step;
+        this.updatedAt = Instant.now();
+    }
+
+    public void changePassword(String newHash) {
+        this.passwordHash = newHash;
+        revokeSessions();
+    }
+
     public void enableMfa() {
         this.mfaEnabled = true;
         this.updatedAt = Instant.now();
@@ -261,6 +279,7 @@ public class User {
     public void resetMfa() {
         this.mfaSecret = null;
         this.mfaEnabled = false;
+        this.mfaLastStep = null;
         revokeSessions();
     }
 

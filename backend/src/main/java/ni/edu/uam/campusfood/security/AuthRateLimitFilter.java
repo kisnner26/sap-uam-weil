@@ -25,7 +25,7 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
             "/api/applicant/claim");
 
     private static final String BODY = """
-            {"status":429,"error":"Too Many Requests","message":"Demasiados intentos. Espera unos minutos antes de volver a intentar."}""";
+            {"status":429,"error":"Too Many Requests","message":"Demasiados intentos. Espera un momento antes de volver a intentar."}""";
 
     private final DatabaseLoginThrottleService limiter;
 

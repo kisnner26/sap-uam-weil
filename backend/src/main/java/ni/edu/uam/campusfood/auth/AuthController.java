@@ -71,6 +71,14 @@ public class AuthController {
         return withSessionCookie(authService.refresh(Long.valueOf(authentication.getName())), request, HttpStatus.OK);
     }
 
+    /** Cambia la contraseña de la cuenta autenticada; las demás sesiones quedan revocadas. */
+    @PostMapping("/password")
+    public ResponseEntity<AuthFlowResponse> changePassword(@Valid @RequestBody ni.edu.uam.campusfood.auth.dto.ChangePasswordRequest req,
+                                                           Authentication authentication, HttpServletRequest request) {
+        return withSessionCookie(authService.changePassword(Long.valueOf(authentication.getName()),
+                req.currentPassword(), req.newPassword()), request, HttpStatus.OK);
+    }
+
     /** Invalida en el servidor todos los tokens actuales y borra la cookie. */
     @PostMapping("/logout")
     public ResponseEntity<Void> logout(HttpServletRequest request, Authentication authentication) {

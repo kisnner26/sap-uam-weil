@@ -35,6 +35,7 @@ public class AuthService {
     private final MfaSecretCipher mfaCipher;
     private final TotpService totp;
     private final DatabaseLoginThrottleService throttles;
+    private final String dummyHash;
 
     public AuthService(MoodleClient moodleClient,
                        UserRepository users,
@@ -50,6 +51,8 @@ public class AuthService {
         this.mfaCipher = mfaCipher;
         this.totp = totp;
         this.throttles = throttles;
+        // Hash de relleno: el login de un correo inexistente cuesta lo mismo que el de uno real.
+        this.dummyHash = passwordEncoder.encode("relleno-sin-uso-" + java.util.UUID.randomUUID());
     }
 
     /**
@@ -111,10 +114,11 @@ public class AuthService {
                 .filter(u -> u.getPasswordHash() != null)
                 .orElse(null);
 
-        if (user == null || !passwordEncoder.matches(req.password(), user.getPasswordHash())) {
+        boolean matches = passwordEncoder.matches(req.password(), user == null ? dummyHash : user.getPasswordHash());
+        if (user == null || !matches) {
             throttles.recordFailure(identity);
             throw new AuthException(AuthException.Kind.BAD_CREDENTIALS,
-                    "Correo o contrasena incorrectos");
+                    "Correo o contraseña incorrectos");
         }
         AuthFlowResponse result = completePrimaryFactor(user);
         throttles.recordSuccess(identity);
@@ -127,20 +131,22 @@ public class AuthService {
         try {
             claims = jwtService.parseMfaChallenge(req.challengeToken());
         } catch (JwtException | IllegalArgumentException ex) {
-            throw new AuthException(AuthException.Kind.MFA_INVALID, "El codigo o el desafio ya no es valido");
+            throw new AuthException(AuthException.Kind.MFA_INVALID, "El código o el desafío ya no es válido");
         }
         User user = users.findByIdForUpdate(Long.valueOf(claims.getSubject()))
                 .filter(User::isActive)
                 .filter(candidate -> candidate.getSessionVersion()
                         == claims.get("sessionVersion", Number.class).longValue())
-                .orElseThrow(() -> new AuthException(AuthException.Kind.MFA_INVALID, "El desafio ya no es valido"));
+                .orElseThrow(() -> new AuthException(AuthException.Kind.MFA_INVALID, "El desafío ya no es válido"));
         String identity = "mfa:" + user.getId();
         throttles.checkAccount(identity);
-        if (user.getMfaSecret() == null
-                || !totp.verify(mfaCipher.decrypt(user.getMfaSecret()), req.code(), java.time.Instant.now())) {
+        java.util.OptionalLong step = user.getMfaSecret() == null ? java.util.OptionalLong.empty()
+                : totp.matchingStep(mfaCipher.decrypt(user.getMfaSecret()), req.code(), java.time.Instant.now());
+        if (step.isEmpty() || (user.getMfaLastStep() != null && step.getAsLong() <= user.getMfaLastStep())) {
             throttles.recordFailure(identity);
-            throw new AuthException(AuthException.Kind.MFA_INVALID, "Codigo de verificacion incorrecto");
+            throw new AuthException(AuthException.Kind.MFA_INVALID, "Código de verificación incorrecto o ya utilizado");
         }
+        user.recordMfaStep(step.getAsLong());
         if (!user.isMfaEnabled()) user.enableMfa();
         users.save(user);
         throttles.recordSuccess(identity);
@@ -151,7 +157,31 @@ public class AuthService {
     public AuthFlowResponse refresh(Long userId) {
         User user = users.findById(userId)
                 .filter(User::isActive)
-                .orElseThrow(() -> new AuthException(AuthException.Kind.BAD_CREDENTIALS, "Sesion invalida"));
+                .orElseThrow(() -> new AuthException(AuthException.Kind.BAD_CREDENTIALS, "Sesión inválida"));
+        return issueFor(user);
+    }
+
+    /** Cambio de contraseña de una cuenta propia (no Moodle). Revoca todas las sesiones y emite una nueva. */
+    @Transactional
+    public AuthFlowResponse changePassword(Long userId, String currentPassword, String newPassword) {
+        String identity = "password:" + userId;
+        throttles.checkAccount(identity);
+        User user = users.findByIdForUpdate(userId)
+                .filter(User::isActive)
+                .orElseThrow(() -> new AuthException(AuthException.Kind.BAD_CREDENTIALS, "Sesión inválida"));
+        if (user.getPasswordHash() == null || !passwordEncoder.matches(currentPassword, user.getPasswordHash())) {
+            throttles.recordFailure(identity);
+            throw new AuthException(AuthException.Kind.BAD_CREDENTIALS, "La contraseña actual no es correcta");
+        }
+        if (user.getRole() != ni.edu.uam.campusfood.user.Role.CLIENTE && newPassword.length() < 12) {
+            throw new IllegalArgumentException("La contraseña del personal debe tener al menos 12 caracteres.");
+        }
+        if (passwordEncoder.matches(newPassword, user.getPasswordHash())) {
+            throw new IllegalArgumentException("La contraseña nueva debe ser distinta de la actual.");
+        }
+        user.changePassword(passwordEncoder.encode(newPassword));
+        users.save(user);
+        throttles.recordSuccess(identity);
         return issueFor(user);
     }
 
@@ -165,7 +195,7 @@ public class AuthService {
 
     private AuthFlowResponse completePrimaryFactor(User user) {
         if (!user.isActive()) {
-            throw new AuthException(AuthException.Kind.DISABLED, "Esta cuenta esta desactivada");
+            throw new AuthException(AuthException.Kind.DISABLED, "Esta cuenta está desactivada");
         }
         if (user.getRole() == ni.edu.uam.campusfood.user.Role.CLIENTE) return issueFor(user);
 
