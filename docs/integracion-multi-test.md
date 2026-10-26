@@ -6,6 +6,22 @@ la entrega final es una sola solución con la misma arquitectura, nomenclatura, 
 
 este documento aterriza `architecture.md` a ese objetivo: qué ya está listo, qué acopla hoy a weil y qué contrato debe cumplir cualquier test nuevo.
 
+## el plan oficial manda
+
+el plan de desarrollo colaborativo (scrum adaptado, 6 semanas, 5 grupos) fija el stack y la arquitectura: spring boot + react + postgresql, un solo repositorio, y una capa de backend con controller, dto, application/use case, domain, repository, infrastructure, evaluator y security. weil es la semana 2 y debe reutilizar lo que la semana 1 (batería factorial) deje como base. cuando este documento y el plan difieran, gana el plan.
+
+| plan oficial | este repositorio hoy | decisión pendiente |
+| --- | --- | --- |
+| `TestEvaluator` como interfaz común, un evaluador por test | `ScoringStrategy` y `WeilScoringStrategy` | renombrar a `TestEvaluator` y `WeilEvaluator` cuando se fije la arquitectura base; es un cambio mecánico |
+| paquete `com.universidad.tests` | `ni.edu.uam.campusfood` | lo fija el grupo integrador de la semana 1; no renombrar antes |
+| capas por tipo (`controller/`, `dto/`, `application/{service,usecase,evaluator}`, `domain/{model,repository,exception}`, `infrastructure/{persistence,security,adapter}`) | paquetes por funcionalidad (`assessment`, `admission`, `auth`, `privacy`) | mover a capas al integrar con la base común |
+| frontend react (`frontend/` con `package.json`) | javascript sin framework, con scripts globales | portar a react; el contrato de visor (`item`, `renderStage`, `renderResponse`...) se convierte en un componente por test |
+| `sistema-evaluaciones/` con `backend/`, `frontend/`, `database/migrations/`, `docs/`, `tests/` | `backend/`, `frontend/`, `docs/`, `deploy/`, `ops/`; migraciones dentro de `backend/src/main/resources/db/migration` | acordar si las migraciones salen a `database/migrations` |
+| áreas: sujetos, periodos, catálogo de test, evaluaciones, resultados, informes | usuarios, convocatorias, `TestCatalog`, intentos, `assessment_results`, exportación csv | mapear nombres al integrar |
+| rama por funcionalidad, pull requests revisados por el integrador, `main` solo con versiones estables | commits atómicos directos | usar ramas y pull requests cuando el repositorio sea el común |
+
+lo que sí coincide con el plan: monolito, un contrato por test, un evaluador por test que cambia la lógica pero no la arquitectura, y resultados guardados en postgresql.
+
 ## lo que ya está alineado
 
 - monolito modular con identidad, auditoría, privacidad y notificaciones compartidos.
