@@ -1,0 +1,142 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1110" height="570" viewBox="0 0 1110 570" font-family="Arial, Helvetica, sans-serif" font-size="12"><rect width="1110" height="570" fill="#FFFFFF"/><defs>
+<marker id="open" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M1,1 L9,5 L1,9" fill="none" stroke="#000000" stroke-width="1.2"/></marker>
+<marker id="filled" markerWidth="11" markerHeight="10" refX="10" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#000000"/></marker>
+<marker id="tri" markerWidth="12" markerHeight="12" refX="11" refY="6" orient="auto"><path d="M1,1 L11,6 L1,11 z" fill="#FFFFFF" stroke="#000000" stroke-width="1.1"/></marker>
+</defs>
+<rect x="8" y="8" width="1094" height="554" fill="none" stroke="#000000" stroke-width="1.2"/>
+<path d="M8,8 H368.08 V22 L358.08,34 H8 Z" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
+<text x="18" y="26" font-weight="bold">cmp Componentes de la plataforma de evaluaciones</text>
+<rect x="40" y="60" width="190" height="84" rx="0" fill="#FEFECE" stroke="#000000" stroke-width="1.2"/>
+<text x="135.0" y="80" font-size="12" text-anchor="middle" fill="#000000" font-style="italic">«component»</text>
+<text x="135.0" y="96" font-size="12" text-anchor="middle" fill="#000000" font-weight="bold">Interfaz web</text>
+<text x="135.0" y="112" font-size="11" text-anchor="middle" fill="#000000">shell de la plataforma</text>
+<text x="135.0" y="126" font-size="11" text-anchor="middle" fill="#000000">acceso, inicio, entrega</text>
+<rect x="206" y="68" width="16" height="12" fill="#FEFECE" stroke="#000000"/>
+<rect x="202" y="70" width="8" height="3" fill="#FEFECE" stroke="#000000"/>
+<rect x="202" y="75" width="8" height="3" fill="#FEFECE" stroke="#000000"/>
+<rect x="40" y="170" width="190" height="84" rx="0" fill="#FEFECE" stroke="#000000" stroke-width="1.2"/>
+<text x="135.0" y="190" font-size="12" text-anchor="middle" fill="#000000" font-style="italic">«component»</text>
+<text x="135.0" y="206" font-size="12" text-anchor="middle" fill="#000000" font-weight="bold">Visor de láminas Weil</text>
+<text x="135.0" y="222" font-size="11" text-anchor="middle" fill="#000000">tests/weil-form-a/</text>
+<text x="135.0" y="236" font-size="11" text-anchor="middle" fill="#000000">viewer.js</text>
+<rect x="206" y="178" width="16" height="12" fill="#FEFECE" stroke="#000000"/>
+<rect x="202" y="180" width="8" height="3" fill="#FEFECE" stroke="#000000"/>
+<rect x="202" y="185" width="8" height="3" fill="#FEFECE" stroke="#000000"/>
+<path d="M135,144 L135,170" fill="none" stroke="#000000" stroke-width="1.1" stroke-dasharray="6,4" marker-end="url(#open)"/>
+<text x="143" y="162" font-size="10" text-anchor="start" fill="#000000" font-style="italic">«usa»</text>
+<rect x="300" y="60" width="210" height="84" rx="0" fill="#FEFECE" stroke="#000000" stroke-width="1.2"/>
+<text x="405.0" y="80" font-size="12" text-anchor="middle" fill="#000000" font-style="italic">«component»</text>
+<text x="405.0" y="96" font-size="12" text-anchor="middle" fill="#000000" font-weight="bold">API REST</text>
+<text x="405.0" y="112" font-size="11" text-anchor="middle" fill="#000000">controladores de aspirante,</text>
+<text x="405.0" y="126" font-size="11" text-anchor="middle" fill="#000000">personal y administración</text>
+<rect x="486" y="68" width="16" height="12" fill="#FEFECE" stroke="#000000"/>
+<rect x="482" y="70" width="8" height="3" fill="#FEFECE" stroke="#000000"/>
+<rect x="482" y="75" width="8" height="3" fill="#FEFECE" stroke="#000000"/>
+<rect x="300" y="170" width="210" height="84" rx="0" fill="#FEFECE" stroke="#000000" stroke-width="1.2"/>
+<text x="405.0" y="190" font-size="12" text-anchor="middle" fill="#000000" font-style="italic">«component»</text>
+<text x="405.0" y="206" font-size="12" text-anchor="middle" fill="#000000" font-weight="bold">Seguridad</text>
+<text x="405.0" y="222" font-size="11" text-anchor="middle" fill="#000000">JWT en cookie httpOnly,</text>
+<text x="405.0" y="236" font-size="11" text-anchor="middle" fill="#000000">MFA y roles</text>
+<rect x="486" y="178" width="16" height="12" fill="#FEFECE" stroke="#000000"/>
+<rect x="482" y="180" width="8" height="3" fill="#FEFECE" stroke="#000000"/>
+<rect x="482" y="185" width="8" height="3" fill="#FEFECE" stroke="#000000"/>
+<rect x="300" y="290" width="210" height="84" rx="0" fill="#FEFECE" stroke="#000000" stroke-width="1.2"/>
+<text x="405.0" y="310" font-size="12" text-anchor="middle" fill="#000000" font-style="italic">«component»</text>
+<text x="405.0" y="326" font-size="12" text-anchor="middle" fill="#000000" font-weight="bold">Identidad</text>
+<text x="405.0" y="342" font-size="11" text-anchor="middle" fill="#000000">cuentas externas y</text>
+<text x="405.0" y="356" font-size="11" text-anchor="middle" fill="#000000">acceso con Moodle</text>
+<rect x="486" y="298" width="16" height="12" fill="#FEFECE" stroke="#000000"/>
+<rect x="482" y="300" width="8" height="3" fill="#FEFECE" stroke="#000000"/>
+<rect x="482" y="305" width="8" height="3" fill="#FEFECE" stroke="#000000"/>
+<rect x="300" y="420" width="210" height="70" rx="0" fill="#FEFECE" stroke="#000000" stroke-width="1.2" stroke-dasharray="6,4"/>
+<text x="405.0" y="440" font-size="12" text-anchor="middle" fill="#000000" font-style="italic">«external system»</text>
+<text x="405.0" y="456" font-size="12" text-anchor="middle" fill="#000000" font-weight="bold">Moodle UAM</text>
+<text x="405.0" y="472" font-size="11" text-anchor="middle" fill="#000000">uamvirtual.uam.edu.ni</text>
+<path d="M230,102 L300,102" fill="none" stroke="#000000" stroke-width="1.1" marker-end="url(#filled)"/>
+<rect x="249.3" y="84" width="31.4" height="16" fill="#FFFFFF" opacity="0.92"/>
+<text x="265" y="96" font-size="12" text-anchor="middle" fill="#000000">JSON</text>
+<path d="M405,144 L405,170" fill="none" stroke="#000000" stroke-width="1.1" stroke-dasharray="6,4" marker-end="url(#open)"/>
+<text x="413" y="162" font-size="10" text-anchor="start" fill="#000000" font-style="italic">«usa»</text>
+<path d="M300,134 L278,134 L278,332 L300,332" fill="none" stroke="#000000" stroke-width="1.1" stroke-dasharray="6,4" marker-end="url(#open)"/>
+<path d="M405,374 L405,420" fill="none" stroke="#000000" stroke-width="1.1" marker-end="url(#filled)"/>
+<rect x="426.1" y="390" width="37.8" height="16" fill="#FFFFFF" opacity="0.92"/>
+<text x="445" y="402" font-size="12" text-anchor="middle" fill="#000000">HTTPS</text>
+<rect x="560" y="46" width="230" height="238" fill="#FFFFFF" stroke="#000" stroke-width="1.2"/>
+<path d="M560,46 H650 V60 H560 Z" fill="#FFFFFF" stroke="#000" stroke-width="1.2"/>
+<text x="566" y="57" font-size="10" text-anchor="start" fill="#000000" font-weight="bold">Servicios</text>
+<rect x="575" y="70" width="200" height="84" rx="0" fill="#FEFECE" stroke="#000000" stroke-width="1.2"/>
+<text x="675.0" y="90" font-size="12" text-anchor="middle" fill="#000000" font-style="italic">«component»</text>
+<text x="675.0" y="106" font-size="12" text-anchor="middle" fill="#000000" font-weight="bold">Servicio de evaluaciones</text>
+<text x="675.0" y="122" font-size="11" text-anchor="middle" fill="#000000">intentos, respuestas,</text>
+<text x="675.0" y="136" font-size="11" text-anchor="middle" fill="#000000">entrega y cierre</text>
+<rect x="751" y="78" width="16" height="12" fill="#FEFECE" stroke="#000000"/>
+<rect x="747" y="80" width="8" height="3" fill="#FEFECE" stroke="#000000"/>
+<rect x="747" y="85" width="8" height="3" fill="#FEFECE" stroke="#000000"/>
+<rect x="575" y="170" width="200" height="84" rx="0" fill="#FEFECE" stroke="#000000" stroke-width="1.2"/>
+<text x="675.0" y="190" font-size="12" text-anchor="middle" fill="#000000" font-style="italic">«component»</text>
+<text x="675.0" y="206" font-size="12" text-anchor="middle" fill="#000000" font-weight="bold">Servicio de admisión</text>
+<text x="675.0" y="222" font-size="11" text-anchor="middle" fill="#000000">convocatorias, códigos,</text>
+<text x="675.0" y="236" font-size="11" text-anchor="middle" fill="#000000">invalidar y reaplicar</text>
+<rect x="751" y="178" width="16" height="12" fill="#FEFECE" stroke="#000000"/>
+<rect x="747" y="180" width="8" height="3" fill="#FEFECE" stroke="#000000"/>
+<rect x="747" y="185" width="8" height="3" fill="#FEFECE" stroke="#000000"/>
+<path d="M510,102 L560,102" fill="none" stroke="#000000" stroke-width="1.1" marker-end="url(#filled)"/>
+<rect x="560" y="320" width="230" height="84" rx="0" fill="#FEFECE" stroke="#000000" stroke-width="1.2"/>
+<text x="675.0" y="340" font-size="12" text-anchor="middle" fill="#000000" font-style="italic">«component»</text>
+<text x="675.0" y="356" font-size="12" text-anchor="middle" fill="#000000" font-weight="bold">Persistencia</text>
+<text x="675.0" y="372" font-size="11" text-anchor="middle" fill="#000000">repositorios JPA</text>
+<text x="675.0" y="386" font-size="11" text-anchor="middle" fill="#000000">y migraciones Flyway</text>
+<rect x="766" y="328" width="16" height="12" fill="#FEFECE" stroke="#000000"/>
+<rect x="762" y="330" width="8" height="3" fill="#FEFECE" stroke="#000000"/>
+<rect x="762" y="335" width="8" height="3" fill="#FEFECE" stroke="#000000"/>
+<path d="M675,284 L675,320" fill="none" stroke="#000000" stroke-width="1.1" marker-end="url(#filled)"/>
+<rect x="560" y="450" width="230" height="76" rx="14" fill="#FEFECE" stroke="#000000" stroke-width="1.2"/>
+<text x="675.0" y="470" font-size="12" text-anchor="middle" fill="#000000" font-style="italic">«database»</text>
+<text x="675.0" y="486" font-size="12" text-anchor="middle" fill="#000000" font-weight="bold">PostgreSQL 16</text>
+<text x="675.0" y="502" font-size="11" text-anchor="middle" fill="#000000">V1 a V4</text>
+<path d="M675,404 L675,450" fill="none" stroke="#000000" stroke-width="1.1" marker-end="url(#filled)"/>
+<rect x="694.3" y="420" width="31.4" height="16" fill="#FFFFFF" opacity="0.92"/>
+<text x="710" y="432" font-size="12" text-anchor="middle" fill="#000000">JDBC</text>
+<rect x="850" y="60" width="220" height="84" rx="0" fill="#FEFECE" stroke="#000000" stroke-width="1.2"/>
+<text x="960.0" y="80" font-size="12" text-anchor="middle" fill="#000000" font-style="italic">«component»</text>
+<text x="960.0" y="96" font-size="12" text-anchor="middle" fill="#000000" font-weight="bold">Catálogo de tests</text>
+<text x="960.0" y="112" font-size="11" text-anchor="middle" fill="#000000">TestCatalog y TestDefinition</text>
+<text x="960.0" y="126" font-size="11" text-anchor="middle" fill="#000000">(definiciones publicadas)</text>
+<rect x="1046" y="68" width="16" height="12" fill="#FEFECE" stroke="#000000"/>
+<rect x="1042" y="70" width="8" height="3" fill="#FEFECE" stroke="#000000"/>
+<rect x="1042" y="75" width="8" height="3" fill="#FEFECE" stroke="#000000"/>
+<rect x="850" y="170" width="220" height="84" rx="0" fill="#FEFECE" stroke="#000000" stroke-width="1.2"/>
+<text x="960.0" y="190" font-size="12" text-anchor="middle" fill="#000000" font-style="italic">«component»</text>
+<text x="960.0" y="206" font-size="12" text-anchor="middle" fill="#000000" font-weight="bold">Registro de calificación</text>
+<text x="960.0" y="222" font-size="11" text-anchor="middle" fill="#000000">ScoringRegistry</text>
+<text x="960.0" y="236" font-size="11" text-anchor="middle" fill="#000000">(estrategia por testId)</text>
+<rect x="1046" y="178" width="16" height="12" fill="#FEFECE" stroke="#000000"/>
+<rect x="1042" y="180" width="8" height="3" fill="#FEFECE" stroke="#000000"/>
+<rect x="1042" y="185" width="8" height="3" fill="#FEFECE" stroke="#000000"/>
+<rect x="850" y="310" width="220" height="84" rx="0" fill="#FEFECE" stroke="#000000" stroke-width="1.2"/>
+<text x="960.0" y="330" font-size="12" text-anchor="middle" fill="#000000" font-style="italic">«component»</text>
+<text x="960.0" y="346" font-size="12" text-anchor="middle" fill="#000000" font-weight="bold">Calificación de Weil</text>
+<text x="960.0" y="362" font-size="11" text-anchor="middle" fill="#000000">WeilScoringStrategy</text>
+<text x="960.0" y="376" font-size="11" text-anchor="middle" fill="#000000">clave y baremos</text>
+<rect x="1046" y="318" width="16" height="12" fill="#FEFECE" stroke="#000000"/>
+<rect x="1042" y="320" width="8" height="3" fill="#FEFECE" stroke="#000000"/>
+<rect x="1042" y="325" width="8" height="3" fill="#FEFECE" stroke="#000000"/>
+<rect x="850" y="440" width="220" height="84" rx="0" fill="#FEFECE" stroke="#000000" stroke-width="1.2"/>
+<text x="960.0" y="460" font-size="12" text-anchor="middle" fill="#000000" font-style="italic">«component»</text>
+<text x="960.0" y="476" font-size="12" text-anchor="middle" fill="#000000" font-weight="bold">Servicios de apoyo</text>
+<text x="960.0" y="492" font-size="11" text-anchor="middle" fill="#000000">auditoría, privacidad,</text>
+<text x="960.0" y="506" font-size="11" text-anchor="middle" fill="#000000">notificaciones</text>
+<rect x="1046" y="448" width="16" height="12" fill="#FEFECE" stroke="#000000"/>
+<rect x="1042" y="450" width="8" height="3" fill="#FEFECE" stroke="#000000"/>
+<rect x="1042" y="455" width="8" height="3" fill="#FEFECE" stroke="#000000"/>
+<path d="M790,102 L850,102" fill="none" stroke="#000000" stroke-width="1.1" stroke-dasharray="6,4" marker-end="url(#open)"/>
+<text x="820" y="96" font-size="10" text-anchor="middle" fill="#000000" font-style="italic">«usa»</text>
+<path d="M790,212 L850,212" fill="none" stroke="#000000" stroke-width="1.1" stroke-dasharray="6,4" marker-end="url(#open)"/>
+<text x="820" y="206" font-size="10" text-anchor="middle" fill="#000000" font-style="italic">«usa»</text>
+<path d="M960,254 L960,273" fill="none" stroke="#000000" stroke-width="1.1" stroke-dasharray="6,4" marker-end="url(#open)"/>
+<circle cx="960" cy="283" r="8" fill="#fff" stroke="#000" stroke-width="1.2"/>
+<path d="M960,291 L960,310" fill="none" stroke="#000000" stroke-width="1.1"/>
+<text x="974" y="288" font-size="11" text-anchor="start" fill="#000000" font-style="italic">ScoringStrategy</text>
+<path d="M790,262 L815,262 L815,482 L850,482" fill="none" stroke="#000000" stroke-width="1.1" stroke-dasharray="6,4" marker-end="url(#open)"/>
+<text x="822" y="330" font-size="10" text-anchor="start" fill="#000000" font-style="italic">«usa»</text>
+</svg>

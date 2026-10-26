@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1180" height="510" viewBox="0 0 1180 510" font-family="Arial, Helvetica, sans-serif" font-size="12"><rect width="1180" height="510" fill="#FFFFFF"/><defs>
+<marker id="open" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M1,1 L9,5 L1,9" fill="none" stroke="#000000" stroke-width="1.2"/></marker>
+<marker id="filled" markerWidth="11" markerHeight="10" refX="10" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#000000"/></marker>
+<marker id="tri" markerWidth="12" markerHeight="12" refX="11" refY="6" orient="auto"><path d="M1,1 L11,6 L1,11 z" fill="#FFFFFF" stroke="#000000" stroke-width="1.1"/></marker>
+</defs>
+<rect x="8" y="8" width="1164" height="494" fill="none" stroke="#000000" stroke-width="1.2"/>
+<path d="M8,8 H395.91999999999996 V22 L385.91999999999996,34 H8 Z" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
+<text x="18" y="26" font-weight="bold">deployment Despliegue de referencia (docker compose)</text>
+<path d="M50,100 L60,90 H290 V200 L280,210 H50 Z" fill="#FEFECE" stroke="#000000" stroke-width="1.2"/>
+<path d="M50,100 H280 L290,90 M280,100 V210" fill="none" stroke="#000000" stroke-width="1.2"/>
+<text x="165.0" y="120" font-size="12" text-anchor="middle" fill="#000000" font-style="italic">«device»</text>
+<text x="165.0" y="136" font-size="12" text-anchor="middle" fill="#000000" font-weight="bold">Equipo del aspirante</text>
+<text x="165.0" y="152" font-size="11" text-anchor="middle" fill="#000000">portátil, tablet o móvil</text>
+<text x="165.0" y="166" font-size="11" text-anchor="middle" fill="#000000">«artifact» navegador web</text>
+<path d="M50,300 L60,290 H290 V400 L280,410 H50 Z" fill="#FEFECE" stroke="#000000" stroke-width="1.2"/>
+<path d="M50,300 H280 L290,290 M280,300 V410" fill="none" stroke="#000000" stroke-width="1.2"/>
+<text x="165.0" y="320" font-size="12" text-anchor="middle" fill="#000000" font-style="italic">«device»</text>
+<text x="165.0" y="336" font-size="12" text-anchor="middle" fill="#000000" font-weight="bold">Equipo del personal</text>
+<text x="165.0" y="352" font-size="11" text-anchor="middle" fill="#000000">STAFF o ADMIN</text>
+<text x="165.0" y="366" font-size="11" text-anchor="middle" fill="#000000">«artifact» navegador web</text>
+<path d="M390,170 L400,160 H620 V280 L610,290 H390 Z" fill="#FEFECE" stroke="#000000" stroke-width="1.2"/>
+<path d="M390,170 H610 L620,160 M610,170 V290" fill="none" stroke="#000000" stroke-width="1.2"/>
+<text x="500.0" y="190" font-size="12" text-anchor="middle" fill="#000000" font-style="italic">«execution environment»</text>
+<text x="500.0" y="206" font-size="12" text-anchor="middle" fill="#000000" font-weight="bold">Servidor web</text>
+<text x="500.0" y="222" font-size="11" text-anchor="middle" fill="#000000">nginx</text>
+<text x="500.0" y="236" font-size="11" text-anchor="middle" fill="#000000">«artifact» frontend/ (estáticos)</text>
+<path d="M700,170 L710,160 H940 V280 L930,290 H700 Z" fill="#FEFECE" stroke="#000000" stroke-width="1.2"/>
+<path d="M700,170 H930 L940,160 M930,170 V290" fill="none" stroke="#000000" stroke-width="1.2"/>
+<text x="815.0" y="190" font-size="12" text-anchor="middle" fill="#000000" font-style="italic">«execution environment»</text>
+<text x="815.0" y="206" font-size="12" text-anchor="middle" fill="#000000" font-weight="bold">Servidor de aplicación</text>
+<text x="815.0" y="222" font-size="11" text-anchor="middle" fill="#000000">Spring Boot, Java 17</text>
+<text x="815.0" y="236" font-size="11" text-anchor="middle" fill="#000000">«artifact» backend (jar)</text>
+<path d="M700,370 L710,360 H940 V470 L930,480 H700 Z" fill="#FEFECE" stroke="#000000" stroke-width="1.2"/>
+<path d="M700,370 H930 L940,360 M930,370 V480" fill="none" stroke="#000000" stroke-width="1.2"/>
+<text x="815.0" y="390" font-size="12" text-anchor="middle" fill="#000000" font-style="italic">«execution environment»</text>
+<text x="815.0" y="406" font-size="12" text-anchor="middle" fill="#000000" font-weight="bold">Servidor de base de datos</text>
+<text x="815.0" y="422" font-size="11" text-anchor="middle" fill="#000000">PostgreSQL 16</text>
+<text x="815.0" y="436" font-size="11" text-anchor="middle" fill="#000000">«artifact» esquema Flyway V1-V4</text>
+<path d="M1000,80 L1010,70 H1160 V150 L1150,160 H1000 Z" fill="#FEFECE" stroke="#000000" stroke-width="1.2"/>
+<path d="M1000,80 H1150 L1160,70 M1150,80 V160" fill="none" stroke="#000000" stroke-width="1.2"/>
+<text x="1075.0" y="100" font-size="12" text-anchor="middle" fill="#000000" font-style="italic">«external system»</text>
+<text x="1075.0" y="116" font-size="12" text-anchor="middle" fill="#000000" font-weight="bold">Moodle UAM</text>
+<text x="1075.0" y="132" font-size="11" text-anchor="middle" fill="#000000">uamvirtual.uam.edu.ni</text>
+<path d="M1000,260 L1010,250 H1160 V330 L1150,340 H1000 Z" fill="#FEFECE" stroke="#000000" stroke-width="1.2"/>
+<path d="M1000,260 H1150 L1160,250 M1150,260 V340" fill="none" stroke="#000000" stroke-width="1.2"/>
+<text x="1075.0" y="280" font-size="12" text-anchor="middle" fill="#000000" font-style="italic">«external system»</text>
+<text x="1075.0" y="296" font-size="12" text-anchor="middle" fill="#000000" font-weight="bold">Servidor de correo</text>
+<text x="1075.0" y="312" font-size="11" text-anchor="middle" fill="#000000">SMTP (sin probar)</text>
+<path d="M290,165 L350,165 L350,215 L390,215" fill="none" stroke="#000000" stroke-width="1.1" marker-end="url(#open)"/>
+<path d="M290,355 L350,355 L350,250 L390,250" fill="none" stroke="#000000" stroke-width="1.1" marker-end="url(#open)"/>
+<rect x="311.6" y="138" width="56.9" height="16" fill="#FFFFFF" opacity="0.92"/>
+<text x="340" y="150" font-size="12" text-anchor="middle" fill="#000000">HTTP :80</text>
+<path d="M610,230 L700,230" fill="none" stroke="#000000" stroke-width="1.1" marker-end="url(#open)"/>
+<rect x="620.2" y="212" width="69.6" height="16" fill="#FFFFFF" opacity="0.92"/>
+<text x="655" y="224" font-size="12" text-anchor="middle" fill="#000000">HTTP :8080</text>
+<text x="655" y="246" font-size="11" text-anchor="middle" fill="#000000">/api/</text>
+<path d="M815,290 L815,370" fill="none" stroke="#000000" stroke-width="1.1" marker-end="url(#open)"/>
+<rect x="835.2" y="323" width="69.6" height="16" fill="#FFFFFF" opacity="0.92"/>
+<text x="870" y="335" font-size="12" text-anchor="middle" fill="#000000">JDBC :5432</text>
+<path d="M930,200 L965,200 L965,125 L1000,125" fill="none" stroke="#000000" stroke-width="1.1" marker-end="url(#open)"/>
+<rect x="946.1" y="178" width="37.8" height="16" fill="#FFFFFF" opacity="0.92"/>
+<text x="965" y="190" font-size="12" text-anchor="middle" fill="#000000">HTTPS</text>
+<path d="M930,250 L965,250 L965,300 L1000,300" fill="none" stroke="#000000" stroke-width="1.1" marker-end="url(#open)"/>
+<rect x="949.3" y="233" width="31.4" height="16" fill="#FFFFFF" opacity="0.92"/>
+<text x="965" y="245" font-size="12" text-anchor="middle" fill="#000000">SMTP</text>
+<text x="60" y="480" font-size="11" text-anchor="start" fill="#000000" font-style="italic">TLS no está en el repositorio: lo pone el balanceador de la institución o nginx.</text>
+</svg>

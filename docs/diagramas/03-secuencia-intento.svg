@@ -1,0 +1,100 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1180" height="1000" viewBox="0 0 1180 1000" font-family="Arial, Helvetica, sans-serif" font-size="12"><rect width="1180" height="1000" fill="#FFFFFF"/><defs>
+<marker id="open" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M1,1 L9,5 L1,9" fill="none" stroke="#000000" stroke-width="1.2"/></marker>
+<marker id="filled" markerWidth="11" markerHeight="10" refX="10" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#000000"/></marker>
+<marker id="tri" markerWidth="12" markerHeight="12" refX="11" refY="6" orient="auto"><path d="M1,1 L11,6 L1,11 z" fill="#FFFFFF" stroke="#000000" stroke-width="1.1"/></marker>
+</defs>
+<rect x="8" y="8" width="1164" height="984" fill="none" stroke="#000000" stroke-width="1.2"/>
+<path d="M8,8 H256.71999999999997 V22 L246.71999999999997,34 H8 Z" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
+<text x="18" y="26" font-weight="bold">sd Un intento de principio a fin</text>
+<rect x="45.0" y="50" width="110" height="30" fill="#FEFECE" stroke="#000000" stroke-width="1.2"/>
+<text x="100" y="70" font-size="12" text-anchor="middle" fill="#000000" font-weight="bold">Aspirante</text>
+<line x1="100" y1="80" x2="100" y2="970" stroke="#000000" stroke-dasharray="6,4"/>
+<rect x="225.0" y="50" width="110" height="30" fill="#FEFECE" stroke="#000000" stroke-width="1.2"/>
+<text x="280" y="70" font-size="12" text-anchor="middle" fill="#000000" font-weight="bold">Interfaz web</text>
+<line x1="280" y1="80" x2="280" y2="970" stroke="#000000" stroke-dasharray="6,4"/>
+<rect x="415.0" y="50" width="110" height="30" fill="#FEFECE" stroke="#000000" stroke-width="1.2"/>
+<text x="470" y="70" font-size="12" text-anchor="middle" fill="#000000" font-weight="bold">API REST</text>
+<line x1="470" y1="80" x2="470" y2="970" stroke="#000000" stroke-dasharray="6,4"/>
+<rect x="615.0" y="50" width="110" height="30" fill="#FEFECE" stroke="#000000" stroke-width="1.2"/>
+<text x="670" y="70" font-size="12" text-anchor="middle" fill="#000000" font-weight="bold">Servicios</text>
+<line x1="670" y1="80" x2="670" y2="970" stroke="#000000" stroke-dasharray="6,4"/>
+<rect x="815.0" y="50" width="110" height="30" fill="#FEFECE" stroke="#000000" stroke-width="1.2"/>
+<text x="870" y="70" font-size="12" text-anchor="middle" fill="#000000" font-weight="bold">Calificación</text>
+<line x1="870" y1="80" x2="870" y2="970" stroke="#000000" stroke-dasharray="6,4"/>
+<rect x="1005.0" y="50" width="110" height="30" fill="#FEFECE" stroke="#000000" stroke-width="1.2"/>
+<text x="1060" y="70" font-size="12" text-anchor="middle" fill="#000000" font-weight="bold">PostgreSQL</text>
+<line x1="1060" y1="80" x2="1060" y2="970" stroke="#000000" stroke-dasharray="6,4"/>
+<path d="M105,120 L275,120" fill="none" stroke="#000000" stroke-width="1.1" marker-end="url(#filled)"/>
+<rect x="98.5" y="103" width="182.9" height="15" fill="#FFFFFF"/>
+<text x="190.0" y="115" font-size="11" text-anchor="middle" fill="#000000">1: ingresa su código de acceso</text>
+<path d="M285,154 L465,154" fill="none" stroke="#000000" stroke-width="1.1" marker-end="url(#filled)"/>
+<rect x="289.4" y="137" width="171.2" height="15" fill="#FFFFFF"/>
+<text x="375.0" y="149" font-size="11" text-anchor="middle" fill="#000000">2: POST /api/applicant/claim</text>
+<path d="M475,188 L665,188" fill="none" stroke="#000000" stroke-width="1.1" marker-end="url(#filled)"/>
+<rect x="519.4" y="171" width="101.3" height="15" fill="#FFFFFF"/>
+<text x="570.0" y="183" font-size="11" text-anchor="middle" fill="#000000">3: claim(código)</text>
+<path d="M675,222 L1055,222" fill="none" stroke="#000000" stroke-width="1.1" marker-end="url(#filled)"/>
+<rect x="741.5" y="205" width="247.0" height="15" fill="#FFFFFF"/>
+<text x="865.0" y="217" font-size="11" text-anchor="middle" fill="#000000">4: busca la huella y lo asocia al usuario</text>
+<path d="M465,256 L285,256" fill="none" stroke="#000000" stroke-width="1.1" stroke-dasharray="6,4" marker-end="url(#open)"/>
+<rect x="304.0" y="239" width="142.1" height="15" fill="#FFFFFF"/>
+<text x="375.0" y="251" font-size="11" text-anchor="middle" fill="#000000">5: disponibilidad: OPEN</text>
+<path d="M105,290 L275,290" fill="none" stroke="#000000" stroke-width="1.1" marker-end="url(#filled)"/>
+<rect x="84.0" y="273" width="212.1" height="15" fill="#FFFFFF"/>
+<text x="190.0" y="285" font-size="11" text-anchor="middle" fill="#000000">6: acepta el aviso y pulsa comenzar</text>
+<path d="M285,324 L465,324" fill="none" stroke="#000000" stroke-width="1.1" marker-end="url(#filled)"/>
+<rect x="309.8" y="307" width="130.4" height="15" fill="#FFFFFF"/>
+<text x="375.0" y="319" font-size="11" text-anchor="middle" fill="#000000">7: POST /api/attempts</text>
+<path d="M475,358 L665,358" fill="none" stroke="#000000" stroke-width="1.1" marker-end="url(#filled)"/>
+<rect x="493.1" y="341" width="153.8" height="15" fill="#FFFFFF"/>
+<text x="570.0" y="353" font-size="11" text-anchor="middle" fill="#000000">8: abrir(testId, versión)</text>
+<path d="M675,392 L1055,392" fill="none" stroke="#000000" stroke-width="1.1" marker-end="url(#filled)"/>
+<rect x="735.7" y="375" width="258.7" height="15" fill="#FFFFFF"/>
+<text x="865.0" y="387" font-size="11" text-anchor="middle" fill="#000000">9: bloquea al usuario, crea intento y lease</text>
+<path d="M465,426 L285,426" fill="none" stroke="#000000" stroke-width="1.1" stroke-dasharray="6,4" marker-end="url(#open)"/>
+<rect x="269.0" y="409" width="212.1" height="15" fill="#FFFFFF"/>
+<text x="375.0" y="421" font-size="11" text-anchor="middle" fill="#000000">10: intento (plazo, lease, versión)</text>
+<rect x="60" y="454" width="1060" height="196" fill="none" stroke="#000" stroke-width="1.1"/>
+<path d="M60,454 H122 V466 L114,476 H60 Z" fill="#fff" stroke="#000" stroke-width="1.1"/>
+<text x="68" y="469" font-size="11" text-anchor="start" fill="#000000" font-weight="bold">loop</text>
+<text x="130" y="469" font-size="11" text-anchor="start" fill="#000000">[por cada ítem]</text>
+<path d="M105,498 L275,498" fill="none" stroke="#000000" stroke-width="1.1" marker-end="url(#filled)"/>
+<rect x="98.5" y="481" width="182.9" height="15" fill="#FFFFFF"/>
+<text x="190.0" y="493" font-size="11" text-anchor="middle" fill="#000000">11: arrastra o toca la pieza N</text>
+<path d="M285,532 L465,532" fill="none" stroke="#000000" stroke-width="1.1" marker-end="url(#filled)"/>
+<rect x="245.7" y="515" width="258.7" height="15" fill="#FFFFFF"/>
+<text x="375.0" y="527" font-size="11" text-anchor="middle" fill="#000000">12: PUT /api/attempts/{id}/responses/{ítem}</text>
+<path d="M475,566 L665,566" fill="none" stroke="#000000" stroke-width="1.1" marker-end="url(#filled)"/>
+<rect x="461.1" y="549" width="217.9" height="15" fill="#FFFFFF"/>
+<text x="570.0" y="561" font-size="11" text-anchor="middle" fill="#000000">13: responder(ítem, opción, versión)</text>
+<path d="M675,600 L1055,600" fill="none" stroke="#000000" stroke-width="1.1" marker-end="url(#filled)"/>
+<rect x="753.1" y="583" width="223.7" height="15" fill="#FFFFFF"/>
+<text x="865.0" y="595" font-size="11" text-anchor="middle" fill="#000000">14: guarda la respuesta (idempotente)</text>
+<path d="M465,634 L285,634" fill="none" stroke="#000000" stroke-width="1.1" stroke-dasharray="6,4" marker-end="url(#open)"/>
+<rect x="304.0" y="617" width="142.1" height="15" fill="#FFFFFF"/>
+<text x="375.0" y="629" font-size="11" text-anchor="middle" fill="#000000">15: intento actualizado</text>
+<path d="M105,708 L275,708" fill="none" stroke="#000000" stroke-width="1.1" marker-end="url(#filled)"/>
+<rect x="121.9" y="691" width="136.3" height="15" fill="#FFFFFF"/>
+<text x="190.0" y="703" font-size="11" text-anchor="middle" fill="#000000">16: finaliza y entrega</text>
+<path d="M285,742 L465,742" fill="none" stroke="#000000" stroke-width="1.1" marker-end="url(#filled)"/>
+<rect x="271.9" y="725" width="206.2" height="15" fill="#FFFFFF"/>
+<text x="375.0" y="737" font-size="11" text-anchor="middle" fill="#000000">17: POST /api/attempts/{id}/submit</text>
+<path d="M475,776 L665,776" fill="none" stroke="#000000" stroke-width="1.1" marker-end="url(#filled)"/>
+<rect x="496.0" y="759" width="147.9" height="15" fill="#FFFFFF"/>
+<text x="570.0" y="771" font-size="11" text-anchor="middle" fill="#000000">18: entregar(respuestas)</text>
+<path d="M675,810 L865,810" fill="none" stroke="#000000" stroke-width="1.1" marker-end="url(#filled)"/>
+<rect x="704.8" y="793" width="130.4" height="15" fill="#FFFFFF"/>
+<text x="770.0" y="805" font-size="11" text-anchor="middle" fill="#000000">19: score(respuestas)</text>
+<path d="M865,844 L675,844" fill="none" stroke="#000000" stroke-width="1.1" stroke-dasharray="6,4" marker-end="url(#open)"/>
+<rect x="681.5" y="827" width="177.1" height="15" fill="#FFFFFF"/>
+<text x="770.0" y="839" font-size="11" text-anchor="middle" fill="#000000">20: puntaje directo y escalas</text>
+<path d="M675,878 L1055,878" fill="none" stroke="#000000" stroke-width="1.1" marker-end="url(#filled)"/>
+<rect x="741.5" y="861" width="247.0" height="15" fill="#FFFFFF"/>
+<text x="865.0" y="873" font-size="11" text-anchor="middle" fill="#000000">21: estado SUBMITTED, puntaje y resultado</text>
+<path d="M465,912 L285,912" fill="none" stroke="#000000" stroke-width="1.1" stroke-dasharray="6,4" marker-end="url(#open)"/>
+<rect x="286.5" y="895" width="177.1" height="15" fill="#FFFFFF"/>
+<text x="375.0" y="907" font-size="11" text-anchor="middle" fill="#000000">22: constancia (sin puntajes)</text>
+<path d="M275,946 L105,946" fill="none" stroke="#000000" stroke-width="1.1" stroke-dasharray="6,4" marker-end="url(#open)"/>
+<rect x="113.1" y="929" width="153.8" height="15" fill="#FFFFFF"/>
+<text x="190.0" y="941" font-size="11" text-anchor="middle" fill="#000000">23: muestra la constancia</text>
+</svg>

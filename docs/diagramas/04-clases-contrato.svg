@@ -1,0 +1,90 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1240" height="560" viewBox="0 0 1240 560" font-family="Arial, Helvetica, sans-serif" font-size="12"><rect width="1240" height="560" fill="#FFFFFF"/><defs>
+<marker id="open" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M1,1 L9,5 L1,9" fill="none" stroke="#000000" stroke-width="1.2"/></marker>
+<marker id="filled" markerWidth="11" markerHeight="10" refX="10" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#000000"/></marker>
+<marker id="tri" markerWidth="12" markerHeight="12" refX="11" refY="6" orient="auto"><path d="M1,1 L11,6 L1,11 z" fill="#FFFFFF" stroke="#000000" stroke-width="1.1"/></marker>
+</defs>
+<rect x="8" y="8" width="1224" height="544" fill="none" stroke="#000000" stroke-width="1.2"/>
+<path d="M8,8 H277.6 V22 L267.6,34 H8 Z" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
+<text x="18" y="26" font-weight="bold">class Contrato para agregar un test</text>
+<rect x="40" y="60" width="250" height="130" fill="#FEFECE" stroke="#000" stroke-width="1.2"/>
+<text x="165.0" y="78" font-size="12" text-anchor="middle" fill="#000000" font-weight="bold">TestDefinition</text>
+<line x1="40" y1="86" x2="290" y2="86" stroke="#000"/>
+<text x="48" y="100" font-size="11" text-anchor="start" fill="#000000">+ id: String</text>
+<text x="48" y="114" font-size="11" text-anchor="start" fill="#000000">+ version: int</text>
+<text x="48" y="128" font-size="11" text-anchor="start" fill="#000000">+ itemCount: int</text>
+<text x="48" y="142" font-size="11" text-anchor="start" fill="#000000">+ optionCount: int</text>
+<line x1="40" y1="152" x2="290" y2="152" stroke="#000"/>
+<text x="48" y="166" font-size="11" text-anchor="start" fill="#000000">+ accepts(item, option): boolean</text>
+<text x="48" y="180" font-size="11" text-anchor="start" fill="#000000">+ acceptsItem(item): boolean</text>
+<rect x="40" y="225" width="250" height="74" fill="#FEFECE" stroke="#000" stroke-width="1.2"/>
+<text x="165.0" y="243" font-size="12" text-anchor="middle" fill="#000000" font-weight="bold">TestCatalog</text>
+<line x1="40" y1="251" x2="290" y2="251" stroke="#000"/>
+<line x1="40" y1="261" x2="290" y2="261" stroke="#000"/>
+<text x="48" y="275" font-size="11" text-anchor="start" fill="#000000">+ get(testId): TestDefinition</text>
+<text x="48" y="289" font-size="11" text-anchor="start" fill="#000000">+ defaultTest(): TestDefinition</text>
+<rect x="40" y="380" width="250" height="76" fill="#FEFECE" stroke="#000" stroke-width="1.2"/>
+<text x="165.0" y="398" font-size="12" text-anchor="middle" fill="#000000" font-style="italic">«configuration»</text>
+<text x="165.0" y="413" font-size="12" text-anchor="middle" fill="#000000" font-weight="bold">PublishedTests</text>
+<line x1="40" y1="421" x2="290" y2="421" stroke="#000"/>
+<line x1="40" y1="431" x2="290" y2="431" stroke="#000"/>
+<text x="48" y="445" font-size="11" text-anchor="start" fill="#000000">+ weilFormA(): TestDefinition</text>
+<rect x="400" y="60" width="330" height="146" fill="#FEFECE" stroke="#000" stroke-width="1.2"/>
+<text x="565.0" y="78" font-size="12" text-anchor="middle" fill="#000000" font-style="italic">«interface»</text>
+<text x="565.0" y="93" font-size="12" text-anchor="middle" fill="#000000" font-weight="bold" font-style="italic">ScoringStrategy</text>
+<line x1="400" y1="101" x2="730" y2="101" stroke="#000"/>
+<line x1="400" y1="111" x2="730" y2="111" stroke="#000"/>
+<text x="408" y="125" font-size="11" text-anchor="start" fill="#000000">+ testId(): String</text>
+<text x="408" y="139" font-size="11" text-anchor="start" fill="#000000">+ scoringVersion(): String</text>
+<text x="408" y="153" font-size="11" text-anchor="start" fill="#000000">+ score(answers): Score</text>
+<text x="408" y="167" font-size="11" text-anchor="start" fill="#000000">+ scales(score): List&lt;Scale&gt;</text>
+<text x="408" y="181" font-size="11" text-anchor="start" fill="#000000">+ interpret(score, age, group): Interpretation</text>
+<text x="408" y="195" font-size="11" text-anchor="start" fill="#000000">+ norms(): List&lt;Map&gt;</text>
+<rect x="400" y="300" width="330" height="88" fill="#FEFECE" stroke="#000" stroke-width="1.2"/>
+<text x="565.0" y="318" font-size="12" text-anchor="middle" fill="#000000" font-weight="bold">WeilScoringStrategy</text>
+<line x1="400" y1="326" x2="730" y2="326" stroke="#000"/>
+<text x="408" y="340" font-size="11" text-anchor="start" fill="#000000">+ TEST_ID = "weil-form-a"</text>
+<line x1="400" y1="350" x2="730" y2="350" stroke="#000"/>
+<text x="408" y="364" font-size="11" text-anchor="start" fill="#000000">+ scoringVersion(): "weil-v1"</text>
+<text x="408" y="378" font-size="11" text-anchor="start" fill="#000000">+ scales(score): total + 5 láminas</text>
+<rect x="860" y="60" width="280" height="60" fill="#FEFECE" stroke="#000" stroke-width="1.2"/>
+<text x="1000.0" y="78" font-size="12" text-anchor="middle" fill="#000000" font-weight="bold">ScoringRegistry</text>
+<line x1="860" y1="86" x2="1140" y2="86" stroke="#000"/>
+<line x1="860" y1="96" x2="1140" y2="96" stroke="#000"/>
+<text x="868" y="110" font-size="11" text-anchor="start" fill="#000000">+ forTest(testId): ScoringStrategy</text>
+<rect x="860" y="170" width="280" height="88" fill="#FEFECE" stroke="#000" stroke-width="1.2"/>
+<text x="1000.0" y="188" font-size="12" text-anchor="middle" fill="#000000" font-weight="bold">AssessmentService</text>
+<line x1="860" y1="196" x2="1140" y2="196" stroke="#000"/>
+<line x1="860" y1="206" x2="1140" y2="206" stroke="#000"/>
+<text x="868" y="220" font-size="11" text-anchor="start" fill="#000000">+ answer(...)</text>
+<text x="868" y="234" font-size="11" text-anchor="start" fill="#000000">+ submit(...)</text>
+<text x="868" y="248" font-size="11" text-anchor="start" fill="#000000">+ closeExpired()</text>
+<rect x="860" y="300" width="280" height="88" fill="#FEFECE" stroke="#000" stroke-width="1.2"/>
+<text x="1000.0" y="318" font-size="12" text-anchor="middle" fill="#000000" font-weight="bold">AdmissionService</text>
+<line x1="860" y1="326" x2="1140" y2="326" stroke="#000"/>
+<line x1="860" y1="336" x2="1140" y2="336" stroke="#000"/>
+<text x="868" y="350" font-size="11" text-anchor="start" fill="#000000">+ claim(...)</text>
+<text x="868" y="364" font-size="11" text-anchor="start" fill="#000000">+ reserveFor(...)</text>
+<text x="868" y="378" font-size="11" text-anchor="start" fill="#000000">+ invalidate(...)</text>
+<rect x="860" y="440" width="280" height="74" fill="#FEFECE" stroke="#000" stroke-width="1.2"/>
+<text x="1000.0" y="458" font-size="12" text-anchor="middle" fill="#000000" font-weight="bold">AssessmentResult</text>
+<line x1="860" y1="466" x2="1140" y2="466" stroke="#000"/>
+<text x="868" y="480" font-size="11" text-anchor="start" fill="#000000">+ scoringVersion: String</text>
+<text x="868" y="494" font-size="11" text-anchor="start" fill="#000000">+ scales: List&lt;Scale&gt;</text>
+<line x1="860" y1="504" x2="1140" y2="504" stroke="#000"/>
+<path d="M165,225 L165,192" fill="none" stroke="#000000" stroke-width="1.1" marker-end="url(#open)"/>
+<text x="173" y="214" font-size="10" text-anchor="start" fill="#000000">1..*</text>
+<path d="M40,450 L24,450 L24,95 L40,95" fill="none" stroke="#000000" stroke-width="1.1" stroke-dasharray="6,4" marker-end="url(#open)"/>
+<text x="30" y="335" font-size="10" text-anchor="start" fill="#000000" font-style="italic">«registra»</text>
+<path d="M565,300 L565,207" fill="none" stroke="#000000" stroke-width="1.1" stroke-dasharray="6,4" marker-end="url(#tri)"/>
+<path d="M860,95 L730,95" fill="none" stroke="#000000" stroke-width="1.1" marker-end="url(#open)"/>
+<rect x="779.3" y="77" width="31.4" height="16" fill="#FFFFFF" opacity="0.92"/>
+<text x="795" y="89" font-size="12" text-anchor="middle" fill="#000000">0..*</text>
+<path d="M1000,170 L1000,120" fill="none" stroke="#000000" stroke-width="1.1" stroke-dasharray="6,4" marker-end="url(#open)"/>
+<text x="1008" y="150" font-size="10" text-anchor="start" fill="#000000" font-style="italic">«usa»</text>
+<path d="M860,250 L290,250" fill="none" stroke="#000000" stroke-width="1.1" stroke-dasharray="6,4" marker-end="url(#open)"/>
+<rect x="581.1" y="232" width="37.8" height="16" fill="#FFFFFF" opacity="0.92"/>
+<text x="600" y="244" font-size="12" text-anchor="middle" fill="#000000">«usa»</text>
+<path d="M860,345 L830,345 L830,250" fill="none" stroke="#000000" stroke-width="1.1" stroke-dasharray="6,4"/>
+<path d="M1140,215 L1166,215 L1166,475 L1140,475" fill="none" stroke="#000000" stroke-width="1.1" stroke-dasharray="6,4" marker-end="url(#open)"/>
+<text x="1174" y="340" font-size="10" text-anchor="start" fill="#000000" font-style="italic">«crea»</text>
+</svg>

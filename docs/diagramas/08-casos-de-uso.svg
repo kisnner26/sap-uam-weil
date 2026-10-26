@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1140" height="760" viewBox="0 0 1140 760" font-family="Arial, Helvetica, sans-serif" font-size="12"><rect width="1140" height="760" fill="#FFFFFF"/><defs>
+<marker id="open" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M1,1 L9,5 L1,9" fill="none" stroke="#000000" stroke-width="1.2"/></marker>
+<marker id="filled" markerWidth="11" markerHeight="10" refX="10" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#000000"/></marker>
+<marker id="tri" markerWidth="12" markerHeight="12" refX="11" refY="6" orient="auto"><path d="M1,1 L11,6 L1,11 z" fill="#FFFFFF" stroke="#000000" stroke-width="1.1"/></marker>
+</defs>
+<rect x="8" y="8" width="1124" height="744" fill="none" stroke="#000000" stroke-width="1.2"/>
+<path d="M8,8 H256.71999999999997 V22 L246.71999999999997,34 H8 Z" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
+<text x="18" y="26" font-weight="bold">uc Casos de uso del test de Weil</text>
+<rect x="230" y="50" width="680" height="680" fill="none" stroke="#000" stroke-width="1.2"/>
+<text x="570" y="72" font-size="12" text-anchor="middle" fill="#000000" font-weight="bold">SAP-UAM · Test de Inteligencia No Verbal de Weil</text>
+<circle cx="110" cy="259" r="9" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
+<path d="M110,268 V294 M94,277 H126 M110,294 L96,314 M110,294 L124,314" fill="none" stroke="#000000" stroke-width="1.2"/>
+<text x="110" y="330" font-size="12" text-anchor="middle" fill="#000000" font-weight="bold">Aspirante</text>
+<text x="110" y="348" font-size="11" text-anchor="middle" fill="#000000">(CLIENTE)</text>
+<circle cx="1030" cy="179" r="9" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
+<path d="M1030,188 V214 M1014,197 H1046 M1030,214 L1016,234 M1030,214 L1044,234" fill="none" stroke="#000000" stroke-width="1.2"/>
+<text x="1030" y="250" font-size="12" text-anchor="middle" fill="#000000" font-weight="bold">Personal</text>
+<text x="1030" y="268" font-size="11" text-anchor="middle" fill="#000000">(STAFF)</text>
+<circle cx="1030" cy="529" r="9" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
+<path d="M1030,538 V564 M1014,547 H1046 M1030,564 L1016,584 M1030,564 L1044,584" fill="none" stroke="#000000" stroke-width="1.2"/>
+<text x="1030" y="600" font-size="12" text-anchor="middle" fill="#000000" font-weight="bold">Administrador</text>
+<text x="1030" y="618" font-size="11" text-anchor="middle" fill="#000000">(ADMIN)</text>
+<ellipse cx="380" cy="130" rx="125" ry="30" fill="#FEFECE" stroke="#000000" stroke-width="1.2"/>
+<text x="380" y="134" font-size="11" text-anchor="middle" fill="#000000" font-weight="bold">Canjear código de acceso</text>
+<ellipse cx="380" cy="220" rx="125" ry="30" fill="#FEFECE" stroke="#000000" stroke-width="1.2"/>
+<text x="380" y="224" font-size="11" text-anchor="middle" fill="#000000" font-weight="bold">Aceptar aviso de privacidad</text>
+<ellipse cx="380" cy="310" rx="125" ry="30" fill="#FEFECE" stroke="#000000" stroke-width="1.2"/>
+<text x="380" y="314" font-size="11" text-anchor="middle" fill="#000000" font-weight="bold">Rendir la prueba</text>
+<ellipse cx="380" cy="400" rx="125" ry="30" fill="#FEFECE" stroke="#000000" stroke-width="1.2"/>
+<text x="380" y="404" font-size="11" text-anchor="middle" fill="#000000" font-weight="bold">Entregar y recibir constancia</text>
+<ellipse cx="740" cy="120" rx="130" ry="30" fill="#FEFECE" stroke="#000000" stroke-width="1.2"/>
+<text x="740" y="124" font-size="11" text-anchor="middle" fill="#000000" font-weight="bold">Gestionar convocatorias</text>
+<ellipse cx="740" cy="200" rx="130" ry="30" fill="#FEFECE" stroke="#000000" stroke-width="1.2"/>
+<text x="740" y="204" font-size="11" text-anchor="middle" fill="#000000" font-weight="bold">Habilitar aspirantes</text>
+<ellipse cx="740" cy="280" rx="130" ry="30" fill="#FEFECE" stroke="#000000" stroke-width="1.2"/>
+<text x="740" y="284" font-size="11" text-anchor="middle" fill="#000000" font-weight="bold">Revisar resultados</text>
+<ellipse cx="740" cy="360" rx="130" ry="30" fill="#FEFECE" stroke="#000000" stroke-width="1.2"/>
+<text x="740" y="364" font-size="11" text-anchor="middle" fill="#000000" font-weight="bold">Exportar resultados (CSV)</text>
+<ellipse cx="740" cy="440" rx="130" ry="30" fill="#FEFECE" stroke="#000000" stroke-width="1.2"/>
+<text x="740" y="444" font-size="11" text-anchor="middle" fill="#000000" font-weight="bold">Invalidar y reaplicar</text>
+<ellipse cx="740" cy="530" rx="140" ry="30" fill="#FEFECE" stroke="#000000" stroke-width="1.2"/>
+<text x="740" y="534" font-size="11" text-anchor="middle" fill="#000000" font-weight="bold">Gestionar personal</text>
+<ellipse cx="740" cy="600" rx="140" ry="30" fill="#FEFECE" stroke="#000000" stroke-width="1.2"/>
+<text x="740" y="604" font-size="11" text-anchor="middle" fill="#000000" font-weight="bold">Consultar auditoría</text>
+<ellipse cx="740" cy="670" rx="140" ry="30" fill="#FEFECE" stroke="#000000" stroke-width="1.2"/>
+<text x="740" y="674" font-size="11" text-anchor="middle" fill="#000000" font-weight="bold">Atender solicitudes de titulares</text>
+<path d="M126,295 L255,130" fill="none" stroke="#000000" stroke-width="1.1"/>
+<path d="M126,295 L255,220" fill="none" stroke="#000000" stroke-width="1.1"/>
+<path d="M126,295 L255,310" fill="none" stroke="#000000" stroke-width="1.1"/>
+<path d="M126,295 L255,400" fill="none" stroke="#000000" stroke-width="1.1"/>
+<path d="M1030,215 L870,120" fill="none" stroke="#000000" stroke-width="1.1"/>
+<path d="M1030,215 L870,200" fill="none" stroke="#000000" stroke-width="1.1"/>
+<path d="M1030,215 L870,280" fill="none" stroke="#000000" stroke-width="1.1"/>
+<path d="M1030,215 L870,360" fill="none" stroke="#000000" stroke-width="1.1"/>
+<path d="M1030,215 L870,440" fill="none" stroke="#000000" stroke-width="1.1"/>
+<path d="M1030,565 L880,530" fill="none" stroke="#000000" stroke-width="1.1"/>
+<path d="M1030,565 L880,600" fill="none" stroke="#000000" stroke-width="1.1"/>
+<path d="M1030,565 L880,670" fill="none" stroke="#000000" stroke-width="1.1"/>
+<path d="M380,280 L380,250" fill="none" stroke="#000000" stroke-width="1.1" stroke-dasharray="6,4" marker-end="url(#open)"/>
+<text x="392" y="268" font-size="10" text-anchor="start" fill="#000000" font-style="italic">«include»</text>
+<path d="M1030,514 L1030,292" fill="none" stroke="#000000" stroke-width="1.1" marker-end="url(#tri)"/>
+<text x="1038" y="400" font-size="10" text-anchor="start" fill="#000000">hereda los</text>
+<text x="1038" y="413" font-size="10" text-anchor="start" fill="#000000">casos de STAFF</text>
+</svg>

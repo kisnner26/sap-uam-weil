@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="380" viewBox="0 0 1000 380" font-family="Arial, Helvetica, sans-serif" font-size="12"><rect width="1000" height="380" fill="#FFFFFF"/><defs>
+<marker id="open" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M1,1 L9,5 L1,9" fill="none" stroke="#000000" stroke-width="1.2"/></marker>
+<marker id="filled" markerWidth="11" markerHeight="10" refX="10" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#000000"/></marker>
+<marker id="tri" markerWidth="12" markerHeight="12" refX="11" refY="6" orient="auto"><path d="M1,1 L11,6 L1,11 z" fill="#FFFFFF" stroke="#000000" stroke-width="1.1"/></marker>
+</defs>
+<rect x="8" y="8" width="984" height="364" fill="none" stroke="#000000" stroke-width="1.2"/>
+<path d="M8,8 H451.59999999999997 V22 L441.59999999999997,34 H8 Z" fill="#FFFFFF" stroke="#000000" stroke-width="1.2"/>
+<text x="18" y="26" font-weight="bold">stm Estados de una convocatoria (se calculan, no se guardan)</text>
+<circle cx="60" cy="150" r="8" fill="#000000"/>
+<rect x="140" y="126" width="150" height="46" rx="14" fill="#FEFECE" stroke="#000" stroke-width="1.2"/>
+<text x="215.0" y="147" font-size="12" text-anchor="middle" fill="#000000" font-weight="bold">UPCOMING</text>
+<rect x="400" y="126" width="150" height="46" rx="14" fill="#FEFECE" stroke="#000" stroke-width="1.2"/>
+<text x="475.0" y="147" font-size="12" text-anchor="middle" fill="#000000" font-weight="bold">OPEN</text>
+<rect x="660" y="126" width="150" height="46" rx="14" fill="#FEFECE" stroke="#000" stroke-width="1.2"/>
+<text x="735.0" y="147" font-size="12" text-anchor="middle" fill="#000000" font-weight="bold">CLOSED</text>
+<circle cx="900" cy="150" r="10" fill="#FFFFFF" stroke="#000000" stroke-width="1.4"/>
+<circle cx="900" cy="150" r="6" fill="#000000"/>
+<rect x="400" y="270" width="150" height="46" rx="14" fill="#FEFECE" stroke="#000" stroke-width="1.2"/>
+<text x="475.0" y="291" font-size="12" text-anchor="middle" fill="#000000" font-weight="bold">CANCELLED</text>
+<circle cx="900" cy="293" r="10" fill="#FFFFFF" stroke="#000000" stroke-width="1.4"/>
+<circle cx="900" cy="293" r="6" fill="#000000"/>
+<path d="M68,150 L140,150" fill="none" stroke="#000000" stroke-width="1.1" marker-end="url(#filled)"/>
+<path d="M290,150 L400,150" fill="none" stroke="#000000" stroke-width="1.1" marker-end="url(#filled)"/>
+<rect x="297.5" y="130" width="95.0" height="16" fill="#FFFFFF" opacity="0.92"/>
+<text x="345" y="142" font-size="12" text-anchor="middle" fill="#000000">llega opens_at</text>
+<path d="M550,150 L660,150" fill="none" stroke="#000000" stroke-width="1.1" marker-end="url(#filled)"/>
+<rect x="557.5" y="130" width="95.0" height="16" fill="#FFFFFF" opacity="0.92"/>
+<text x="605" y="142" font-size="12" text-anchor="middle" fill="#000000">pasa closes_at</text>
+<path d="M810,150 L890,150" fill="none" stroke="#000000" stroke-width="1.1" marker-end="url(#filled)"/>
+<path d="M215,172 L215,293 L400,293" fill="none" stroke="#000000" stroke-width="1.1" marker-end="url(#filled)"/>
+<rect x="236.6" y="273" width="126.8" height="16" fill="#FFFFFF" opacity="0.92"/>
+<text x="300" y="285" font-size="12" text-anchor="middle" fill="#000000">cancelar [personal]</text>
+<path d="M475,172 L475,270" fill="none" stroke="#000000" stroke-width="1.1" marker-end="url(#filled)"/>
+<rect x="491.6" y="213" width="56.9" height="16" fill="#FFFFFF" opacity="0.92"/>
+<text x="520" y="225" font-size="12" text-anchor="middle" fill="#000000">cancelar</text>
+<path d="M550,293 L890,293" fill="none" stroke="#000000" stroke-width="1.1" marker-end="url(#filled)"/>
+<text x="60" y="350" font-size="11" text-anchor="start" fill="#000000" font-style="italic">El estado se deduce de la hora actual y de cancelled_at; una habilitación pasa de ENABLED a REVOKED por separado.</text>
+</svg>
