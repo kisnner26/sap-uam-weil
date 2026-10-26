@@ -255,3 +255,16 @@ body[data-route="test"] .app-content{box-sizing:border-box;max-width:none;min-wi
   .pr__btn::after,.ghost-btn::after,.solid-btn::after,.danger-btn::after{transition:none}
   .question-figure.is-loading::after{animation:none}
 }
+
+/* navegación y encabezado: nada fuera de alcance ni ocupando media pantalla */
+@media(max-width:1024px){
+  .app-top{position:static}
+  .brand{padding-bottom:0!important;border-bottom:0}
+  .brand::after{display:none}
+}
+.top-nav{scroll-snap-type:x proximity}
+.nav-btn{scroll-snap-align:center}
+@media(max-width:720px){
+  .app-shell:not(:has(.test-workbench)) .top-nav::after{content:"";flex:0 0 32px}
+  .app-shell:not(:has(.test-workbench)) .top-nav{-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 32px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 32px),transparent)}
+}
