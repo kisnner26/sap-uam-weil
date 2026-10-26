@@ -26,6 +26,7 @@ public class AssessmentService {
     private final AssessmentEventRepository events;
     private final ScoringRegistry scoring;
     private final TestCatalog catalog;
+    private final AssessmentResultRepository results;
     private final AdmissionService admission;
     private final NotificationService notifications;
 
@@ -35,6 +36,7 @@ public class AssessmentService {
                              AssessmentEventRepository events,
                              ScoringRegistry scoring,
                              TestCatalog catalog,
+                             AssessmentResultRepository results,
                              AdmissionService admission,
                              NotificationService notifications) {
         this.attempts = attempts;
@@ -43,6 +45,7 @@ public class AssessmentService {
         this.events = events;
         this.scoring = scoring;
         this.catalog = catalog;
+        this.results = results;
         this.admission = admission;
         this.notifications = notifications;
     }
@@ -174,6 +177,7 @@ public class AssessmentService {
         attempt.submit(score.directScore(), enrollment != null ? enrollment.getParticipantAge() : age,
                 enrollment != null ? enrollment.getNormGroup() : normGroup);
         flushOptimistically(attempt);
+        saveResult(attempt, score);
         queueReceipt(attempt);
         return detail(attempt, false);
     }
@@ -193,10 +197,12 @@ public class AssessmentService {
                 answers.set(response.getItemIndex(), response.getSelectedOption());
             }
             ExamEnrollment enrollment = attempt.getEnrollment();
-            attempt.autoClose(strategy(attempt).score(answers).directScore(),
+            ScoringStrategy.Score score = strategy(attempt).score(answers);
+            attempt.autoClose(score.directScore(),
                     enrollment == null ? null : enrollment.getParticipantAge(),
                     enrollment == null ? null : enrollment.getNormGroup());
             attempts.save(attempt);
+            saveResult(attempt, score);
             queueReceipt(attempt);
             closed += 1;
         }
@@ -376,6 +382,11 @@ public class AssessmentService {
         if ("7-16".equals(normGroup) && (age == null || age < 7 || age > 16)) {
             throw new IllegalArgumentException("La edad debe estar entre 7 y 16 años para ese grupo.");
         }
+    }
+
+    private void saveResult(AssessmentAttempt attempt, ScoringStrategy.Score score) {
+        ScoringStrategy strategy = strategy(attempt);
+        results.save(new AssessmentResult(attempt, strategy.scoringVersion(), strategy.scales(score), Instant.now()));
     }
 
     private TestDefinition definition(AssessmentAttempt attempt) {

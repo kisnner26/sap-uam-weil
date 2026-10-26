@@ -41,6 +41,21 @@ public class WeilScoringStrategy implements ScoringStrategy {
     }
 
     @Override
+    public String scoringVersion() {
+        return "weil-v1";
+    }
+
+    @Override
+    public List<Scale> scales(Score score) {
+        List<Scale> scales = new java.util.ArrayList<>();
+        scales.add(new Scale("total", "Puntaje directo", score.directScore()));
+        for (int page = 0; page < score.pageScores().size(); page++) {
+            scales.add(new Scale("lamina-" + (page + 1), "Lámina " + (page + 1), score.pageScores().get(page)));
+        }
+        return scales;
+    }
+
+    @Override
     public Score score(List<Integer> answers) {
         List<Integer> pages = java.util.stream.IntStream.range(0, 5)
                 .map(page -> java.util.stream.IntStream.range(0, ANSWER_PATTERN.length)
