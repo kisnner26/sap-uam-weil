@@ -63,6 +63,8 @@ public class AssessmentService {
                 throw new AssessmentConflictException("Este intento ya está abierto en otra ventana o dispositivo.");
             }
             attempt.renewLease(newLeaseToken(), now.plus(LEASE_DURATION));
+            // Se persiste antes de armar la vista: la versión devuelta debe ser la que quedó en la base.
+            flushOptimistically(attempt);
             return detail(attempt, true);
         }
         ExamEnrollment enrollment = admission.reserveFor(userId, testId, now);
@@ -174,7 +176,7 @@ public class AssessmentService {
                 enrollment != null ? enrollment.getNormGroup() : normGroup);
         flushOptimistically(attempt);
         queueReceipt(attempt);
-        return detail(attempt, true);
+        return detail(attempt, false);
     }
 
     /**
@@ -215,11 +217,13 @@ public class AssessmentService {
             throw new AssessmentConflictException("El intento ya fue entregado.");
         }
         ensureWithinTime(attempt, Instant.now());
-        if (attempt.getVersion() != expectedVersion) {
-            throw new AssessmentConflictException("El intento cambió en otra sesión. Actualizá antes de guardar.");
-        }
         if (!attempt.leaseBelongsTo(leaseToken) || !attempt.leaseIsActive(Instant.now())) {
-            throw new AssessmentConflictException("La sesión exclusiva venció o pertenece a otro dispositivo.");
+            throw new AssessmentConflictException("La sesión exclusiva venció o pertenece a otro dispositivo.",
+                    AssessmentConflictException.Kind.LEASE_LOST);
+        }
+        if (attempt.getVersion() != expectedVersion) {
+            throw new AssessmentConflictException("El intento cambió en otra sesión. Actualizá antes de guardar.",
+                    AssessmentConflictException.Kind.STALE_VERSION);
         }
         return attempt;
     }
@@ -228,14 +232,16 @@ public class AssessmentService {
         // Mismo mensaje si no existe o es de otro usuario: no revela que ids son validos.
         return attempts.findById(attemptId)
                 .filter(attempt -> attempt.getUser().getId().equals(userId))
-                .orElseThrow(() -> new AssessmentConflictException("Intento no encontrado."));
+                .orElseThrow(() -> new AssessmentConflictException("Intento no encontrado.",
+                        AssessmentConflictException.Kind.NOT_FOUND));
     }
 
     private void flushOptimistically(AssessmentAttempt attempt) {
         try {
             attempts.saveAndFlush(attempt);
         } catch (OptimisticLockingFailureException exception) {
-            throw new AssessmentConflictException("El intento cambió en otra sesión. Actualizá antes de guardar.");
+            throw new AssessmentConflictException("El intento cambió en otra sesión. Actualizá antes de guardar.",
+                    AssessmentConflictException.Kind.STALE_VERSION);
         }
     }
 

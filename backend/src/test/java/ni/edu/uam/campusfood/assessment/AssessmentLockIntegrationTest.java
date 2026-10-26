@@ -45,6 +45,10 @@ class AssessmentLockIntegrationTest {
         var resumed = service.open(userId, "weil-form-a", 1, first.leaseToken());
         assertThat(resumed.id()).isEqualTo(first.id());
         assertThat(resumed.leaseToken()).isNotEqualTo(first.leaseToken());
+        // La versión que recibe el cliente es la persistida: la primera respuesta tras recargar no puede fallar.
+        assertThat(resumed.version()).isEqualTo(attempts.findById(resumed.id()).orElseThrow().getVersion());
+        var saved = service.answer(userId, resumed.id(), 0, 2, resumed.leaseToken(), resumed.version());
+        assertThat(saved.responses()).hasSize(1);
     }
 
     @Test
