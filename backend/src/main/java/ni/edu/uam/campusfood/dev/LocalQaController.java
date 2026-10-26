@@ -76,6 +76,7 @@ public class LocalQaController {
     @PostMapping("/login/{scenario}")
     @Transactional
     public ResponseEntity<AuthFlowResponse> login(@PathVariable String scenario, HttpServletRequest request) {
+        requireLoopback(request);
         User user = switch (scenario) {
             case "aspirante" -> qaUser("qa.aspirante@local.test", "Aspirante QA", Role.CLIENTE);
             case "staff" -> qaUser("qa.personal@local.test", "Personal QA", Role.STAFF);
@@ -104,7 +105,8 @@ public class LocalQaController {
     /** Reinicia exclusivamente el caso ficticio del aspirante para repetir una prueba local desde cero. */
     @PostMapping("/reset/aspirante")
     @Transactional
-    public ResponseEntity<Void> resetApplicant() {
+    public ResponseEntity<Void> resetApplicant(HttpServletRequest request) {
+        requireLoopback(request);
         User applicant = qaUser("qa.aspirante@local.test", "Aspirante QA", Role.CLIENTE);
         attempts.findByUserId(applicant.getId()).stream()
                 .filter(attempt -> WEIL.equals(attempt.getTestId()))
@@ -116,6 +118,14 @@ public class LocalQaController {
         attempts.flush();
         ensureOpenEnrollment(applicant);
         return ResponseEntity.noContent().build();
+    }
+
+    /** Defensa adicional: aunque el servidor escuche en otra interfaz, el acceso QA solo atiende al propio equipo. */
+    private static void requireLoopback(HttpServletRequest request) {
+        String remote = request.getRemoteAddr();
+        boolean loopback = "127.0.0.1".equals(remote) || "::1".equals(remote) || "0:0:0:0:0:0:0:1".equals(remote);
+        if (!loopback) throw new org.springframework.web.server.ResponseStatusException(
+                org.springframework.http.HttpStatus.NOT_FOUND);
     }
 
     private User qaUser(String email, String fullName, Role role) {

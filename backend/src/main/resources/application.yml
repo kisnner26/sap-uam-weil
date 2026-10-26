@@ -10,9 +10,8 @@ spring:
   datasource:
     hikari:
       maximum-pool-size: ${DB_POOL_SIZE:40}
-  # Perfil por defecto: desarrollo con H2 en memoria.
-  profiles:
-    active: dev
+  # Sin perfil por defecto: dev, pg y prod se piden de forma explícita (SPRING_PROFILES_ACTIVE).
+  # "mvn spring-boot:run" activa dev desde el pom.
 
 management:
   endpoints:
@@ -104,6 +103,10 @@ spring:
     console:
       enabled: true
       path: /h2-console
+
+# Las herramientas locales (acceso QA, consola H2) solo escuchan en el bucle local.
+server:
+  address: 127.0.0.1
 
 ---
 # ===================== PERFIL PG (desarrollo con PostgreSQL) =====================

@@ -29,6 +29,19 @@ public class PrivacyService {
         this.retentionMonths = retentionMonths;
     }
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.springframework.core.env.Environment environment;
+
+    /** En producción no se publica un aviso que todavía lleva el recuadro de borrador. */
+    @jakarta.annotation.PostConstruct
+    void rejectDraftNoticeInProd() {
+        if (environment == null || !environment.acceptsProfiles(org.springframework.core.env.Profiles.of("prod"))) return;
+        if (load(currentVersion).contains("BORRADOR PARA REVISIÓN LEGAL")) {
+            throw new IllegalStateException("El aviso de privacidad versión " + currentVersion
+                    + " sigue marcado como borrador. Publica el texto aprobado por asesoría legal y sube app.privacy.version.");
+        }
+    }
+
     public Notice notice() {
         String text = load(currentVersion)
                 .replace("{{RETENCION_MESES}}", String.valueOf(retentionMonths))
