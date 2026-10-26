@@ -43,15 +43,30 @@ public class StaffAssessmentController {
     }
 
     @GetMapping
-    public List<AssessmentService.StaffAttemptView> submitted(
+    public AssessmentService.StaffAttemptPage submitted(
             @RequestParam(defaultValue = "weil-form-a") String testId,
             @RequestParam(required = false) Long sessionId,
             @RequestParam(required = false) String q,
             @RequestParam(required = false) String status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "25") int size,
             Authentication authentication) {
         requireKnownStatus(status);
         audit.record(actor(authentication), "VIEW_RESULTS", "TEST", testId, null);
-        return service.listSubmitted(testId, sessionId, q, status);
+        return service.searchSubmitted(testId, sessionId, q, status, page, size);
+    }
+
+    /** Totales del panel: no dependen de la página que se esté viendo. */
+    @GetMapping("/summary")
+    public AssessmentService.StaffSummary summary(@RequestParam(defaultValue = "weil-form-a") String testId) {
+        return service.summary(testId);
+    }
+
+    /** Detalle bajo demanda: puntaje por lámina e incidencias de un intento. */
+    @GetMapping("/{id}")
+    public AssessmentService.StaffAttemptView detail(@PathVariable Long id, Authentication authentication) {
+        audit.record(actor(authentication), "VIEW_RESULT_DETAIL", "ATTEMPT", String.valueOf(id), null);
+        return service.submittedDetail(id);
     }
 
     @GetMapping(value = "/export", produces = "text/csv")

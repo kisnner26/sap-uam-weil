@@ -295,6 +295,55 @@ public class AssessmentService {
         }).toList();
     }
 
+    /** Página de resultados con lo justo para la tabla; el detalle se pide aparte. */
+    @Transactional(readOnly = true)
+    public StaffAttemptPage searchSubmitted(String testId, Long sessionId, String query, String status, int page, int size) {
+        int safeSize = Math.min(100, Math.max(1, size));
+        int safePage = Math.max(0, page);
+        String needle = query == null || query.isBlank() ? null
+                : "%" + query.strip().toLowerCase().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%";
+        Boolean invalid = status == null || status.isBlank() || "all".equals(status) ? null : "invalid".equals(status);
+        var result = attempts.searchSubmitted(testId, sessionId, needle, invalid,
+                org.springframework.data.domain.PageRequest.of(safePage, safeSize,
+                        org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "submittedAt")));
+        List<Long> ids = result.getContent().stream().map(AssessmentAttempt::getId).toList();
+        var incidents = new java.util.HashMap<Long, Long>();
+        if (!ids.isEmpty()) {
+            for (Object[] row : events.countForAttempts(ids)) incidents.put((Long) row[0], (Long) row[1]);
+        }
+        List<StaffAttemptRow> rows = result.getContent().stream().map(attempt -> {
+            var interpretation = attempt.getDirectScore() == null ? null
+                    : scoring.interpret(attempt.getDirectScore(), attempt.getParticipantAge(), attempt.getNormGroup());
+            return StaffAttemptRow.from(attempt, interpretation, incidents.getOrDefault(attempt.getId(), 0L));
+        }).toList();
+        return new StaffAttemptPage(rows, result.getTotalElements(), safePage, safeSize);
+    }
+
+    @Transactional(readOnly = true)
+    public StaffSummary summary(String testId) {
+        Object[] row = attempts.submittedTotals(testId).get(0);
+        return new StaffSummary(((Number) row[0]).longValue(),
+                row[1] == null ? null : (int) Math.round(((Number) row[1]).doubleValue()),
+                row[2] == null ? null : ((Number) row[2]).intValue());
+    }
+
+    /** Detalle de un intento entregado: puntaje por lámina e incidencias. Solo personal autorizado. */
+    @Transactional(readOnly = true)
+    public StaffAttemptView submittedDetail(Long attemptId) {
+        AssessmentAttempt attempt = attempts.findById(attemptId)
+                .filter(a -> a.getStatus() == AttemptStatus.SUBMITTED)
+                .orElseThrow(() -> new AssessmentConflictException("Intento no encontrado.",
+                        AssessmentConflictException.Kind.NOT_FOUND));
+        List<Integer> answers = responses.findForAttempts(List.of(attemptId)).stream()
+                .map(AssessmentResponse::getSelectedOption).toList();
+        WeilScoringStrategy.Score score = answers.size() == WEIL_ITEMS ? scoring.score(answers) : null;
+        var interpretation = attempt.getDirectScore() == null ? null
+                : scoring.interpret(attempt.getDirectScore(), attempt.getParticipantAge(), attempt.getNormGroup());
+        List<SecurityEventView> eventViews = events.findForAttempts(List.of(attemptId)).stream()
+                .map(SecurityEventView::from).toList();
+        return StaffAttemptView.from(attempt, score == null ? List.of() : score.pageScores(), interpretation, eventViews);
+    }
+
     private static boolean contains(String value, String needle) {
         return value != null && value.toLowerCase().contains(needle);
     }
@@ -373,6 +422,32 @@ public class AssessmentService {
     }
 
     /** Fila del listado del personal: quien rindio, cuanto obtuvo y con que baremo comparar. */
+    public record StaffSummary(long total, Integer average, Integer best) {
+    }
+
+    public record StaffAttemptPage(List<StaffAttemptRow> items, long total, int page, int size) {
+    }
+
+    public record StaffAttemptRow(Long id, String fullName, String email, String career, Long sessionId,
+                                  String sessionName, Integer directScore, Integer percentile, Integer ci,
+                                  String classification, long incidents, Instant submittedAt, boolean autoSubmitted,
+                                  int extraMinutes, boolean invalidated, String invalidReason, boolean reviewed) {
+        static StaffAttemptRow from(AssessmentAttempt attempt, WeilScoringStrategy.Interpretation interpretation, long incidents) {
+            var user = attempt.getUser();
+            ExamEnrollment enrollment = attempt.getEnrollment();
+            return new StaffAttemptRow(attempt.getId(), user.getFullName(), user.getEmail(), user.getCareer(),
+                    enrollment == null ? null : enrollment.getSession().getId(),
+                    enrollment == null ? null : enrollment.getSession().getName(),
+                    attempt.getDirectScore(),
+                    interpretation == null ? null : interpretation.percentile(),
+                    interpretation == null ? null : interpretation.ci(),
+                    interpretation == null ? null : interpretation.classification(), incidents,
+                    attempt.getSubmittedAt(), attempt.isAutoSubmitted(),
+                    enrollment == null ? 0 : enrollment.getExtraMinutes(), attempt.isInvalidated(),
+                    attempt.getInvalidReason(), attempt.getReviewedAt() != null);
+        }
+    }
+
     public record StaffAttemptView(Long id, String fullName, String email, String career, String testId,
                                    Instant startedAt, Instant submittedAt, long durationSeconds,
                                    Integer directScore, List<Integer> pageScores,

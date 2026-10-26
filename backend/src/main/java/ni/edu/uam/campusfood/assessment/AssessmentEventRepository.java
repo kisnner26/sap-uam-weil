@@ -12,4 +12,8 @@ public interface AssessmentEventRepository extends JpaRepository<AssessmentEvent
 
     @Query("select e from AssessmentEvent e where e.attempt.id in :ids order by e.attempt.id, e.occurredAt")
     List<AssessmentEvent> findForAttempts(@Param("ids") Collection<Long> ids);
+
+    /** Cantidad de incidencias por intento: [intentoId, total]. */
+    @Query("select e.attempt.id, count(e) from AssessmentEvent e where e.attempt.id in :ids group by e.attempt.id")
+    List<Object[]> countForAttempts(@Param("ids") Collection<Long> ids);
 }

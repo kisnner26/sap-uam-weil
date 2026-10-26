@@ -97,8 +97,29 @@ class StaffResultsSecurityTest {
         for (String token : new String[] {staffToken, adminToken}) {
             var listing = http.exchange("/api/staff/attempts", HttpMethod.GET, request(token, null), String.class);
             assertThat(listing.getStatusCode()).isEqualTo(HttpStatus.OK);
-            assertThat(listing.getBody()).contains("Ana López", "\"directScore\":10", "\"normGroup\":\"UN\"", "\"age\":19",
+            // La tabla trae lo justo; puntaje por lámina e incidencias se piden aparte.
+            assertThat(listing.getBody()).contains("Ana López", "\"directScore\":10", "\"incidents\":1", "\"total\":1")
+                    .doesNotContain("visibility-hidden", "pageScores");
+
+            var detail = http.exchange("/api/staff/attempts/" + attemptId, HttpMethod.GET, request(token, null), String.class);
+            assertThat(detail.getStatusCode()).isEqualTo(HttpStatus.OK);
+            assertThat(detail.getBody()).contains("\"normGroup\":\"UN\"", "\"age\":19", "\"pageScores\":[2,2,2,2,2]",
                     "visibility-hidden", "La pestaña dejó de estar visible.");
+        }
+        var summary = http.exchange("/api/staff/attempts/summary", HttpMethod.GET, request(staffToken, null), String.class);
+        assertThat(summary.getBody()).contains("\"total\":1", "\"average\":10", "\"best\":10");
+        assertThat(http.exchange("/api/staff/attempts/" + attemptId, HttpMethod.GET, request(aspiranteToken, null),
+                String.class).getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        assertThat(http.exchange("/api/staff/attempts/999999", HttpMethod.GET, request(staffToken, null),
+                String.class).getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+
+        // Los filtros se resuelven en la base y los comodines del texto se escapan.
+        String[][] filters = {{"q=ana&status=valid", "1"}, {"q=ANA L", "1"}, {"status=invalid", "0"},
+                {"q=%", "0"}, {"q=_na", "0"}, {"page=5&size=10", "1"}};
+        for (String[] f : filters) {
+            var page = http.exchange("/api/staff/attempts?" + f[0], HttpMethod.GET, request(staffToken, null), String.class);
+            assertThat(page.getStatusCode()).as(f[0]).isEqualTo(HttpStatus.OK);
+            assertThat(page.getBody()).as(f[0]).contains("\"total\":" + f[1]);
         }
     }
 
