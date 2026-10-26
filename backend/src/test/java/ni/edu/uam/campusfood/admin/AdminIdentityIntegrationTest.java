@@ -185,6 +185,59 @@ class AdminIdentityIntegrationTest {
         assertThat(json.readTree(applicant.getBody()).get("mfaRequired").asBoolean()).isFalse();
     }
 
+    @Test
+    void unCodigoTotpYaAceptadoNoSePuedeReutilizar() throws Exception {
+        String secret = null;
+        String code = null;
+        for (int round = 0; round < 2; round++) {
+            var primary = exchange("/api/auth/login", HttpMethod.POST, null,
+                    "{\"email\":\"psicologia@uam.edu.ni\",\"password\":\"clave-staff-segura\"}");
+            var node = json.readTree(primary.getBody());
+            if (secret == null) {
+                // el segundo factor ya estaba habilitado sin secreto: primero se restablece para obtener uno
+                Long staffId = users.findByEmailIgnoreCase("psicologia@uam.edu.ni").orElseThrow().getId();
+                exchange("/api/admin/users/" + staffId + "/mfa-reset", HttpMethod.POST, adminToken, null);
+                node = json.readTree(exchange("/api/auth/login", HttpMethod.POST, null,
+                        "{\"email\":\"psicologia@uam.edu.ni\",\"password\":\"clave-staff-segura\"}").getBody());
+                secret = node.get("enrollmentSecret").asText();
+                code = totp(secret, Instant.now());
+            }
+            var verify = exchange("/api/auth/mfa/verify", HttpMethod.POST, null,
+                    json.createObjectNode().put("challengeToken", node.get("challengeToken").asText())
+                            .put("code", code).toString());
+            assertThat(verify.getStatusCode()).isEqualTo(round == 0 ? HttpStatus.OK : HttpStatus.UNAUTHORIZED);
+        }
+    }
+
+    @Test
+    void unJsonMalFormadoYUnEstadoDesconocidoRespondenCuatrocientos() {
+        assertThat(exchange("/api/staff/sessions", HttpMethod.POST, adminToken, "{bad").getStatusCode())
+                .isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(get("/api/staff/attempts?status=BOGUS", staffToken).getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(get("/api/staff/attempts?sessionId=abc", staffToken).getBody()).doesNotContain("For input string");
+    }
+
+    @Test
+    void elPersonalNoUsaLasRutasDelAspirante() {
+        assertThat(get("/api/attempts", staffToken).getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        assertThat(get("/api/applicant/availability", adminToken).getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        assertThat(get("/api/attempts", clientToken).getStatusCode()).isEqualTo(HttpStatus.OK);
+    }
+
+    @Test
+    void cambiarLaContrasenaRevocaLasSesionesAnteriores() {
+        assertThat(exchange("/api/auth/password", HttpMethod.POST, clientToken,
+                "{\"currentPassword\":\"incorrecta\",\"newPassword\":\"clave-nueva-123\"}").getStatusCode())
+                .isEqualTo(HttpStatus.UNAUTHORIZED);
+        var changed = exchange("/api/auth/password", HttpMethod.POST, clientToken,
+                "{\"currentPassword\":\"clave-aspirante\",\"newPassword\":\"clave-nueva-123\"}");
+        assertThat(changed.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(get("/api/auth/me", clientToken).getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        assertThat(exchange("/api/auth/login", HttpMethod.POST, null,
+                "{\"email\":\"aspirante@example.com\",\"password\":\"clave-nueva-123\"}").getStatusCode())
+                .isEqualTo(HttpStatus.OK);
+    }
+
     private org.springframework.http.ResponseEntity<String> get(String path, String token) {
         return exchange(path, HttpMethod.GET, token, null);
     }
