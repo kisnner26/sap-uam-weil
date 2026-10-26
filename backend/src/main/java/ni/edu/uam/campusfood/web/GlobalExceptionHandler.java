@@ -5,7 +5,11 @@ import ni.edu.uam.campusfood.auth.AuthException;
 import ni.edu.uam.campusfood.assessment.AssessmentConflictException;
 import ni.edu.uam.campusfood.moodle.MoodleException;
 import ni.edu.uam.campusfood.security.RateLimitException;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -56,7 +60,32 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(AssessmentConflictException.class)
     public ResponseEntity<ApiError> handleAssessmentConflict(AssessmentConflictException ex) {
-        return build(HttpStatus.CONFLICT, ex.getMessage());
+        HttpStatus status = ex.getKind() == AssessmentConflictException.Kind.NOT_FOUND
+                ? HttpStatus.NOT_FOUND : HttpStatus.CONFLICT;
+        String code = ex.getKind() == AssessmentConflictException.Kind.CONFLICT ? null : ex.getKind().name();
+        return ResponseEntity.status(status)
+                .body(ApiError.of(status.value(), status.getReasonPhrase(), ex.getMessage(), code));
+    }
+
+    /** Cuerpo ilegible o parámetro con formato inválido: 400 con texto propio, sin detalles de Java. */
+    @ExceptionHandler({HttpMessageNotReadableException.class, MethodArgumentTypeMismatchException.class,
+            MissingServletRequestParameterException.class})
+    public ResponseEntity<ApiError> handleMalformed(Exception ex) {
+        String message = ex instanceof MissingServletRequestParameterException missing
+                ? "Falta el parámetro «" + missing.getParameterName() + "»."
+                : "La solicitud tiene un formato inválido.";
+        return build(HttpStatus.BAD_REQUEST, message);
+    }
+
+    /** Último recurso: nunca devolver el texto de una excepción interna. */
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ApiError> handleUnexpected(Exception ex) throws Exception {
+        if (ex instanceof org.springframework.web.ErrorResponse || ex instanceof org.springframework.security.access.AccessDeniedException
+                || ex instanceof org.springframework.security.core.AuthenticationException) {
+            throw ex;
+        }
+        LoggerFactory.getLogger(GlobalExceptionHandler.class).error("Error no controlado", ex);
+        return build(HttpStatus.INTERNAL_SERVER_ERROR, "Ocurrió un error inesperado. Intentá de nuevo en unos minutos.");
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

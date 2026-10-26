@@ -49,6 +49,7 @@ public class StaffAssessmentController {
             @RequestParam(required = false) String q,
             @RequestParam(required = false) String status,
             Authentication authentication) {
+        requireKnownStatus(status);
         audit.record(actor(authentication), "VIEW_RESULTS", "TEST", testId, null);
         return service.listSubmitted(testId, sessionId, q, status);
     }
@@ -60,6 +61,7 @@ public class StaffAssessmentController {
             @RequestParam(required = false) String q,
             @RequestParam(required = false) String status,
             Authentication authentication) {
+        requireKnownStatus(status);
         List<AssessmentService.StaffAttemptView> rows = service.listSubmitted(testId, sessionId, q, status);
         audit.record(actor(authentication), "EXPORT_RESULTS", "TEST", testId,
                 rows.size() + " filas" + (sessionId == null ? "" : ", convocatoria " + sessionId));
@@ -93,6 +95,12 @@ public class StaffAssessmentController {
     public List<Map<String, Integer>> norms(Authentication authentication) {
         audit.record(actor(authentication), "VIEW_NORMS", "TEST", "weil-form-a", null);
         return service.norms();
+    }
+
+    private static void requireKnownStatus(String status) {
+        if (status != null && !status.isBlank() && !java.util.Set.of("all", "valid", "invalid").contains(status)) {
+            throw new IllegalArgumentException("El estado debe ser all, valid o invalid.");
+        }
     }
 
     private static Long actor(Authentication authentication) {

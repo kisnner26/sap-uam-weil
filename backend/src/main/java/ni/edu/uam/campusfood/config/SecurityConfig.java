@@ -67,13 +67,16 @@ public class SecurityConfig {
                             "/api/auth/mfa/verify",
                             "/api/auth/logout",
                             "/api/privacy/notice",
-                            "/actuator/health"
+                            "/actuator/health",
+                            "/error"
                     ).permitAll();
                     if (devProfile) {
                         // Herramientas locales: nunca se registran fuera del perfil dev.
                         auth.requestMatchers("/api/dev/qa/**", "/h2-console/**").permitAll();
                     }
                     // Resultados con puntaje: solo personal y administracion.
+                    // Rutas del aspirante: el personal no rinde pruebas.
+                    auth.requestMatchers("/api/attempts/**", "/api/applicant/**").hasRole("CLIENTE");
                     auth.requestMatchers("/api/staff/**").hasAnyRole("STAFF", "ADMIN");
                     auth.requestMatchers("/api/admin/**").hasRole("ADMIN");
                     auth.anyRequest().authenticated();
