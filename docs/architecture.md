@@ -142,10 +142,10 @@ al entregar, el backend recalcula el puntaje directo y el desglose por lámina c
 - `tools/build_puzzle_assets.py` corta cada ítem de las láminas completas: localiza los 12 marcos de la
   página, ajusta la cuadrícula de 2×4 opciones y el hueco, y guarda la figura base y 8 piezas
   (`backend/src/main/resources/test-material/weil-form-a/puzzle`, ~540 archivos) más
-  `frontend/puzzle-data.js` con únicamente el tamaño y el hueco.
+  `frontend/tests/weil-form-a/puzzle-data.js` con únicamente el tamaño y el hueco.
 - Se corta desde las láminas y no desde `weill-items`, porque varios recortes de esa carpeta están
   desplazados y les faltan partes (sobre todo en la lámina 4).
-- `frontend/puzzle-view.js` maneja el arrastre con eventos de puntero, no con el arrastre nativo del
+- `frontend/tests/weil-form-a/puzzle-view.js` maneja el arrastre con eventos de puntero, no con el arrastre nativo del
   navegador: la prueba bloqueada registra `dragstart` y `drop` como incidencias.
 - La respuesta sigue siendo un número 1 a 8 (`selectAnswer`), por lo que no cambian la calificación,
   los locks ni la API.

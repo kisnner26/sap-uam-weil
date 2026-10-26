@@ -3,7 +3,7 @@
   "private": true,
   "description": "Pruebas del frontend de SAP-UAM (Test de Weil)",
   "scripts": {
-    "test": "node --test frontend/*.test.js",
+    "test": "node --test frontend/*.test.js frontend/tests/*/*.test.js",
     "serve": "npx serve frontend -l 8765"
   }
 }

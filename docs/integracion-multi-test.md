@@ -67,5 +67,5 @@ el shell (acceso, inicio, perfil, ajustes, entrega) es de la plataforma y usa lo
 2. extraer la interfaz `ScoringStrategy` y un registro por `testId`; weil pasa a ser su primera implementación sin cambiar su comportamiento. las pruebas existentes deben seguir en verde.
 3. migración `V4` con `assessment_results` genérico y responder sin el límite de 8 opciones.
 4. quitar las constantes de weil de `AssessmentService` y `AdmissionService`; leerlas de la definición del test.
-5. partir `app.js` en shell y módulos por test, empezando por mover el visor de láminas a `frontend/tests/weil-form-a/`.
+5. partir `app.js` en shell y módulos por test. hecho para el visor: `frontend/test-viewers.js` define la interfaz (`item`, `renderStage`, `renderResponse`, `afterAnswer`, `prepareMedia`, `attachInput`) y weil la implementa en `frontend/tests/weil-form-a/viewer.js`. un test nuevo registra su visor igual, sin tocar `app.js`.
 6. recién entonces sumar el segundo test como incremento del backlog, para validar que el contrato alcanza.

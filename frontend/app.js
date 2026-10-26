@@ -117,6 +117,9 @@ const stateStore = window.SAP_UAM_STATE.create({
   settings: loadSettings()
 });
 const appState = stateStore.state;
+const viewer = window.SAP_UAM_TEST_VIEWERS.create(ACTIVE_TEST.id, {
+  test: ACTIVE_TEST, state: appState, totalItems: TOTAL_ITEMS, materialUrl, esc, $, $$
+});
 
 const draftRepository = window.SAP_UAM_SESSION.createDraftRepository(
   localStorage,
@@ -160,16 +163,6 @@ function materialUrl(itemIndex, asset) {
   const attemptId = appState.remoteAttempt?.id;
   if (!attemptId) return '';
   return `${API_BASE}/api/attempts/${attemptId}/material/${itemIndex}/${asset}`;
-}
-
-function puzzleFor(itemIndex) {
-  const geometry = ACTIVE_TEST.media.puzzleGeometry?.(itemIndex);
-  if (!geometry || !appState.remoteAttempt?.id) return null;
-  return {
-    ...geometry,
-    base: materialUrl(itemIndex, 'base'),
-    pieces: Array.from({ length: ACTIVE_TEST.optionCount }, (_, index) => materialUrl(itemIndex, `p${index + 1}`))
-  };
 }
 
 async function openRemoteAttempt({ recoverQaLease = true } = {}) {
@@ -1760,7 +1753,9 @@ function renderTest() {
   const page = Math.floor(index / ITEMS_PER_PAGE);
   const local = index % ITEMS_PER_PAGE;
   const selected = appState.answers[index];
-  const puzzle = puzzleFor(index);
+  const item = viewer.item(index);
+  const view = { index, local, page, selected };
+  const response = item ? viewer.renderResponse(item, view) : null;
   const progress = Math.round((answeredCount() / TOTAL_ITEMS) * 100);
   const securityEvents = appState.securityEvents.length;
   return `
@@ -1787,7 +1782,7 @@ function renderTest() {
           </div>
           <div class="page-progress" aria-label="Cambiar lámina">${ACTIVE_TEST.sections.map((_, i) => `<button type="button" class="page-dot ${i === page ? 'is-active' : ''} ${pageAnswered(i) === ITEMS_PER_PAGE ? 'is-complete' : ''}" data-page="${i}" aria-label="Lámina ${i + 1}" ${canAccessItem(i * ITEMS_PER_PAGE) ? '' : 'disabled'}>${i + 1}</button>`).join('')}</div>
         </div>
-        ${puzzle ? renderPuzzle(puzzle, index, local, page, selected) : '<div class="empty-state">No se pudo cargar el material de este ítem.</div>'}
+        ${item ? viewer.renderStage(item, view) : '<div class="empty-state">No se pudo cargar el material de este ítem.</div>'}
         <div class="item-rail" aria-label="Ítems de la lámina">${Array.from({ length: ITEMS_PER_PAGE }, (_, i) => {
           const absolute = page * ITEMS_PER_PAGE + i;
           const answered = appState.answers[absolute] !== null;
@@ -1800,12 +1795,12 @@ function renderTest() {
           <div class="response-card__top">
             <div>
               <p class="eyebrow">Respuesta</p>
-              <h3>${puzzle ? 'Completá la figura' : 'Seleccioná una opción'}</h3>
-              <p class="response-hint">${puzzle ? 'Arrastrá la pieza que completa la figura hasta el hueco. También podés tocarla, o usar las teclas del 1 al 8.' : esc(ACTIVE_TEST.instructions)}</p>
+              <h3>${response ? response.title : 'Seleccioná una opción'}</h3>
+              <p class="response-hint">${response ? response.hint : esc(ACTIVE_TEST.instructions)}</p>
             </div>
             <span class="selected-pill" aria-label="Respuesta seleccionada">${selected || '-'}</span>
           </div>
-          ${puzzle ? `<button type="button" class="ghost-btn wide-btn puzzle-clear" data-action="clear-answer" ${selected ? '' : 'disabled'}>Quitar pieza</button>` : `<div class="choice-grid">${Array.from({ length: ACTIVE_TEST.optionCount }, (_, i) => {
+          ${response ? response.control : `<div class="choice-grid">${Array.from({ length: ACTIVE_TEST.optionCount }, (_, i) => {
             const option = i + 1;
             return `<button type="button" class="choice-btn ${selected === option ? 'is-selected' : ''}" data-option="${option}" aria-label="Responder opción ${option}">${option}</button>`;
           }).join('')}</div>`}
@@ -1831,54 +1826,6 @@ function renderTest() {
     </div>`;
 }
 
-function renderPuzzle(puzzle, index, local, page, selected) {
-  const label = `Ejercicio ${local + 1} de ${ACTIVE_TEST.sections[page].label}`;
-  const placed = selected ? puzzle.pieces[selected - 1] : '';
-  return `
-        <figure class="question-figure puzzle">
-          <div class="puzzle-stage">
-            <div class="puzzle-board" style="--pw:${puzzle.width};--ph:${puzzle.height}">
-              <img class="puzzle-base" src="${puzzle.base}" alt="${esc(label)}: figura incompleta" width="${puzzle.width}" height="${puzzle.height}" decoding="async" fetchpriority="high" draggable="false">
-              <div class="puzzle-slot ${selected ? 'is-filled' : ''}" data-slot style="${window.SAP_UAM_PUZZLE_VIEW.slotStyle(puzzle)}" aria-label="Hueco de la figura${selected ? `: pieza ${selected}` : ' vacío'}">
-                <img class="puzzle-placed" src="${placed}" alt="" draggable="false" ${selected ? `data-slot-piece="${selected}"` : 'hidden'}>
-              </div>
-            </div>
-          </div>
-          <div class="puzzle-tray" role="group" aria-label="Piezas disponibles">${puzzle.pieces.map((src, i) => `
-            <button type="button" class="puzzle-piece ${selected === i + 1 ? 'is-used' : ''}" data-piece="${i + 1}" data-option="${i + 1}" aria-label="Pieza ${i + 1}${selected === i + 1 ? ', colocada' : ''}">
-              <img src="${src}" alt="" draggable="false" decoding="async">
-            </button>`).join('')}
-          </div>
-        </figure>`;
-}
-
-function syncPuzzleView() {
-  const slot = $('[data-slot]');
-  if (!slot) return;
-  const selected = appState.answers[appState.currentIndex];
-  const placed = slot.querySelector('.puzzle-placed');
-  const piece = selected ? $(`.puzzle-piece[data-piece="${selected}"] img`) : null;
-  if (placed) {
-    if (piece) {
-      placed.src = piece.currentSrc || piece.src;
-      placed.dataset.slotPiece = selected;
-      placed.hidden = false;
-    } else {
-      placed.hidden = true;
-      placed.removeAttribute('data-slot-piece');
-    }
-  }
-  slot.classList.toggle('is-filled', !!piece);
-  slot.setAttribute('aria-label', piece ? `Hueco de la figura: pieza ${selected}` : 'Hueco de la figura vacío');
-  $$('.puzzle-piece').forEach(button => {
-    const used = Number(button.dataset.piece) === selected;
-    button.classList.toggle('is-used', used);
-    button.setAttribute('aria-label', `Pieza ${button.dataset.piece}${used ? ', colocada' : ''}`);
-  });
-  const clear = $('.puzzle-clear');
-  if (clear) clear.disabled = !selected;
-}
-
 function clearAnswer() {
   if (appState.role !== 'aspirante' || appState.route !== 'test') return;
   if (attemptExpired()) return toast('El tiempo de la prueba terminó.', 'err');
@@ -1889,38 +1836,14 @@ function clearAnswer() {
 }
 
 function prepareCurrentItemMedia() {
-  const puzzleBase = $('.puzzle-base');
-  if (puzzleBase) {
-    const board = puzzleBase.closest('.puzzle-board');
-    const ready = () => board?.classList.add('is-ready');
-    if (puzzleBase.complete && puzzleBase.naturalWidth) ready();
-    else {
-      puzzleBase.addEventListener('load', ready, { once: true });
-      puzzleBase.addEventListener('error', () => board?.classList.add('is-error'), { once: true });
-    }
-  }
-  const currentImage = puzzleBase || $('.question-figure img');
-  if (currentImage && !currentImage.complete) {
-    currentImage.closest('.question-figure')?.classList.add('is-loading');
-    currentImage.addEventListener('load', () => currentImage.closest('.question-figure')?.classList.remove('is-loading'), { once: true });
-    currentImage.addEventListener('error', () => currentImage.closest('.question-figure')?.classList.add('is-error'), { once: true });
-  }
-  const nextIndex = appState.currentIndex + 1;
-  if (nextIndex < TOTAL_ITEMS) {
-    const nextPuzzle = puzzleFor(nextIndex);
-    (nextPuzzle ? [nextPuzzle.base, ...nextPuzzle.pieces] : []).forEach(src => {
-      const nextImage = new Image();
-      nextImage.decoding = 'async';
-      nextImage.src = src;
-    });
-  }
+  viewer.prepareMedia();
 }
 
 function updateTestViewAfterAnswer() {
   if (appState.route !== 'test') return;
   const index = appState.currentIndex;
   const selected = appState.answers[index];
-  syncPuzzleView();
+  viewer.afterAnswer();
   $$('.choice-btn').forEach(button => button.classList.toggle('is-selected', Number(button.dataset.option) === selected));
   const selectedPill = $('.selected-pill');
   if (selectedPill) selectedPill.textContent = selected || '-';
@@ -3038,7 +2961,7 @@ $('#mfa-code')?.addEventListener('input', event => {
   validateMfa();
 });
 
-window.SAP_UAM_PUZZLE_VIEW.attachDrag(document, {
+viewer.attachInput({
   canInteract: () => appState.role === 'aspirante' && appState.route === 'test',
   onDrop: option => selectAnswer(option),
   onClear: clearAnswer
