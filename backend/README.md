@@ -26,7 +26,10 @@ export JAVA_HOME=$(/usr/libexec/java_home -v 17 2>/dev/null || echo /opt/homebre
 mvn spring-boot:run
 ```
 
-Arranca en `http://localhost:8080`. Consola H2 en `/h2-console`
+Arranca en `http://localhost:8080` (solo en el bucle local: `server.address=127.0.0.1` en el perfil dev).
+`mvn spring-boot:run` activa el perfil `dev`; el jar sin `SPRING_PROFILES_ACTIVE` ya no lo activa por defecto, así que
+el acceso QA (`/api/dev/qa/**`) y la consola H2 nunca quedan expuestos por olvido. En producción el aviso de privacidad
+no puede seguir marcado como borrador: la aplicación se niega a arrancar. Consola H2 en `/h2-console`
 (JDBC URL `jdbc:h2:mem:sapweill`, usuario `sa`, sin contraseña).
 
 ### Tests
