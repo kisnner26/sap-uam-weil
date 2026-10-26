@@ -196,7 +196,7 @@ let remoteWriteQueue = Promise.resolve();
 
 function syncRemoteAnswer({ index, option }) {
   if (STATIC_PAGES_MODE) return;
-  remoteWriteQueue = remoteWriteQueue.then(async () => {
+  const send = async () => {
     const attempt = appState.remoteAttempt || readAttemptLease();
     if (!attempt?.id || !attempt?.leaseToken) throw new Error('No existe una sesión exclusiva para guardar la respuesta.');
     const path = `/api/attempts/${attempt.id}/responses/${index}`;
@@ -205,6 +205,18 @@ function syncRemoteAnswer({ index, option }) {
       : { option, leaseToken: attempt.leaseToken, expectedVersion: attempt.version };
     const updated = await apiRequest(path, body, { method: option === null ? 'DELETE' : 'PUT' });
     storeAttemptLease(updated);
+  };
+  remoteWriteQueue = remoteWriteQueue.then(async () => {
+    try {
+      await send();
+    } catch (error) {
+      if (error.code !== 'STALE_VERSION') throw error;
+      // Versión desfasada: se resincroniza con el servidor y se reenvía la respuesta pendiente una vez.
+      await openRemoteAttempt();
+      appState.answers[index] = option;
+      await send();
+      render();
+    }
   }).catch(async error => {
     toast(error.message || 'No se pudo guardar la respuesta.', 'err');
     try {
@@ -278,6 +290,10 @@ function toast(message, kind = 'info') {
     el.classList.remove('show');
     setTimeout(() => el.remove(), 220);
   }, 2800);
+}
+
+function plural(n, one, many) {
+  return n === 1 ? one : many;
 }
 
 function esc(value) {
@@ -579,6 +595,7 @@ async function submitUnifiedLogin() {
 function showMfaChallenge(response) {
   appState.mfaChallenge = response;
   $('#form-unified')?.classList.add('app-hidden');
+  $('.auth-tabs')?.classList.add('app-hidden');
   $('#form-mfa')?.classList.remove('app-hidden');
   const enrollment = !!response.mfaEnrollmentRequired;
   $('#mfa-enrollment')?.classList.toggle('app-hidden', !enrollment);
@@ -605,6 +622,7 @@ function showMfaChallenge(response) {
 function cancelMfa() {
   appState.mfaChallenge = null;
   $('#form-mfa')?.classList.add('app-hidden');
+  $('.auth-tabs')?.classList.remove('app-hidden');
   $('#form-unified')?.classList.remove('app-hidden');
   $('#unified-pass')?.focus();
 }
@@ -642,6 +660,7 @@ async function submitMfa() {
     const message = $('#mfa-code-msg');
     if (message) message.textContent = error.message || 'El código no es válido.';
     input?.focus();
+    input?.select();
   } finally {
     setMfaBusy(false);
   }
@@ -680,11 +699,28 @@ function extractCareer(user) {
   );
 }
 
+// Borra del navegador todo dato personal (borradores, resultados, perfil, sesión) y conserva solo las preferencias.
+function purgePersonalLocalData() {
+  const personal = [STORAGE.draftPrefix, STORAGE.profileEditsPrefix, STORAGE.resultDetailPrefix,
+    STORAGE.resultIndex, STORAGE.legacyResultIndex, STORAGE.sessionUser, STORAGE.legacy.results,
+    STORAGE.legacy.draftPrefix, STORAGE.legacy.profileEditsPrefix, STORAGE.legacy.sessionUser];
+  try {
+    for (const key of Object.keys(localStorage)) {
+      if (personal.some(prefix => key.startsWith(prefix))) localStorage.removeItem(key);
+    }
+    for (const key of Object.keys(sessionStorage)) {
+      if (key.startsWith(STORAGE.attemptLeasePrefix)) sessionStorage.removeItem(key);
+    }
+  } catch {}
+}
+
 function handleAuthSuccess(response, context = {}) {
   const user = response?.user;
   if (!user) {
     throw new Error('La sesión no devolvió datos de usuario.');
   }
+  const previous = safeJson(localStorage.getItem(STORAGE.sessionUser) || 'null');
+  if (previous?.id !== user.id) purgePersonalLocalData();
   appState.sessionUser = user;
   localStorage.setItem(STORAGE.sessionUser, JSON.stringify(user));
   playSound('success');
@@ -1033,10 +1069,24 @@ async function loadAvailability() {
   appState.availabilityError = '';
   try {
     appState.availability = await apiRequest('/api/applicant/availability');
+    await hydrateProgressFromAttempt();
   } catch (error) {
     appState.availabilityError = error.message || 'No se pudo consultar tu evaluación.';
   }
   if (appState.role === 'aspirante' && ['inicio', 'privacidad'].includes(appState.route)) render();
+}
+
+// El inicio muestra el avance real aunque la prueba todavía no se haya reabierto en esta pestaña.
+async function hydrateProgressFromAttempt() {
+  const attemptId = appState.availability?.attemptId;
+  if (!attemptId || isExamLocked()) return;
+  try {
+    const attempt = await apiRequest(`/api/attempts/${attemptId}`);
+    if (attempt.status !== 'IN_PROGRESS' || isExamLocked()) return;
+    const answers = Array(TOTAL_ITEMS).fill(null);
+    for (const response of attempt.responses || []) answers[response.itemIndex] = response.selectedOption;
+    appState.answers = answers;
+  } catch {}
 }
 
 async function claimAccessCode(form) {
@@ -1321,18 +1371,17 @@ function showApp() {
 }
 
 async function logout() {
-  if (isExamLocked()) {
-    playSound('error');
-    toast('La prueba ya inició. Finalizala para poder salir.', 'err');
-    routeTo('test');
+  if (isExamLocked() && !window.confirm('La prueba sigue en curso y el tiempo continúa corriendo. Tu avance queda guardado, pero solo podrás retomarla desde una sesión nueva. ¿Salir ahora?')) {
     return;
   }
-  saveDraft();
   try {
     await apiRequest('/api/auth/logout', {}, { method: 'POST' });
   } catch {}
-  localStorage.removeItem(STORAGE.sessionUser);
-  localStorage.removeItem(STORAGE.legacy.sessionUser);
+  purgePersonalLocalData();
+  appState.startedAt = null;
+  appState.remoteAttempt = null;
+  appState.answers = Array(TOTAL_ITEMS).fill(null);
+  appState.route = 'inicio';
   appState.sessionUser = null;
   appState.role = null;
   appState.profile = null;
@@ -1379,6 +1428,8 @@ function renderShell() {
     sessionLabel.innerHTML = `<b>${esc(appState.profile?.fullName)}</b><small>${esc(identityLabel(appState.profile))}</small>`;
     sessionLabel.title = `${appState.profile?.fullName || ''} · ${identityLabel(appState.profile)}`;
   }
+  // En móvil el menú se desplaza: la pestaña activa siempre queda a la vista.
+  $('#main-nav .is-active')?.scrollIntoView?.({ inline: 'center', block: 'nearest' });
 }
 
 function routeTo(route) {
@@ -1458,8 +1509,8 @@ function renderHome() {
           <h3>${home ? esc(home.title) : result ? 'Tu entrega está registrada' : count ? `Continuá desde el ítem ${appState.currentIndex + 1}` : 'Prepará tu espacio'}</h3>
           <p>${home ? esc(home.text) : result ? 'Tu constancia confirma que el equipo recibió las respuestas.' : 'Buscá un lugar sin interrupciones. El progreso se guarda automáticamente.'}</p>
           <div class="metric-strip">
-            <div><strong>${count}</strong><span>respondidos</span></div>
-            <div><strong>${TOTAL_ITEMS - count}</strong><span>pendientes</span></div>
+            <div><strong>${count}</strong><span>${plural(count,'respondido','respondidos')}</span></div>
+            <div><strong>${TOTAL_ITEMS - count}</strong><span>${plural(TOTAL_ITEMS - count,'pendiente','pendientes')}</span></div>
           </div>
         </section>
         <section class="panel readiness-panel">
@@ -1630,8 +1681,8 @@ function renderTest() {
 
         <section class="progress-card" aria-label="Avance de la prueba">
           <div class="progress-card__stats">
-            <div><strong>${answeredCount()}</strong><span>respondidos</span></div>
-            <div><strong>${TOTAL_ITEMS - answeredCount()}</strong><span>pendientes</span></div>
+            <div><strong>${answeredCount()}</strong><span>${plural(answeredCount(),'respondido','respondidos')}</span></div>
+            <div><strong>${TOTAL_ITEMS - answeredCount()}</strong><span>${plural(TOTAL_ITEMS - answeredCount(),'pendiente','pendientes')}</span></div>
           </div>
           <div class="progress-shell" aria-hidden="true"><div class="progress-bar" style="width:${progress}%"></div></div>
         </section>
@@ -1825,9 +1876,9 @@ function renderSettings() {
   return `
     <div class="screen-title"><div><p class="eyebrow">Ajustes</p><h2>Tu entorno de evaluación</h2><p>Personalizá la experiencia en este navegador sin afectar tu prueba.</p></div></div>
     <div class="settings-grid">
-      <section class="panel settings-profile-panel"><h3>Datos del aspirante</h3><div class="settings-profile-form">
+      ${appState.role === 'aspirante' ? `<section class="panel settings-profile-panel"><h3>Datos del aspirante</h3><div class="settings-profile-form">
         <label class="setting-row setting-row--field"><div><strong>Carrera</strong><small>Se llena desde Moodle si está disponible; podés completarla manualmente.</small></div><input class="profile-input" type="text" data-profile-field="carrera" value="${esc(normalizeCareer(profile.carrera))}" placeholder="Ej. Medicina General"></label>
-      </div></section>
+      </div></section>` : ''}
       <section class="panel"><div class="settings-panel__head"><div><h3>Experiencia</h3><p class="muted tiny">Los cambios se guardan en este navegador.</p></div><span class="settings-panel__status">LOCAL</span></div><div class="detail-list">
         ${settingSwitch('dark', 'Modo oscuro', 'Alto contraste para ambientes con poca luz.')}
         ${settingSwitch('compact', 'Modo compacto', 'Reduce espacios verticales.')}
@@ -1840,6 +1891,7 @@ function renderSettings() {
         <p class="settings-warning">reiniciar elimina las respuestas guardadas en este intento.</p>
         <button class="danger-btn" type="button" data-action="reset-test">Reiniciar respuestas del aspirante</button>
       </section>
+      ${passwordPanel()}
     </div>`;
 }
 
@@ -1865,7 +1917,45 @@ function renderAdminSettings() {
         <div class="divider"></div>
         <p class="settings-warning">los cambios de roles, convocatorias y baremos quedan registrados en auditoría.</p>
       </section>
+      ${passwordPanel()}
     </div>`;
+}
+
+function passwordPanel() {
+  // Las cuentas UAM se autentican con Moodle: su contraseña no se cambia aquí.
+  if (!appState.sessionUser || appState.sessionUser.authProvider !== 'manual') return '';
+  const min = appState.sessionUser.role === 'CLIENTE' ? 8 : 12;
+  return `<section class="panel"><div class="settings-panel__head"><div><h3>Contraseña</h3><p class="muted tiny">Al cambiarla se cierran tus otras sesiones.</p></div></div>
+    <form id="form-password" class="settings-profile-form" autocomplete="off" novalidate>
+      <label class="setting-row setting-row--field"><div><strong>Contraseña actual</strong></div><input name="currentPassword" type="password" autocomplete="current-password" required></label>
+      <label class="setting-row setting-row--field"><div><strong>Contraseña nueva</strong><small>Mínimo ${min} caracteres.</small></div><input name="newPassword" type="password" autocomplete="new-password" minlength="${min}" maxlength="72" required></label>
+      <label class="setting-row setting-row--field"><div><strong>Repetir contraseña nueva</strong></div><input name="confirmPassword" type="password" autocomplete="new-password" required></label>
+      <p id="password-error" class="form-error" role="alert"></p>
+      <div class="row-actions"><button class="solid-btn" type="submit">Cambiar contraseña</button></div>
+    </form></section>`;
+}
+
+async function submitPasswordChange(form) {
+  const error = $('#password-error');
+  const data = new FormData(form);
+  const currentPassword = String(data.get('currentPassword') || '');
+  const newPassword = String(data.get('newPassword') || '');
+  const min = appState.sessionUser?.role === 'CLIENTE' ? 8 : 12;
+  const fail = message => { if (error) error.textContent = message; };
+  if (error) error.textContent = '';
+  if (!currentPassword) return fail('Escribe tu contraseña actual.');
+  if (newPassword.length < min) return fail(`La contraseña nueva debe tener al menos ${min} caracteres.`);
+  if (newPassword !== String(data.get('confirmPassword') || '')) return fail('Las contraseñas nuevas no coinciden.');
+  form.setAttribute('aria-busy', 'true');
+  try {
+    await apiRequest('/api/auth/password', { currentPassword, newPassword });
+    form.reset();
+    toast('Contraseña actualizada.', 'ok');
+  } catch (failure) {
+    fail(failure.message || 'No se pudo cambiar la contraseña.');
+  } finally {
+    form.setAttribute('aria-busy', 'false');
+  }
 }
 
 function settingSwitch(key, title, description) {
@@ -1977,7 +2067,7 @@ function renderStaffPanel() {
   const avg = rows?.length ? Math.round(rows.reduce((sum, item) => sum + item.directScore, 0) / rows.length) : '--';
   const top = rows?.length ? Math.max(...rows.map(item => item.directScore)) : '--';
   return `
-    <div class="screen-title"><div><p class="eyebrow">Personal</p><h2>Panel de aplicaciones</h2><p>${esc(appState.profile.username)}</p></div><button class="solid-btn" type="button" data-route="aspirantes">Ver aspirantes</button></div>
+    <div class="screen-title"><div><p class="eyebrow">${appState.sessionUser?.role === 'ADMIN' ? 'Administración' : 'Personal'}</p><h2>Panel de aplicaciones</h2><p>${esc(appState.profile.username)}</p></div><button class="solid-btn" type="button" data-route="aspirantes">Ver aspirantes</button></div>
     <div class="staff-grid">
       <div class="metric"><strong>${rows ? rows.length : '--'}</strong><span>pruebas entregadas</span></div>
       <div class="metric"><strong>${avg}</strong><span>promedio directo</span></div>
@@ -2260,7 +2350,7 @@ function showSubmitDialog({ status, missing, title, message }) {
       </div>
       <div class="submit-dialog__stats" aria-label="Resumen de entrega">
         <div><strong>${answered}</strong><span>respondidas</span></div>
-        <div><strong>${TOTAL_ITEMS - answered}</strong><span>pendientes</span></div>
+        <div><strong>${TOTAL_ITEMS - answered}</strong><span>${plural(TOTAL_ITEMS - answered,'pendiente','pendientes')}</span></div>
       </div>
       ${status === 'incomplete' ? `
         <div class="submit-dialog__pending">
@@ -2393,7 +2483,9 @@ function resetTest() {
 
 function handleDocumentClick(event) {
   const actionTarget = event.target.closest('[data-action]');
-  const routeTarget = event.target.closest('[data-route]');
+  const routeCandidate = event.target.closest('[data-route]');
+  // El body lleva data-route solo para el CSS: no es un destino de navegación.
+  const routeTarget = routeCandidate && routeCandidate !== document.body ? routeCandidate : null;
   const optionTarget = event.target.closest('[data-option]');
   const itemTarget = event.target.closest('[data-item]');
   const pageTarget = event.target.closest('[data-page]');
@@ -2412,6 +2504,11 @@ function handleDocumentClick(event) {
           const field = $(selector);
           if (field) field.value = '';
         });
+        const passField = $('#unified-pass');
+        if (passField) passField.type = 'password';
+        $('#icon-eye-show-u')?.classList.remove('app-hidden');
+        $('#icon-eye-hide-u')?.classList.add('app-hidden');
+        $('#toggle-pass-u')?.setAttribute('aria-label', 'Mostrar contraseña');
       }
       appState.manualRegistering = nextRegistering;
       validateLogin();
@@ -2732,6 +2829,7 @@ document.addEventListener('submit', event => {
   const handlers = {
     'form-admin-user': createStaffAccount,
     'form-claim': claimAccessCode,
+    'form-password': submitPasswordChange,
     'form-session': submitSessionForm,
     'form-enroll': submitEnroll,
     'form-adjust': submitAdjust,

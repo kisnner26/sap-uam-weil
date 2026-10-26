@@ -99,3 +99,9 @@ test('reiniciar respuestas usa confirmación interna y conserva el contexto del 
   assert.match(app, /if \(action === 'confirm-reset-test'\) \{\s+closeSubmitDialog\(\);\s+resetTest\(\);\s+requestAnimationFrame\(\(\) => \$\('\[data-action="reset-test"\]'\)\?\.focus\(\)\);/);
   assert.doesNotMatch(app, /function resetTest\(\) \{\s+if \(\!window\.confirm/);
 });
+
+test('el body no cuenta como destino de navegación en el manejador de clics', () => {
+  const app = fs.readFileSync(path.join(__dirname, 'app.js'), 'utf8');
+  // body[data-route] existe solo para el CSS; si el manejador lo tomara como ruta, cualquier clic repintaría la vista.
+  assert.match(app, /routeCandidate !== document\.body/);
+});
