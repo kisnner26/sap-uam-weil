@@ -106,6 +106,11 @@ test('la aplicación permite saltar la navegación hacia el contenido actualizad
   assert.match(theme, /\.skip-link:focus-visible\{transform:translateY\(0\)/);
 });
 
+test('la navegación no fuerza desplazamiento animado si el sistema pide menos movimiento', () => {
+  assert.match(app, /function prefersReducedMotion\(\) \{\s+return window\.matchMedia\?\.\('\(prefers-reduced-motion: reduce\)'\)\.matches === true;/);
+  assert.match(app, /appState\.settings\.smooth && !prefersReducedMotion\(\) \? 'smooth' : 'auto'/);
+});
+
 test('reiniciar respuestas usa confirmación interna y conserva el contexto del intento', () => {
   assert.match(app, /function requestResetTest\(\)/);
   assert.match(app, /data-action="confirm-reset-test"/);

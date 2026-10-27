@@ -1533,6 +1533,10 @@ function identityLabel(profile) {
   return appState.sessionUser?.authProvider === 'manual' ? 'Cuenta externa' : `CIF ${profile?.cif ?? ''}`;
 }
 
+function prefersReducedMotion() {
+  return window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true;
+}
+
 function renderShell() {
   document.body.dataset.role = appState.sessionUser?.role || appState.role || 'guest';
   document.body.dataset.route = appState.route || 'inicio';
@@ -1570,7 +1574,7 @@ function routeTo(route) {
   appState.route = route;
   renderShell();
   render();
-  requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: appState.settings.smooth ? 'smooth' : 'auto' }));
+  requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: appState.settings.smooth && !prefersReducedMotion() ? 'smooth' : 'auto' }));
   $('#app-content')?.focus({ preventScroll: true });
 }
 
