@@ -99,6 +99,13 @@ test('la navegación anuncia la vista actual', () => {
   assert.match(app, /isActive \? 'aria-current="page"' : ''/);
 });
 
+test('la aplicación permite saltar la navegación hacia el contenido actualizado', () => {
+  const index = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
+  assert.match(index, /class="skip-link" href="#app-content">Saltar a contenido principal/);
+  assert.match(index, /id="app-content" tabindex="-1" aria-live="polite"/);
+  assert.match(theme, /\.skip-link:focus-visible\{transform:translateY\(0\)/);
+});
+
 test('reiniciar respuestas usa confirmación interna y conserva el contexto del intento', () => {
   assert.match(app, /function requestResetTest\(\)/);
   assert.match(app, /data-action="confirm-reset-test"/);

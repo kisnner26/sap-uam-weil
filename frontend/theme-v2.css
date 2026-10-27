@@ -128,6 +128,7 @@ body[data-route="test"] .app-content{width:min(1660px,100%);padding-top:18px}.ex
 .pr__btn:not(:disabled):hover::after,.pr__btn:focus-visible::after{transform:translateX(0)}
 
 .app-shell{position:relative;isolation:isolate;background-color:var(--paper);background-image:linear-gradient(var(--future-grid) 1px,transparent 1px),linear-gradient(90deg,var(--future-grid) 1px,transparent 1px);background-size:48px 48px}
+.skip-link{position:fixed;top:10px;left:12px;z-index:80;min-height:44px;padding:11px 14px;border:1px solid var(--future-cyan);background:var(--future-carbon);color:#e9fbfb;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.72rem;font-weight:800;text-transform:uppercase;transform:translateY(-160%);transition:transform 150ms ease-out}.skip-link:focus-visible{transform:translateY(0);outline:2px solid var(--gold);outline-offset:3px}
 .app-content{position:relative}
 .app-content::before{content:"SAP-UAM / INTERFAZ DE EVALUACIÓN / NODO 01";display:block;margin-bottom:18px;padding:8px 10px;border-block:1px solid color-mix(in srgb,var(--teal) 36%,var(--line));color:var(--muted);background:color-mix(in srgb,var(--surface) 86%,transparent);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.62rem;text-align:right}
 .app-top{background:var(--future-carbon);border-color:#213538}
