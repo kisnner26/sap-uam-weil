@@ -57,3 +57,9 @@ test('el catalogo expone geometría pero nunca rutas públicas del material', ()
   assert.equal(puzzle.pieces, undefined);
   assert.equal(weil.media.puzzleGeometry(999), null);
 });
+
+test('las piezas anuncian el atajo numérico que permite responder sin arrastrar', () => {
+  const viewer = fs.readFileSync(`${__dirname}/viewer.js`, 'utf8');
+  assert.match(viewer, /aria-keyshortcuts="\$\{i \+ 1\}"/);
+  assert.match(viewer, /usar las teclas del 1 al 8/);
+});

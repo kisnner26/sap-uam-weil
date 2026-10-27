@@ -30,7 +30,7 @@
             </div>
           </div>
           <div class="puzzle-tray" role="group" aria-label="Piezas disponibles">${puzzle.pieces.map((src, i) => `
-            <button type="button" class="puzzle-piece ${selected === i + 1 ? 'is-used' : ''}" data-piece="${i + 1}" data-option="${i + 1}" aria-label="Pieza ${i + 1}${selected === i + 1 ? ', colocada' : ''}">
+            <button type="button" class="puzzle-piece ${selected === i + 1 ? 'is-used' : ''}" data-piece="${i + 1}" data-option="${i + 1}" aria-keyshortcuts="${i + 1}" aria-label="Pieza ${i + 1}${selected === i + 1 ? ', colocada' : ''}">
               <img src="${src}" alt="" draggable="false" decoding="async">
             </button>`).join('')}
           </div>
