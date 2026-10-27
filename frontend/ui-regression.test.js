@@ -102,7 +102,7 @@ test('la navegación anuncia la vista actual', () => {
 test('la aplicación permite saltar la navegación hacia el contenido actualizado', () => {
   const index = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
   assert.match(index, /class="skip-link" href="#app-content">Saltar a contenido principal/);
-  assert.match(index, /id="app-content" tabindex="-1" aria-live="polite"/);
+  assert.match(index, /<main class="app-content" id="app-content" tabindex="-1"><\/main>/);
   assert.match(theme, /\.skip-link:focus-visible\{transform:translateY\(0\)/);
 });
 
