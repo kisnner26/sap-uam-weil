@@ -155,6 +155,9 @@ body[data-route="test"] .app-content{width:min(1660px,100%);padding-top:18px}.ex
 .hero-band{box-shadow:10px 10px 0 color-mix(in srgb,var(--teal) 12%,transparent)}
 .hero-copy{position:relative}
 .hero-copy::after{content:"FORM-A / 060";position:absolute;right:24px;bottom:20px;color:var(--muted);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.58rem}
+.demo-restriction{display:grid;gap:5px;max-width:37rem;padding:12px 14px;border:1px solid color-mix(in srgb,var(--teal) 38%,var(--line));border-left:4px solid var(--future-cyan);background:color-mix(in srgb,var(--surface-2) 70%,transparent)}
+.demo-restriction span{color:var(--future-cyan);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.64rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase}.demo-restriction p{margin:0;color:var(--ink-2);font-size:.82rem;font-weight:700;line-height:1.4}
+body.theme-dark .demo-restriction{background:#132326}
 .hero-visual{background:#082e34}
 .next-step-panel{border-color:#254348;background:var(--future-carbon);color:#f0f6f4}
 .next-step-panel::before{border-color:#68d0d7}
@@ -272,6 +275,8 @@ body[data-route="test"] .app-content{box-sizing:border-box;max-width:none;min-wi
   .status-stack{gap:12px}
   .next-step-panel,.readiness-panel{padding:17px}
   .check-list{gap:7px}
+  .demo-restriction{gap:3px;padding:8px 10px}
+  .demo-restriction p{display:none}
 }
 
 /* navegación y encabezado: nada fuera de alcance ni ocupando media pantalla */

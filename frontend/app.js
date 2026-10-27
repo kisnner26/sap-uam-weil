@@ -1596,6 +1596,7 @@ function renderHome() {
   const count = answeredCount();
   const progress = Math.round((count / TOTAL_ITEMS) * 100);
   const result = appState.result;
+  const isPublicPreview = STATIC_PAGES_MODE;
   const home = STATIC_PAGES_MODE ? null : ADM.aspirantHome(appState.availability, { count, hasResult: Boolean(result), error: appState.availabilityError });
   const readableName = displayPersonName(appState.profile.fullName);
   const profileLine = [readableName, normalizeCareer(appState.profile.carrera)].filter(Boolean).join(' · ');
@@ -1607,7 +1608,7 @@ function renderHome() {
       <section class="hero-band assessment-card">
         <div class="hero-copy">
           <div>
-            <div class="assessment-card__top"><p class="eyebrow">${esc(ACTIVE_TEST.shortName)}</p><span class="status-badge">${home ? esc(home.badge) : result ? 'Entregada' : count ? 'En progreso' : 'Asignada'}</span></div>
+            <div class="assessment-card__top"><p class="eyebrow">${esc(ACTIVE_TEST.shortName)}</p><span class="status-badge">${isPublicPreview ? 'Vista previa' : home ? esc(home.badge) : result ? 'Entregada' : count ? 'En progreso' : 'Asignada'}</span></div>
             <h2>${esc(ACTIVE_TEST.name)}</h2>
             <p>${esc(ACTIVE_TEST.description)}</p>
             <dl class="assessment-meta">
@@ -1620,9 +1621,9 @@ function renderHome() {
             <div class="progress-label"><span>Progreso</span><strong>${progress}%</strong></div>
             <div class="progress-shell" role="progressbar" aria-label="Progreso de ${esc(ACTIVE_TEST.shortName)}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${progress}"><div class="progress-bar" style="width:${progress}%"></div></div>
             <div class="hero-actions">
-              ${home ? home.action : result
+              ${isPublicPreview ? '<div class="demo-restriction" role="status"><span>vista previa · material protegido</span><p>iniciá sesión con una convocatoria activa para rendir.</p></div>' : home ? home.action : result
                 ? '<button class="solid-btn" type="button" data-route="resultados">Ver constancia de entrega</button>'
-                : `<button class="solid-btn" type="button" data-action="start-test">${STATIC_PAGES_MODE ? 'Material disponible solo en el sistema' : count ? 'Continuar evaluación' : 'Comenzar evaluación'}</button>`}
+                : `<button class="solid-btn" type="button" data-action="start-test">${count ? 'Continuar evaluación' : 'Comenzar evaluación'}</button>`}
             </div>
           </div>
         </div>
@@ -1631,8 +1632,8 @@ function renderHome() {
       <aside class="status-stack">
         <section class="panel next-step-panel">
           <p class="eyebrow">Siguiente paso</p>
-          <h3>${home ? esc(home.title) : result ? 'Tu entrega está registrada' : count ? `Continuá desde el ítem ${appState.currentIndex + 1}` : 'Prepará tu espacio'}</h3>
-          <p>${home ? esc(home.text) : result ? 'Tu constancia confirma que el equipo recibió las respuestas.' : 'Buscá un lugar sin interrupciones. El progreso se guarda automáticamente.'}</p>
+          <h3>${isPublicPreview ? 'Acceso institucional requerido' : home ? esc(home.title) : result ? 'Tu entrega está registrada' : count ? `Continuá desde el ítem ${appState.currentIndex + 1}` : 'Prepará tu espacio'}</h3>
+          <p>${isPublicPreview ? 'Esta vista muestra la interfaz; las figuras y la calificación solo se habilitan dentro de una convocatoria.' : home ? esc(home.text) : result ? 'Tu constancia confirma que el equipo recibió las respuestas.' : 'Buscá un lugar sin interrupciones. El progreso se guarda automáticamente.'}</p>
           <div class="metric-strip">
             <div><strong>${count}</strong><span>${plural(count,'respondido','respondidos')}</span></div>
             <div><strong>${TOTAL_ITEMS - count}</strong><span>${plural(TOTAL_ITEMS - count,'pendiente','pendientes')}</span></div>

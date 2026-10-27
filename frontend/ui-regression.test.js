@@ -27,6 +27,13 @@ test('perfil y entrega pendiente explican el siguiente paso sin dejar datos vac�
   assert.match(app, /Todavía no hay una entrega registrada/);
 });
 
+test('la vista previa no presenta el material protegido como una acción disponible', () => {
+  assert.match(app, /const isPublicPreview = STATIC_PAGES_MODE;/);
+  assert.match(app, /isPublicPreview \? '<div class="demo-restriction" role="status"><span>vista previa · material protegido<\/span><p>iniciá sesión con una convocatoria activa para rendir.<\/p><\/div>'/);
+  assert.match(app, /isPublicPreview \? 'Acceso institucional requerido'/);
+  assert.match(theme, /\.demo-restriction\{display:grid/);
+});
+
 test('el acceso conserva feedback visible cuando falla una autenticación', () => {
   assert.match(app, /let failureMessage = '';/);
   assert.match(app, /setFieldState\('#wrap-unified-pass', '#unified-pass-msg', 'err', failureMessage\)/);
