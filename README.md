@@ -123,9 +123,9 @@ estado verificado: 49 pruebas de frontend y 62 pruebas de backend, incluyendo au
 - las lecturas y cambios sensibles quedan registrados en auditoría.
 - el aviso de privacidad incluido es un borrador pendiente de revisión legal institucional.
 
-### requisito para entregar material real
+### material de prueba
 
-el repositorio contiene implementación y material de referencia de weil para desarrollo. antes de distribuirlo con material, claves o baremos reales, el repositorio debe ser privado y el equipo debe recibir acceso controlado. eliminar archivos del último commit no elimina su historial público; si el contenido publicado invalida el instrumento, se debe sustituir por una versión autorizada antes de cualquier aplicación real.
+el material, las claves y los baremos incluidos son de prueba para desarrollo e integración. no se usan como instrumento institucional ni sustituyen una fuente autorizada para una aplicación real.
 
 ## estructura
 

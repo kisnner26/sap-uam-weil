@@ -18,11 +18,11 @@ el módulo aporta una referencia funcional para `weil-form-a`:
 4. validar primero unitarias, después api + postgresql y finalmente regresión del sistema común.
 5. registrar cada cambio mediante rama y pull request; no integrar directamente a `main`.
 
-## seguridad obligatoria antes de distribuir material real
+## límite del material incluido
 
-- el repositorio debe ser privado y con acceso limitado al equipo autorizado.
-- el material, las claves y los baremos reales no se copian a issues, chats, frontend público ni capturas.
-- si el contenido publicado previamente invalida el instrumento, se sustituye por una fuente autorizada antes de aplicarlo.
+- el material, las claves y los baremos incluidos son de prueba para desarrollo e integración.
+- no se usan para evaluación institucional ni como base clínica.
+- un instrumento autorizado para aplicación real requiere revisión institucional independiente.
 - el aviso de privacidad requiere revisión legal institucional antes de producción.
 
 ## estado de aceptación
@@ -33,4 +33,4 @@ el módulo aporta una referencia funcional para `weil-form-a`:
 | ci de postgresql | corregido localmente; requiere ejecución remota verde |
 | contrato multi-test | base disponible; faltan respuesta genérica y batería por convocatoria |
 | adaptación al repositorio común | pendiente del equipo de desarrollo e integración |
-| distribución de material real | bloqueada hasta privatizar y controlar accesos |
+| material de prueba | disponible para desarrollo; no apto para aplicación institucional |
