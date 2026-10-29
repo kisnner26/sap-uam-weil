@@ -111,7 +111,7 @@ npm test
 cd backend && mvn test
 ```
 
-estado verificado: 32 pruebas de frontend y 49 pruebas de integración del backend, incluyendo autenticación, autorización, concurrencia, retención, admisión, resultados y contratos de botones.
+estado verificado: 49 pruebas de frontend y 62 pruebas de backend, incluyendo autenticación, autorización, concurrencia, retención, admisión, resultados y contratos de botones.
 
 ## seguridad y privacidad
 
@@ -122,6 +122,10 @@ estado verificado: 32 pruebas de frontend y 49 pruebas de integración del backe
 - desactivar una cuenta, cambiar su rol o restablecer MFA invalida sus sesiones.
 - las lecturas y cambios sensibles quedan registrados en auditoría.
 - el aviso de privacidad incluido es un borrador pendiente de revisión legal institucional.
+
+### requisito para entregar material real
+
+el repositorio contiene implementación y material de referencia de weil para desarrollo. antes de distribuirlo con material, claves o baremos reales, el repositorio debe ser privado y el equipo debe recibir acceso controlado. eliminar archivos del último commit no elimina su historial público; si el contenido publicado invalida el instrumento, se debe sustituir por una versión autorizada antes de cualquier aplicación real.
 
 ## estructura
 
