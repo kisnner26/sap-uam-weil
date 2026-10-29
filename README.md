@@ -111,7 +111,7 @@ npm test
 cd backend && mvn test
 ```
 
-estado verificado: 32 pruebas de frontend y 49 pruebas de integración del backend, incluyendo autenticación, autorización, concurrencia, retención, admisión, resultados y contratos de botones.
+estado verificado: 49 pruebas de frontend y 62 pruebas de backend, incluyendo autenticación, autorización, concurrencia, retención, admisión, resultados y contratos de botones.
 
 ## seguridad y privacidad
 
@@ -122,6 +122,10 @@ estado verificado: 32 pruebas de frontend y 49 pruebas de integración del backe
 - desactivar una cuenta, cambiar su rol o restablecer MFA invalida sus sesiones.
 - las lecturas y cambios sensibles quedan registrados en auditoría.
 - el aviso de privacidad incluido es un borrador pendiente de revisión legal institucional.
+
+### material de prueba
+
+el material, las claves y los baremos incluidos son de prueba para desarrollo e integración. no se usan como instrumento institucional ni sustituyen una fuente autorizada para una aplicación real.
 
 ## estructura
 

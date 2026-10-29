@@ -12,7 +12,7 @@ el plan de desarrollo colaborativo (scrum adaptado, 6 semanas, 5 grupos) fija el
 
 | plan oficial | este repositorio hoy | decisión pendiente |
 | --- | --- | --- |
-| `TestEvaluator` como interfaz común, un evaluador por test | `ScoringStrategy` y `WeilScoringStrategy` | renombrar a `TestEvaluator` y `WeilEvaluator` cuando se fije la arquitectura base; es un cambio mecánico |
+| `TestEvaluator` como interfaz común, un evaluador por test | `ScoringStrategy`, `ScoringRegistry` y `WeilScoringStrategy` | acordar el nombre final con integración; el registro por `testId` ya funciona |
 | paquete `com.universidad.tests` | `ni.edu.uam.campusfood` | lo fija el grupo integrador de la semana 1; no renombrar antes |
 | capas por tipo (`controller/`, `dto/`, `application/{service,usecase,evaluator}`, `domain/{model,repository,exception}`, `infrastructure/{persistence,security,adapter}`) | paquetes por funcionalidad (`assessment`, `admission`, `auth`, `privacy`) | mover a capas al integrar con la base común |
 | frontend react (`frontend/` con `package.json`) | javascript sin framework, con scripts globales | portar a react; el contrato de visor (`item`, `renderStage`, `renderResponse`...) se convierte en un componente por test |
@@ -29,16 +29,14 @@ lo que sí coincide con el plan: monolito, un contrato por test, un evaluador po
 - el frontend ya consulta un catálogo (`SAP_UAM_TESTS`) y claves de almacenamiento por `testId`.
 - el backend ya calcula la calificación y nunca envía claves al navegador.
 
-## acoplamientos a weil que hay que romper
+## límites que siguen pendientes para el producto común
 
 | dónde | acoplamiento | consecuencia para otro test |
 | --- | --- | --- |
-| `AssessmentService` | constantes `WEIL_ITEMS=60`, `WEIL_OPTIONS=8`, `WEIL_VERSION` | un test de 100 ítems o con otra escala no cabe |
-| `WeilScoringStrategy` | clase concreta inyectada en `AssessmentService` y `RetentionService` | no hay interfaz común ni registro de estrategias |
-| `V1__esquema_inicial.sql` | `selected_option BETWEEN 1 AND 8`, `direct_score`, `participant_age`, `norm_group` en `assessment_attempts` | thurstone y allport usan escalas y rankings; la batería factorial puntúa por subtest y producen perfiles, no un solo número |
-| `AdmissionService` | `WEIL = "weil-form-a"` fijo al crear sesiones | una sesión de examen solo puede ser de weil |
-| `AssessmentMaterialController` | ruta `test-material/weil-form-a/puzzle/...` | el material de otros tests necesita otro adaptador |
-| `app.js` (3131 líneas) | visor de láminas y copy de weil mezclados con el shell | cada test nuevo engordaría el mismo archivo |
+| respuesta persistida | `selected_option` sigue siendo entero | tests con texto, rankings o matrices requieren un contrato de respuesta genérico |
+| convocatoria | cada sesión representa un solo `testId` | una batería ordenada necesita `test_assignments` o entidad equivalente |
+| material | el adaptador actual conoce el formato de láminas de weil | cada nuevo formato necesita un proveedor de material y autorización de acceso |
+| frontend | el visor de weil ya está separado, pero el shell sigue en javascript vanilla | debe portarse a componentes react del proyecto común |
 | paquete `ni.edu.uam.campusfood` | nombre heredado de otro proyecto | rompe la nomenclatura común; hay que fijarla ahora |
 
 ## contrato de un test
@@ -77,11 +75,11 @@ invariantes que se conservan: un intento activo por usuario y test, respuestas i
 
 el shell (acceso, inicio, perfil, ajustes, entrega) es de la plataforma y usa los tokens de `theme-v2.css`. un test solo aporta su visor de ítems dentro de la pantalla de examen. mientras tanto se aplican las reglas ya medidas en este repo: acción principal visible a 1366x720 y formularios que quepan sin desplazamiento.
 
-## orden de trabajo propuesto
+## orden de trabajo restante
 
 1. acordar con los demás grupos el repositorio único, la nomenclatura anterior y el product backlog compartido. es decisión de equipo, no solo mía.
-2. extraer la interfaz `ScoringStrategy` y un registro por `testId`; weil pasa a ser su primera implementación sin cambiar su comportamiento. las pruebas existentes deben seguir en verde.
-3. migración `V4` con `assessment_results` genérico y responder sin el límite de 8 opciones.
-4. quitar las constantes de weil de `AssessmentService` y `AdmissionService`; leerlas de la definición del test.
-5. partir `app.js` en shell y módulos por test. hecho para el visor: `frontend/test-viewers.js` define la interfaz (`item`, `renderStage`, `renderResponse`, `afterAnswer`, `prepareMedia`, `attachInput`) y weil la implementa en `frontend/tests/weil-form-a/viewer.js`. un test nuevo registra su visor igual, sin tocar `app.js`.
+2. conservar `ScoringStrategy`, `ScoringRegistry` y `assessment_results` como contrato de referencia; renombrarlos solo al adoptar la nomenclatura común.
+3. diseñar una respuesta genérica y asignaciones de varios tests antes de incorporar el segundo módulo.
+4. portar el shell y los visores a react sin cambiar el contrato de interacción ya probado. `frontend/test-viewers.js` define el visor actual y weil lo implementa en `frontend/tests/weil-form-a/viewer.js`.
+5. mover paquetes y migraciones a la estructura aprobada por el repositorio común.
 6. recién entonces sumar el segundo test como incremento del backlog, para validar que el contrato alcanza.
