@@ -100,6 +100,8 @@ def main():
     ap.add_argument('--base', default='http://localhost:8081')
     ap.add_argument('--admin-email', required=True)
     ap.add_argument('--admin-password', required=True)
+    ap.add_argument('--admin-new-password',
+                    help='contraseña temporal nueva cuando el administrador de arranque exige cambiarla')
     ap.add_argument('--users', type=int, default=100)
     ap.add_argument('--concurrency', type=int, default=25)
     ap.add_argument('--think', type=float, default=0.05, help='pausa maxima entre respuestas (s)')
@@ -114,10 +116,18 @@ def main():
     secret = b.get('enrollmentSecret') or open('.loadtest-secret').read().strip()
     open('.loadtest-secret', 'w').write(secret)
     for shift in (0, 1, -1):
-        st, _ = admin.call('POST', '/api/auth/mfa/verify', {'challengeToken': b['challengeToken'], 'code': totp(secret, shift)})
+        st, verified = admin.call('POST', '/api/auth/mfa/verify',
+                                  {'challengeToken': b['challengeToken'], 'code': totp(secret, shift)})
         if st == 200:
             break
     assert st == 200, 'segundo factor'
+    if verified.get('user', {}).get('mustChangePassword'):
+        new_password = args.admin_new_password or args.admin_password + '-loadtest'
+        st, changed = admin.call('POST', '/api/auth/password', {
+            'currentPassword': args.admin_password,
+            'newPassword': new_password,
+        })
+        assert st == 200, f'cambio de contraseña temporal: {st} {changed}'
     now = time.time()
     iso = lambda t: time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime(t))
     st, sess = admin.call('POST', '/api/staff/sessions', {'name': f'Carga {run}', 'opensAt': iso(now - 60), 'closesAt': iso(now + 7200), 'timeLimitMinutes': 60})
